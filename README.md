@@ -10,11 +10,9 @@ Vercel Doorman is a CLI tool that allows you to manage your Vercel Firewall rule
 - **Version Control**: Store your Firewall rules in code, enabling version control and collaboration with your team.
 <!-- - **Interactive Prompts**: Use interactive prompts to guide you through creating and updating Firewall rules. -->
 
-
 ## Usage
 
-
-<!-- 
+<!--
 
 ### Running Commands
 
@@ -32,7 +30,7 @@ Vercel Doorman is a CLI tool that allows you to manage your Vercel Firewall rule
 - **`create`**: Create new project based on `cli-typescript-starter`.
 
 All commands are located in the `src/commands/` folder. This organization makes it easy to find and modify commands or
-add new ones as needed. 
+add new ones as needed.
 
 -->
 
