@@ -1,6 +1,6 @@
-import { createGenerator } from 'ts-json-schema-generator'
 import { writeFileSync } from 'fs'
 import { resolve } from 'path'
+import { createGenerator } from 'ts-json-schema-generator'
 
 const config = {
   path: resolve(__dirname, '../src/lib/types/configTypes.ts'),
@@ -15,9 +15,9 @@ const schema = createGenerator(config).createSchema(config.type)
 // Add some metadata to the schema
 const schemaWithMeta = {
   $schema: 'http://json-schema.org/draft-07/schema#',
-  ...schema,
   title: 'Vercel Doorman Firewall Configuration',
   description: 'Schema for vercel-doorman firewall configuration files',
+  ...schema,
 }
 
 writeFileSync(outputPath, JSON.stringify(schemaWithMeta, null, 2))

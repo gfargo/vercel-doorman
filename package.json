@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "tsup-node",
+    "build:schema": "ts-node ./scripts/generate-schema.ts ",
     "build:watch": "tsup-node --watch",
     "clean": "rimraf dist",
     "commit": "cz",

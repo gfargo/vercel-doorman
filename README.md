@@ -12,27 +12,7 @@ Vercel Doorman is a CLI tool that allows you to manage your Vercel Firewall rule
 
 ## Usage
 
-<!--
-
-### Running Commands
-
-- In development mode, use `pnpm start [command name]` to run any command. This utilizes `ts-node` for a seamless
-  development experience.
-- In production, execute the CLI application directly with `my-project [command name]` to run the desired
-  command from the built project (the name of command should be provided in `package.json` in `bin`).
-
-### Sample Commands
-
-- **`info`**: Prints information about the current system and Node.js configuration. This command is useful for
-  verifying the environment in which the CLI is running.
-- **`greeting`**: Demonstrates interactive prompts within the CLI. It's a great way to see how user inputs can be
-  handled in a friendly manner.
-- **`create`**: Create new project based on `cli-typescript-starter`.
-
-All commands are located in the `src/commands/` folder. This organization makes it easy to find and modify commands or
-add new ones as needed.
-
--->
+- [Creating a Vercel API Token](https://vercel.com/guides/how-do-i-use-a-vercel-api-access-token)
 
 ### Script Commands
 
