@@ -1,8 +1,8 @@
-import { existsSync } from 'fs';
-import { resolve, dirname } from 'path';
-import findUp from 'find-up';
+import { existsSync } from 'fs'
+import { resolve, dirname } from 'path'
+import findUp from 'find-up'
 
-const CONFIG_FILE_NAME = 'vercel-firewall.config.json';
+const CONFIG_FILE_NAME = 'vercel-firewall.config.json'
 
 export class ConfigFinder {
   /**
@@ -11,31 +11,31 @@ export class ConfigFinder {
    */
   static async findConfig(startPath?: string): Promise<string | null> {
     const configPath = await findUp(CONFIG_FILE_NAME, {
-      cwd: startPath || process.cwd()
-    });
-    
-    return configPath || null;
+      cwd: startPath || process.cwd(),
+    })
+
+    return configPath || null
   }
 
   /**
    * Get the project root directory (where the config file is located)
    */
   static async findProjectRoot(startPath?: string): Promise<string | null> {
-    const configPath = await this.findConfig(startPath);
-    return configPath ? dirname(configPath) : null;
+    const configPath = await this.findConfig(startPath)
+    return configPath ? dirname(configPath) : null
   }
 
   /**
    * Check if a config file exists at the specified path
    */
   static configExists(path: string): boolean {
-    return existsSync(resolve(path));
+    return existsSync(resolve(path))
   }
 
   /**
    * Get the default config path relative to the current directory
    */
   static getDefaultConfigPath(): string {
-    return resolve(process.cwd(), CONFIG_FILE_NAME);
+    return resolve(process.cwd(), CONFIG_FILE_NAME)
   }
 }

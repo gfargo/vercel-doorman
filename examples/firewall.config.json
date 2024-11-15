@@ -6,10 +6,7 @@
       "name": "Block Bad IPs",
       "description": "Block known malicious IP addresses",
       "type": "ip",
-      "values": [
-        "192.168.1.1",
-        "10.0.0.0/24"
-      ],
+      "values": ["192.168.1.1", "10.0.0.0/24"],
       "action": "deny",
       "active": true
     },
