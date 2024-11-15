@@ -1,7 +1,7 @@
 {
   "extends": "@tsconfig/node20/tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist/src",
+    "outDir": "dist/",
     "baseUrl": ".",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -16,13 +16,13 @@
     "sourceMap": true,
     "resolveJsonModule": true
   },
-  "include": ["src"],
+  "include": ["src", "bin"],
   "exclude": ["dist", "bundle", "node_modules"],
-  "ts-node": {
-    // these options are overrides used only by ts-node
-    // same as the --compilerOptions flag and the TS_NODE_COMPILER_OPTIONS environment variable
-    "compilerOptions": {
-      "module": "commonjs"
-    }
-  }
+  // "ts-node": {
+  //   // these options are overrides used only by ts-node
+  //   // same as the --compilerOptions flag and the TS_NODE_COMPILER_OPTIONS environment variable
+  //   "compilerOptions": {
+  //     "module": "commonjs"
+  //   }
+  // }
 }

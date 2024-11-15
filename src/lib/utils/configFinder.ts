@@ -1,6 +1,6 @@
+import { findUp } from 'find-up'
 import { existsSync } from 'fs'
-import { resolve, dirname } from 'path'
-import findUp from 'find-up'
+import { dirname, resolve } from 'path'
 
 const CONFIG_FILE_NAME = 'vercel-firewall.config.json'
 
@@ -9,12 +9,12 @@ export class ConfigFinder {
    * Find the config file by looking in the current directory and walking up
    * the directory tree until we find it or hit the root
    */
-  static async findConfig(startPath?: string): Promise<string | null> {
+  static async findConfig(startPath?: string): Promise<string | undefined> {
     const configPath = await findUp(CONFIG_FILE_NAME, {
       cwd: startPath || process.cwd(),
     })
 
-    return configPath || null
+    return configPath || undefined
   }
 
   /**

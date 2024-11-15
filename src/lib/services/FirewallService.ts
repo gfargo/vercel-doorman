@@ -57,16 +57,20 @@ export class FirewallService {
         const existingRule = existingConfigRules[existingIndex]
         const existingVercelRule = existingVercelRules[existingIndex]
 
-        // Remove from delete list since we found it
-        const deleteIndex = toDelete.findIndex((r) => r.id === existingVercelRule.id)
-        if (deleteIndex !== -1) {
-          toDelete.splice(deleteIndex, 1)
+        if (existingVercelRule) {
+          // Remove from delete list since we found it
+          const deleteIndex = toDelete.findIndex((r) => r.id === existingVercelRule.id)
+          if (deleteIndex !== -1) {
+            toDelete.splice(deleteIndex, 1)
+          }
         }
 
         // Check if rule needs updating
-        if (this.hasRuleChanged(configRule, existingRule)) {
+        if (existingRule && this.hasRuleChanged(configRule, existingRule)) {
           const updatedRule = RuleTransformer.toVercelRule(configRule)
-          updatedRule.id = existingVercelRule.id
+          if (existingVercelRule) {
+            updatedRule.id = existingVercelRule.id
+          }
           toUpdate.push(updatedRule)
         }
       }

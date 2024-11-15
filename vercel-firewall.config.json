@@ -1,6 +1,6 @@
 {
-  "projectId": "your-project-id",
-  "teamId": "your-team-id",
+  "projectId": "prj_Y9A3G99Bb2ZygswsDfeR9cYXvkxc",
+  "teamId": "team_3fFGpm53GtnbGGSzpHhWxBKe",
   "rules": [
     {
       "name": "Block Bad IPs",

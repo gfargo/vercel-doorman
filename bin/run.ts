@@ -1,16 +1,14 @@
-import yargs, { CommandModule } from 'yargs'
+import chalk from 'chalk'
 import { config } from 'dotenv'
-import { commands } from '../src'
-import { bgBlue, bold, red } from 'picocolors'
+import yargs, { CommandModule } from 'yargs'
+import { commands } from '../src/commands'
 
 config()
 
 const run = yargs(process.argv.slice(2))
 run.usage(
-  bgBlue(
-    `Welcome to the CLI application powered by ${bold(red('cli-typescript-starter'))}!
-    See more on https://github.com/kucherenko/cli-typescript-starter`,
-  ),
+  `Welcome ${chalk.bold(chalk.red('vercel-doorman'))}!
+    See more on https://github.com/gfargo/vercel-doorman`,
 )
 for (const command of commands) {
   run.command(command as CommandModule)

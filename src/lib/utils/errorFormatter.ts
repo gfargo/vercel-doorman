@@ -1,5 +1,5 @@
-import chalk from 'chalk'
 import { ErrorObject } from 'ajv'
+import chalk from 'chalk'
 
 export class ErrorFormatter {
   static formatValidationError(error: ErrorObject): string {
@@ -8,16 +8,20 @@ export class ErrorFormatter {
 
     switch (error.keyword) {
       case 'type':
-        return `${formattedPath}: Expected ${chalk.green(error.params.type)}, got ${chalk.red(typeof error.data)}`
+        return `${formattedPath}: Expected ${chalk.green(error.schema)}, got ${chalk.red(typeof error.data)}`
 
-      case 'enum':
-        return `${formattedPath}: Value must be one of: ${chalk.green(error.params.allowedValues.join(', '))}`
-
-      case 'required':
-        return `${formattedPath}: Missing required property ${chalk.yellow(error.params.missingProperty)}`
-
-      case 'additionalProperties':
-        return `${formattedPath}: Unknown property ${chalk.red(error.params.additionalProperty)}`
+      case 'enum': {
+        const allowedValues = (error.params as { allowedValues: string[] }).allowedValues
+        return `${formattedPath}: Value must be one of: ${chalk.green(allowedValues.join(', '))}`
+      }
+      case 'required': {
+        const params = error.params as { missingProperty: string }
+        return `${formattedPath}: Missing required property ${chalk.yellow(params.missingProperty)}`
+      }
+      case 'additionalProperties': {
+        const additionalParams = error.params as { additionalProperty: string }
+        return `${formattedPath}: Unknown property ${chalk.red(additionalParams.additionalProperty)}`
+      }
 
       default:
         return `${formattedPath}: ${error.message}`

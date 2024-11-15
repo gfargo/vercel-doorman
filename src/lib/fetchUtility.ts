@@ -1,10 +1,18 @@
-import fetch from 'node-fetch'
+// import fetch from 'node-fetch'
 import { VercelRule } from './types/vercelTypes'
 
 const VERCEL_API_BASE_URL = 'https://api.vercel.com/v1/security/firewall/config'
 
 interface ApiResponse {
-  rules: VercelRule[]
+  active: {
+    version: number
+    firewallEnabled: boolean
+    rules: VercelRule[]
+    ownerId: string
+    updatedAt: string
+    id: string
+    projectKey: string
+  }
 }
 
 export class VercelClient {
@@ -37,7 +45,7 @@ export class VercelClient {
     }
 
     const data = (await response.json()) as ApiResponse
-    return data.rules
+    return data.active.rules
   }
 
   async updateFirewallRule(rule: VercelRule): Promise<void> {

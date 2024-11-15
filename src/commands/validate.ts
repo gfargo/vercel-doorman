@@ -1,8 +1,9 @@
 import { readFileSync } from 'fs'
 import { Arguments } from 'yargs'
-import { ValidationService } from '../../lib/services/ValidationService'
-import { ConfigFinder } from '../../lib/utils/configFinder'
-import { ErrorFormatter } from '../../lib/utils/errorFormatter'
+import { ValidationService } from '../lib/services/ValidationService'
+import { ConfigFinder } from '../lib/utils/configFinder'
+import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { logger } from '../logger'
 
 interface ValidateOptions {
   config?: string
@@ -44,10 +45,10 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
     const configJson = JSON.parse(configContent)
 
     // Get validator instance
-    const validator = ValidationService.getInstance()
+    const validator: ValidationService = ValidationService.getInstance()
 
     if (argv.verbose) {
-      console.log('Validating configuration file...\n')
+      logger.start('Validating configuration file...\n')
     }
 
     // Validate config
@@ -63,20 +64,24 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
           { name: 'Action valid', passed: true },
         ]
 
-        console.log(ErrorFormatter.formatDetailedRuleValidation(rule.name, checks))
-        console.log('') // Empty line between rules
+        logger.log(ErrorFormatter.formatDetailedRuleValidation(rule.name, checks))
       }
-      console.log('') // Empty line before final message
+      logger.log('') // Empty line before final message
     }
 
-    console.log(ErrorFormatter.formatSuccessMessage('Configuration is valid'))
+    logger.success(ErrorFormatter.formatSuccessMessage('Configuration is valid'))
   } catch (error) {
     if (error instanceof SyntaxError) {
-      console.error(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else if (error.name === 'ValidationError') {
-      console.error(error.getFormattedMessage())
+      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
+    } else if (error instanceof Error && error.name === 'ValidationError') {
+      logger.error(error)
     } else {
-      console.error(ErrorFormatter.wrapErrorBlock(['Unexpected error while validating config:', `  ${error.message}`]))
+      logger.warn(
+        ErrorFormatter.wrapErrorBlock([
+          'Error syncing firewall rules:',
+          `  ${error instanceof Error ? error.message : String(error)}`,
+        ]),
+      )
     }
     process.exit(1)
   }

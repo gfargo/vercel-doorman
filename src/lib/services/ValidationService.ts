@@ -1,4 +1,5 @@
-import Ajv, { ErrorObject } from 'ajv'
+import type { ErrorObject } from 'ajv'
+import Ajv, { Ajv as AjvType } from 'ajv'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { FirewallConfig } from '../types/configTypes'
@@ -35,14 +36,13 @@ export class ValidationError extends Error {
 
 export class ValidationService {
   private static instance: ValidationService
-  private ajv: Ajv
+  private ajv: AjvType
   private schema: object
 
   private constructor() {
     this.ajv = new Ajv({
       allErrors: true,
       verbose: true,
-      strict: false,
     })
 
     // Load schema from file
@@ -125,9 +125,9 @@ export class ValidationService {
 
     if (value.includes('/')) {
       const [ip, cidr] = value.split('/')
-      const cidrNum = parseInt(cidr, 10)
-      if (ipv4Regex.test(ip) && (cidrNum < 0 || cidrNum > 32)) return false
-      if (ipv6Regex.test(ip) && (cidrNum < 0 || cidrNum > 128)) return false
+      const cidrNum = cidr ? parseInt(cidr, 10) : NaN
+      if (ip && ipv4Regex.test(ip) && (cidrNum < 0 || cidrNum > 32)) return false
+      if (ip && ipv6Regex.test(ip) && (cidrNum < 0 || cidrNum > 128)) return false
     }
 
     return true

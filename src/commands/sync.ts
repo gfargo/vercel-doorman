@@ -1,11 +1,12 @@
 import { readFileSync } from 'fs'
 import { Arguments } from 'yargs'
-import { VercelClient } from '../../lib/fetchUtility'
-import { FirewallService } from '../../lib/services/FirewallService'
-import { ValidationService } from '../../lib/services/ValidationService'
-import { FirewallConfig } from '../../lib/types/configTypes'
-import { ConfigFinder } from '../../lib/utils/configFinder'
-import { ErrorFormatter } from '../../lib/utils/errorFormatter'
+import { VercelClient } from '../lib/fetchUtility'
+import { FirewallService } from '../lib/services/FirewallService'
+import { ValidationService } from '../lib/services/ValidationService'
+import { FirewallConfig } from '../lib/types/configTypes'
+import { ConfigFinder } from '../lib/utils/configFinder'
+import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { logger } from '../logger'
 
 interface SyncOptions {
   config?: string
@@ -63,7 +64,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     const configJson = JSON.parse(configContent)
 
     // Validate config
-    const validator = ValidationService.getInstance()
+    const validator: ValidationService = ValidationService.getInstance()
     validator.validateConfig(configJson)
 
     // Config is now type-safe
@@ -86,16 +87,16 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     const service = new FirewallService(client)
 
     // Perform sync
-    console.log('Starting firewall rules sync...')
+    logger.start('Starting firewall rules sync...')
     await service.syncRules(config)
-    console.log('Firewall rules sync completed successfully')
+    logger.success('Firewall rules sync completed successfully')
   } catch (error) {
     if (error instanceof SyntaxError) {
-      console.error(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else if (error.name === 'ValidationError') {
-      console.error(error.getFormattedMessage())
+      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
+    } else if (error instanceof Error && error.name === 'ValidationError') {
+      logger.error(error)
     } else {
-      console.error(
+      logger.warn(
         ErrorFormatter.wrapErrorBlock([
           'Error syncing firewall rules:',
           `  ${error instanceof Error ? error.message : String(error)}`,
