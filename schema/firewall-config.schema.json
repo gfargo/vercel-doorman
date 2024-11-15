@@ -20,9 +20,7 @@
           }
         }
       },
-      "required": [
-        "rules"
-      ],
+      "required": ["rules"],
       "additionalProperties": false
     },
     "ConfigRule": {
@@ -50,31 +48,16 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "name",
-        "type",
-        "values",
-        "action",
-        "active"
-      ],
+      "required": ["name", "type", "values", "action", "active"],
       "additionalProperties": false
     },
     "RuleType": {
       "type": "string",
-      "enum": [
-        "ip",
-        "asn",
-        "path",
-        "cookie"
-      ]
+      "enum": ["ip", "asn", "path", "cookie"]
     },
     "RuleAction": {
       "type": "string",
-      "enum": [
-        "allow",
-        "deny",
-        "challenge"
-      ]
+      "enum": ["allow", "deny", "challenge"]
     }
   }
 }
