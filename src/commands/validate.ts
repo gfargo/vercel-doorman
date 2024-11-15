@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import { readFileSync } from 'fs'
 import { Arguments } from 'yargs'
 import { ValidationService } from '../lib/services/ValidationService'
@@ -69,7 +70,7 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
       logger.log('') // Empty line before final message
     }
 
-    logger.success(ErrorFormatter.formatSuccessMessage('Configuration is valid'))
+    logger.success(chalk.green('Configuration is valid'))
   } catch (error) {
     if (error instanceof SyntaxError) {
       logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))

@@ -38,10 +38,6 @@ export class ErrorFormatter {
     return `${header}\n${formattedErrors}`
   }
 
-  static formatSuccessMessage(message: string): string {
-    return chalk.green(`✓ ${message}`)
-  }
-
   static formatDetailedRuleValidation(ruleName: string, checks: { name: string; passed: boolean }[]): string {
     const header = chalk.cyan(`Rule: ${ruleName}`)
     const details = checks

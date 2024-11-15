@@ -3,34 +3,42 @@
   "teamId": "team_3fFGpm53GtnbGGSzpHhWxBKe",
   "rules": [
     {
-      "name": "Block Bad IPs",
-      "description": "Block known malicious IP addresses",
-      "type": "ip",
-      "values": ["192.168.1.1", "10.0.0.0/24"],
-      "action": "deny",
-      "active": true
-    },
-    {
-      "name": "Block ASNs",
-      "description": "Block traffic from specific autonomous systems",
-      "type": "asn",
-      "values": ["12345", "67890"],
-      "action": "deny",
-      "active": true
-    },
-    {
-      "name": "Challenge API Requests",
-      "description": "Challenge requests to API endpoints without session cookie",
+      "name": "Ignore Request to WordPress \"/wp-\"",
+      "description": "Ignore all requests to known WordPress routes",
       "type": "path",
-      "values": ["/api"],
-      "action": "challenge",
+      "values": [
+        "/wp-"
+      ],
+      "action": "deny",
       "active": true
     },
     {
-      "name": "Block No Cookie",
-      "description": "Block requests without specific cookie",
-      "type": "cookie",
-      "values": ["_session"],
+      "name": "Ingore Requests to /Images/",
+      "description": "",
+      "type": "path",
+      "values": [
+        "/images/"
+      ],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Ignore Requests to /js/",
+      "description": "",
+      "type": "path",
+      "values": [
+        "/js/"
+      ],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Ignore requests to WordPress \"/wordpress/\"",
+      "description": "",
+      "type": "path",
+      "values": [
+        "/wordpress/"
+      ],
       "action": "deny",
       "active": true
     }

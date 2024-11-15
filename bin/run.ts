@@ -6,10 +6,8 @@ import { commands } from '../src/commands'
 config()
 
 const run = yargs(process.argv.slice(2))
-run.usage(
-  `Welcome ${chalk.bold(chalk.red('vercel-doorman'))}!
-    See more on https://github.com/gfargo/vercel-doorman`,
-)
+run.usage(`${chalk.bold('Vercel Doorman')} - Manage Vercel Firewall rules in code`)
+
 for (const command of commands) {
   run.command(command as CommandModule)
 }

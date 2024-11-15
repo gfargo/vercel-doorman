@@ -50,6 +50,7 @@
     "@jest/globals": "^29.7.0",
     "@tsconfig/node20": "^20.1.4",
     "@types/jest": "^29.5.12",
+    "@types/find-up": "^4.0.2",
     "@types/node": "^20.12.12",
     "@types/prompts": "^2.4.9",
     "@types/signale": "^1.4.7",
@@ -70,11 +71,11 @@
     "semantic-release": "^23.1.1",
     "ts-jest": "^29.1.4",
     "ts-node": "^10.9.2",
+    "ts-json-schema-generator": "^2.3.0",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@types/find-up": "^4.0.2",
     "ajv": "^8.17.1",
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.5",
@@ -83,7 +84,6 @@
     "find-up": "^6.3.0",
     "giget": "^1.2.3",
     "picocolors": "^1.0.1",
-    "ts-json-schema-generator": "^2.3.0",
     "yargs": "^17.7.2"
   },
   "config": {

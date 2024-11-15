@@ -1,7 +1,6 @@
 import type { ErrorObject } from 'ajv'
 import Ajv, { Ajv as AjvType } from 'ajv'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
+import { schema } from '../../constants/schema'
 import { FirewallConfig } from '../types/configTypes'
 import { ErrorFormatter } from '../utils/errorFormatter'
 
@@ -45,9 +44,7 @@ export class ValidationService {
       verbose: true,
     })
 
-    // Load schema from file
-    const schemaPath = resolve(__dirname, '../../../schema/firewall-config.schema.json')
-    this.schema = JSON.parse(readFileSync(schemaPath, 'utf8'))
+    this.schema = schema
   }
 
   static getInstance(): ValidationService {

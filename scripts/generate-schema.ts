@@ -8,7 +8,8 @@ const config = {
   additionalProperties: false,
 }
 
-const outputPath = resolve(__dirname, '../schema/firewall-config.schema.json')
+const schemaOutputPath = resolve(__dirname, '../schema/firewall-config.schema.json')
+const schemaAsVariableOutputPath = resolve(__dirname, '../src/constants/schema.ts')
 
 const schema = createGenerator(config).createSchema(config.type)
 
@@ -20,5 +21,10 @@ const schemaWithMeta = {
   ...schema,
 }
 
-writeFileSync(outputPath, JSON.stringify(schemaWithMeta, null, 2))
-console.log(`Schema generated at ${outputPath}`)
+const schemaAsVariable = `export const schema = ${JSON.stringify(schemaWithMeta, null, 2)}`
+
+writeFileSync(schemaOutputPath, JSON.stringify(schemaWithMeta, null, 2))
+writeFileSync(schemaAsVariableOutputPath, schemaAsVariable)
+
+// eslint-disable-next-line no-console
+console.log(`Schema generated at ${schemaOutputPath}`)
