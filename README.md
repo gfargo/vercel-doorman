@@ -1,18 +1,95 @@
 # Vercel Doorman
 
-Vercel Doorman is a CLI tool that allows you to manage your Vercel Firewall rules in code.
+A powerful CLI tool for managing Vercel Firewall rules as code, enabling version control and automated deployment of your project's security configuration.
 
 ## Features
 
-- **Manage Firewall Rules**: Create, update, and delete Vercel Firewall rules using a simple CLI interface.]
-- **Automate Rule Management**: Integrate Vercel Doorman into your CI/CD pipeline to automate the management of Firewall
-  rules.
-- **Version Control**: Store your Firewall rules in code, enabling version control and collaboration with your team.
-<!-- - **Interactive Prompts**: Use interactive prompts to guide you through creating and updating Firewall rules. -->
+- 🔒 **Manage Firewall Rules**: Create, update, and delete Vercel Firewall rules using a simple configuration file
+- 🔄 **Sync Rules**: Easily sync rules between your configuration file and Vercel
+- ✅ **Validation**: Built-in configuration validation to prevent errors
+- 📋 **List Rules**: View current firewall rules in table or JSON format
+- 🚀 **CI/CD Integration**: Automate firewall rule management in your deployment pipeline
+- 🔑 **Team Support**: Full support for team and project-specific configurations
+
+## Installation
+
+```bash
+npm install vercel-doorman
+# or
+yarn add vercel-doorman
+```
+
+## Configuration
+
+Create a `vercel-firewall.config.json` file in your project root:
+
+```json
+{
+  "projectId": "your-project-id",
+  "teamId": "your-team-id",
+  "rules": [
+    {
+      "name": "block-country",
+      "type": "country",
+      "action": "block",
+      "values": ["CN", "RU"],
+      "active": true,
+      "description": "Block traffic from specific countries"
+    }
+  ]
+}
+```
 
 ## Usage
 
-- [Creating a Vercel API Token](https://vercel.com/guides/how-do-i-use-a-vercel-api-access-token)
+First, [create a Vercel API Token](https://vercel.com/guides/how-do-i-use-a-vercel-api-access-token) with appropriate permissions.
+
+### Available Commands
+
+#### List Current Rules
+
+```bash
+vercel-doorman list --token YOUR_TOKEN
+```
+
+Options:
+
+- `--projectId, -p`: Vercel Project ID
+- `--teamId, -t`: Vercel Team ID
+- `--token`: Vercel API token
+- `--format, -f`: Output format (json or table, defaults to table)
+
+#### Sync Rules
+
+```bash
+vercel-doorman sync --token YOUR_TOKEN
+```
+
+Options:
+
+- `--config, -c`: Path to config file (defaults to vercel-firewall.config.json)
+- `--projectId, -p`: Vercel Project ID (can be set in config file)
+- `--teamId, -t`: Vercel Team ID (can be set in config file)
+- `--token`: Vercel API token
+
+#### Validate Configuration
+
+```bash
+vercel-doorman validate
+```
+
+Options:
+
+- `--config, -c`: Path to config file (defaults to vercel-firewall.config.json)
+- `--verbose, -v`: Show detailed validation results
+
+### Environment Variables
+
+Instead of passing command-line arguments, you can set these environment variables:
+
+- `VERCEL_TOKEN`: Your Vercel API token
+- `VERCEL_PROJECT_ID`: Your Vercel project ID
+- `VERCEL_TEAM_ID`: Your Vercel team ID
 
 ### Script Commands
 

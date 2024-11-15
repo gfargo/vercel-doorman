@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import CliTable3 from 'cli-table3'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
@@ -71,18 +72,33 @@ export const handler = async (argv: Arguments<ListOptions>) => {
     if (argv.format === 'json') {
       logger.info(JSON.stringify(configRules, null, 2))
     } else {
-      logger.log(chalk.bold('\nCurrent Firewall Rules:\n'))
-      configRules.forEach((rule, index) => {
-        logger.log(`${chalk.bold(`${index + 1}.`)} ${rule.name}`)
-        logger.log(`   Type: ${rule.type}`)
-        logger.log(`   Action: ${rule.action}`)
-        logger.log(`   Values: ${rule.values.join(', ')}`)
-        logger.log(`   Active: ${rule.active}`)
-        if (rule.description) {
-          logger.log(`   Description: ${rule.description}`)
-        }
-        logger.log('')
+      const table = new CliTable3({
+        head: [
+          chalk.dim('#'),
+          chalk.bold('Name'),
+          chalk.bold('Type'),
+          chalk.bold('Action'),
+          chalk.bold('Values'),
+          chalk.bold('Active'),
+          chalk.bold('Description'),
+        ],
+        wordWrap: true,
+        wrapOnWordBoundary: true,
+        colWidths: [4, 36, 10, 10, 18, 8],
       })
+
+      configRules.forEach((rule, index) => {
+        table.push([
+          chalk.dim(index + 1),
+          rule.name,
+          rule.type,
+          rule.action,
+          rule.values.join(', '),
+          rule.active ? chalk.green('✓') : chalk.red('✗'),
+          rule.description || '',
+        ])
+      })
+      logger.log(table.toString())
     }
   } catch (error) {
     logger.error(error instanceof Error)
