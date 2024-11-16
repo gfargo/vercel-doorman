@@ -221,22 +221,15 @@
     "RuleRedirect": {
       "type": "object",
       "properties": {
-        "url": {
+        "location": {
           "type": "string"
         },
-        "status": {
-          "type": "number",
-          "enum": [
-            301,
-            302,
-            303,
-            307,
-            308
-          ]
+        "permanent": {
+          "type": "boolean"
         }
       },
       "required": [
-        "url"
+        "location"
       ],
       "additionalProperties": false
     }

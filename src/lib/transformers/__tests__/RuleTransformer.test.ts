@@ -306,7 +306,8 @@ describe('RuleTransformer', () => {
         name: 'test-rule',
         type: 'ip_address',
         values: ['1.1.1.1'],
-        action: 'invalid-action' as any,
+        // @ts-expect-error Invalid action type
+        action: 'invalid-action',
         active: true,
       }
 
@@ -320,7 +321,8 @@ describe('RuleTransformer', () => {
           {
             conditions: [
               {
-                op: 'invalid-op' as any,
+                // @ts-expect-error Invalid operator
+                op: 'invalid-op',
                 type: 'ip_address',
                 value: '1.1.1.1',
               },
@@ -342,7 +344,8 @@ describe('RuleTransformer', () => {
             conditions: [
               {
                 op: 'eq',
-                type: 'invalid-type' as any,
+                // @ts-expect-error Invalid condition type
+                type: 'invalid-type',
                 value: '1.1.1.1',
               },
             ],

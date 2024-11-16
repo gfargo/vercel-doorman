@@ -160,7 +160,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
 
     // If dry run, stop here
     if (argv.dryRun) {
-      logger.info(chalk.cyan('\nDry run completed. No changes made.'))
+      logger.info(chalk.cyan('Dry run completed. No changes made.'))
       return
     }
 
