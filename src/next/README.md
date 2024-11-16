@@ -1,7 +1,5 @@
 # Using `doorman` in NextJS Middleware
 
-
-
 ```typescript
 import { NextResponse, type NextRequest } from 'next/server'
 import { createDoorman } from '../createDoorman'

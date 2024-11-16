@@ -1,7 +1,9 @@
-import { NextRequest } from 'next/server'
-
 export function createDoorman(paths: string[]) {
-  return (request: NextRequest) => {
+  return (request: {
+    nextUrl: {
+      pathname: string
+    }
+  }) => {
     let blocked = false
 
     for (const path of paths) {

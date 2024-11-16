@@ -1,0 +1,38 @@
+{
+  "projectId": "prj_Y9A3G99Bb2ZygswsDfeR9cYXvkxc",
+  "teamId": "team_3fFGpm53GtnbGGSzpHhWxBKe",
+  "rules": [
+    {
+      "name": "Ignore Request to WordPress \"/wp-\"",
+      "description": "Ignore all requests to known WordPress routes",
+      "type": "path",
+      "values": ["/wp-"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Ingore Requests to /Images/",
+      "description": "",
+      "type": "path",
+      "values": ["/images/"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Ignore Requests to /js/",
+      "description": "",
+      "type": "path",
+      "values": ["/js/"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Ignore requests to WordPress \"/wordpress/\"",
+      "description": "",
+      "type": "path",
+      "values": ["/wordpress/"],
+      "action": "deny",
+      "active": true
+    }
+  ]
+}
