@@ -84,26 +84,26 @@ const formatAction = (action: RuleAction | RuleActionType): string => {
 const displayRulesTable = (rules: FirewallConfig['rules']) => {
   const table = new Table({
     head: [
+      chalk.bold(''),
       chalk.bold('ID'),
       chalk.bold('Name'),
       chalk.bold('Conditions'),
       chalk.bold('Action'),
-      chalk.bold('Active'),
       chalk.bold('Description'),
     ],
     wordWrap: true,
     truncate: '...',
     wrapOnWordBoundary: true,
-    colWidths: [32, 24, 20, 8, 6, 24],
+    colWidths: [3, 32, 24, 24, 8, 36],
   })
 
   rules.forEach((rule) => {
     table.push([
+      rule.active ? chalk.green('✓') : chalk.red('✗'),
       rule.id ? chalk.gray(rule.id) : chalk.gray('-'),
       rule.name,
       formatConditionGroups(rule.conditionGroup),
       formatAction(rule.action),
-      rule.active ? chalk.green('✓') : chalk.red('✗'),
       rule.description || '',
     ])
   })

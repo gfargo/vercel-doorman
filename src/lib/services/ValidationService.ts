@@ -84,7 +84,7 @@ export class ValidationService {
   private validateRuleValues(config: FirewallConfig): void {
     for (const rule of config.rules) {
       // Ensure values array is not empty
-      if (!(rule?.values?.length ?? 0)) {
+      if (!(rule?.values?.length ?? 0) && (rule.conditionGroup?.length ?? 0) === 0) {
         throw new ValidationError(`Rule "${rule.name}" has no values`, null)
       }
 
