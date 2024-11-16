@@ -69,9 +69,9 @@ const formatAction = (action: RuleAction | RuleActionType): string => {
     parts.push(chalk.yellow(`${action.rateLimit.requests}/${action.rateLimit.window}`))
   }
   if (action.redirect) {
-    parts.push(chalk.magenta(`→ ${action.redirect.url}`))
-    if (action.redirect.status) {
-      parts[parts.length - 1] += chalk.gray(` (${action.redirect.status})`)
+    parts.push(chalk.magenta(`→ ${action.redirect.location}`))
+    if (action.redirect.permanent) {
+      parts[parts.length - 1] += chalk.gray(` (${action.redirect.permanent ? 'permanent' : 'temporary'})`)
     }
   }
   if (action.duration) {

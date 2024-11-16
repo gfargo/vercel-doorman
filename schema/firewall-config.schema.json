@@ -20,9 +20,7 @@
           }
         }
       },
-      "required": [
-        "rules"
-      ],
+      "required": ["rules"],
       "additionalProperties": false
     },
     "ConfigRule": {
@@ -66,11 +64,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "name",
-        "action",
-        "active"
-      ],
+      "required": ["name", "action", "active"],
       "additionalProperties": false
     },
     "RuleType": {
@@ -109,9 +103,7 @@
           }
         }
       },
-      "required": [
-        "conditions"
-      ],
+      "required": ["conditions"],
       "additionalProperties": false
     },
     "VercelCondition": {
@@ -146,31 +138,12 @@
           ]
         }
       },
-      "required": [
-        "op",
-        "type",
-        "value"
-      ],
+      "required": ["op", "type", "value"],
       "additionalProperties": false
     },
     "RuleOperator": {
       "type": "string",
-      "enum": [
-        "re",
-        "eq",
-        "neq",
-        "ex",
-        "nex",
-        "inc",
-        "ninc",
-        "pre",
-        "suf",
-        "sub",
-        "gt",
-        "gte",
-        "lt",
-        "lte"
-      ]
+      "enum": ["re", "eq", "neq", "ex", "nex", "inc", "ninc", "pre", "suf", "sub", "gt", "gte", "lt", "lte"]
     },
     "RuleAction": {
       "type": "object",
@@ -188,19 +161,12 @@
           "type": "string"
         }
       },
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "additionalProperties": false
     },
     "RuleActionType": {
       "type": "string",
-      "enum": [
-        "allow",
-        "deny",
-        "challenge",
-        "log"
-      ]
+      "enum": ["allow", "deny", "challenge", "log"]
     },
     "RuleRateLimit": {
       "type": "object",
@@ -212,10 +178,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "requests",
-        "window"
-      ],
+      "required": ["requests", "window"],
       "additionalProperties": false
     },
     "RuleRedirect": {
@@ -228,9 +191,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "location"
-      ],
+      "required": ["location"],
       "additionalProperties": false
     }
   }
