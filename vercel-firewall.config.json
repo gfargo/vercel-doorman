@@ -6,9 +6,7 @@
       "name": "Ignore Request to WordPress \"/wp-\"",
       "description": "Ignore all requests to known WordPress routes",
       "type": "path",
-      "values": [
-        "/wp-"
-      ],
+      "values": ["/wp-"],
       "action": "deny",
       "active": true
     },
@@ -16,9 +14,7 @@
       "name": "Ingore Requests to /Images/",
       "description": "",
       "type": "path",
-      "values": [
-        "/images/"
-      ],
+      "values": ["/images/"],
       "action": "deny",
       "active": true
     },
@@ -26,9 +22,7 @@
       "name": "Ignore Requests to /js/",
       "description": "",
       "type": "path",
-      "values": [
-        "/js/"
-      ],
+      "values": ["/js/"],
       "action": "deny",
       "active": true
     },
@@ -36,9 +30,7 @@
       "name": "Ignore requests to WordPress \"/wordpress/\"",
       "description": "",
       "type": "path",
-      "values": [
-        "/wordpress/"
-      ],
+      "values": ["/wordpress/"],
       "action": "deny",
       "active": true
     }

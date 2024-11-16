@@ -1,14 +1,14 @@
-import { readFileSync, writeFileSync } from 'fs'
 import chalk from 'chalk'
 import Table from 'cli-table3'
+import { readFileSync, writeFileSync } from 'fs'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
+import { FirewallConfig, RuleAction, RuleActionType } from '../lib/types/configTypes'
+import { VercelConditionGroup } from '../lib/types/vercelTypes'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 import { logger } from '../logger'
-import { FirewallConfig } from '../lib/types/configTypes'
-import { createInterface } from 'readline'
 
 interface DownloadOptions {
   config?: string
@@ -49,53 +49,67 @@ export const builder = {
   },
 }
 
+const formatConditionGroups = (groups: VercelConditionGroup[] = []): string => {
+  return groups
+    .map((group, groupIndex) => {
+      const conditions = group.conditions.map((c) => chalk.cyan(`${c.type}:${c.op}:${chalk.white(c.value)}`)).join('\n')
+      return groupIndex > 0 ? `${chalk.yellow('OR')}\n${conditions}` : conditions
+    })
+    .join('\n')
+}
+
+const formatAction = (action: RuleAction | RuleActionType): string => {
+  if (typeof action === 'string') {
+    return action
+  }
+
+  const parts = [chalk.cyan(action.type)]
+
+  if (action.rateLimit) {
+    parts.push(chalk.yellow(`${action.rateLimit.requests}/${action.rateLimit.window}`))
+  }
+  if (action.redirect) {
+    parts.push(chalk.magenta(`→ ${action.redirect.url}`))
+    if (action.redirect.status) {
+      parts[parts.length - 1] += chalk.gray(` (${action.redirect.status})`)
+    }
+  }
+  if (action.duration) {
+    parts.push(chalk.gray(`for ${action.duration}`))
+  }
+
+  return parts.join('\n')
+}
+
 const displayRulesTable = (rules: FirewallConfig['rules']) => {
   const table = new Table({
     head: [
-      chalk.bold('#'),
+      chalk.bold('ID'),
       chalk.bold('Name'),
-      chalk.bold('Type'),
+      chalk.bold('Conditions'),
       chalk.bold('Action'),
-      chalk.bold('Values'),
       chalk.bold('Active'),
-      chalk.bold('Description')
+      chalk.bold('Description'),
     ],
     wordWrap: true,
+    truncate: '...',
     wrapOnWordBoundary: true,
-    colWidths: [4, 20, 12, 12, 30, 8, 30]
+    colWidths: [32, 24, 20, 8, 6, 24],
   })
 
-  rules.forEach((rule, index) => {
+  rules.forEach((rule) => {
     table.push([
-      index + 1,
+      rule.id ? chalk.gray(rule.id) : chalk.gray('-'),
       rule.name,
-      rule.type,
-      rule.action,
-      rule.values.join(', '),
-      rule.active ? '✓' : '✗',
-      rule.description || ''
+      formatConditionGroups(rule.conditionGroup),
+      formatAction(rule.action),
+      rule.active ? chalk.green('✓') : chalk.red('✗'),
+      rule.description || '',
     ])
   })
 
   logger.log(chalk.bold('\nRemote Firewall Rules to Download:\n'))
   logger.log(table.toString())
-}
-
-const confirmOverwrite = async (configPath: string): Promise<boolean> => {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
-
-  return new Promise((resolve) => {
-    rl.question(
-      chalk.yellow(`\nThis will overwrite your local config at ${configPath}. Continue? (y/N) `),
-      (answer) => {
-        rl.close()
-        resolve(answer.toLowerCase() === 'y')
-      }
-    )
-  })
 }
 
 export const handler = async (argv: Arguments<DownloadOptions>) => {
@@ -112,7 +126,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
       configPath = await ConfigFinder.findConfig()
       if (!configPath) {
         throw new Error(
-          `No config file found. Create ${ConfigFinder.getDefaultConfigPath()} or specify path with --config`
+          `No config file found. Create ${ConfigFinder.getDefaultConfigPath()} or specify path with --config`,
         )
       }
     }
@@ -151,7 +165,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     }
 
     // Confirm before overwriting
-    const confirmed = await confirmOverwrite(configPath)
+    const confirmed = await logger.prompt('Do you want to download these rules?', { type: 'confirm' })
     if (!confirmed) {
       logger.info(chalk.yellow('\nDownload cancelled.'))
       return
@@ -160,22 +174,21 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     // Create new config with downloaded rules
     const newConfig: FirewallConfig = {
       ...existingConfig,
-      rules: configRules
+      rules: configRules,
     }
 
     // Write the new config
     writeFileSync(configPath, JSON.stringify(newConfig, null, 2))
     logger.success(`\nSuccessfully downloaded and updated ${configPath}`)
-
   } catch (error) {
     if (error instanceof SyntaxError) {
       logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
     } else {
-      logger.warn(
+      logger.error(
         ErrorFormatter.wrapErrorBlock([
           'Error downloading firewall rules:',
           `  ${error instanceof Error ? error.message : String(error)}`,
-        ])
+        ]),
       )
     }
     process.exit(1)

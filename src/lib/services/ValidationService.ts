@@ -84,19 +84,19 @@ export class ValidationService {
   private validateRuleValues(config: FirewallConfig): void {
     for (const rule of config.rules) {
       // Ensure values array is not empty
-      if (!rule.values.length) {
+      if (!(rule?.values?.length ?? 0)) {
         throw new ValidationError(`Rule "${rule.name}" has no values`, null)
       }
 
       // Validate values based on rule type
-      for (const value of rule.values) {
+      for (const value of rule?.values || []) {
         switch (rule.type) {
-          case 'ip':
+          case 'ip_address':
             if (!this.isValidIP(value)) {
               throw new ValidationError(`Invalid IP address in rule "${rule.name}": "${value}"`, null)
             }
             break
-          case 'asn':
+          case 'geo_as_number':
             if (!this.isValidASN(value)) {
               throw new ValidationError(`Invalid ASN in rule "${rule.name}": "${value}"`, null)
             }

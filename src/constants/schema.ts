@@ -1,80 +1,199 @@
 export const schema = {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Vercel Doorman Firewall Configuration",
-  "description": "Schema for vercel-doorman firewall configuration files",
-  "$ref": "#/definitions/FirewallConfig",
-  "definitions": {
-    "FirewallConfig": {
-      "type": "object",
-      "properties": {
-        "projectId": {
-          "type": "string"
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  title: 'Vercel Doorman Firewall Configuration',
+  description: 'Schema for vercel-doorman firewall configuration files',
+  $ref: '#/definitions/FirewallConfig',
+  definitions: {
+    FirewallConfig: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string',
         },
-        "teamId": {
-          "type": "string"
+        teamId: {
+          type: 'string',
         },
-        "rules": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ConfigRule"
-          }
-        }
+        rules: {
+          type: 'array',
+          items: {
+            $ref: '#/definitions/ConfigRule',
+          },
+        },
       },
-      "required": [
-        "rules"
-      ],
-      "additionalProperties": false
+      required: ['rules'],
+      additionalProperties: false,
     },
-    "ConfigRule": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
+    ConfigRule: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
         },
-        "description": {
-          "type": "string"
+        name: {
+          type: 'string',
         },
-        "type": {
-          "$ref": "#/definitions/RuleType"
+        description: {
+          type: 'string',
         },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        type: {
+          $ref: '#/definitions/RuleType',
         },
-        "action": {
-          "$ref": "#/definitions/RuleAction"
+        values: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
         },
-        "active": {
-          "type": "boolean"
-        }
+        conditionGroup: {
+          type: 'array',
+          items: {
+            $ref: '#/definitions/VercelConditionGroup',
+          },
+        },
+        action: {
+          anyOf: [
+            {
+              $ref: '#/definitions/RuleAction',
+            },
+            {
+              $ref: '#/definitions/RuleActionType',
+            },
+          ],
+        },
+        active: {
+          type: 'boolean',
+        },
       },
-      "required": [
-        "name",
-        "type",
-        "values",
-        "action",
-        "active"
+      required: ['name', 'action', 'active'],
+      additionalProperties: false,
+    },
+    RuleType: {
+      type: 'string',
+      enum: [
+        'host',
+        'path',
+        'method',
+        'header',
+        'query',
+        'cookie',
+        'target_path',
+        'ip_address',
+        'region',
+        'protocol',
+        'scheme',
+        'environment',
+        'user_agent',
+        'geo_continent',
+        'geo_country',
+        'geo_country_region',
+        'geo_city',
+        'geo_as_number',
+        'ja4_digest',
+        'ja3_digest',
+        'rate_limit_api_id',
       ],
-      "additionalProperties": false
     },
-    "RuleType": {
-      "type": "string",
-      "enum": [
-        "ip",
-        "asn",
-        "path",
-        "cookie"
-      ]
+    VercelConditionGroup: {
+      type: 'object',
+      properties: {
+        conditions: {
+          type: 'array',
+          items: {
+            $ref: '#/definitions/VercelCondition',
+          },
+        },
+      },
+      required: ['conditions'],
+      additionalProperties: false,
     },
-    "RuleAction": {
-      "type": "string",
-      "enum": [
-        "allow",
-        "deny",
-        "challenge"
-      ]
-    }
-  }
+    VercelCondition: {
+      type: 'object',
+      properties: {
+        op: {
+          $ref: '#/definitions/RuleOperator',
+        },
+        type: {
+          $ref: '#/definitions/RuleType',
+        },
+        value: {
+          anyOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'number',
+            },
+            {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+            },
+            {
+              type: 'array',
+              items: {
+                type: 'number',
+              },
+            },
+          ],
+        },
+      },
+      required: ['op', 'type', 'value'],
+      additionalProperties: false,
+    },
+    RuleOperator: {
+      type: 'string',
+      enum: ['re', 'eq', 'neq', 'ex', 'nex', 'inc', 'ninc', 'pre', 'suf', 'sub', 'gt', 'gte', 'lt', 'lte'],
+    },
+    RuleAction: {
+      type: 'object',
+      properties: {
+        type: {
+          $ref: '#/definitions/RuleActionType',
+        },
+        rateLimit: {
+          $ref: '#/definitions/RuleRateLimit',
+        },
+        redirect: {
+          $ref: '#/definitions/RuleRedirect',
+        },
+        duration: {
+          type: 'string',
+        },
+      },
+      required: ['type'],
+      additionalProperties: false,
+    },
+    RuleActionType: {
+      type: 'string',
+      enum: ['allow', 'deny', 'challenge', 'log'],
+    },
+    RuleRateLimit: {
+      type: 'object',
+      properties: {
+        requests: {
+          type: 'number',
+        },
+        window: {
+          type: 'string',
+        },
+      },
+      required: ['requests', 'window'],
+      additionalProperties: false,
+    },
+    RuleRedirect: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+        },
+        status: {
+          type: 'number',
+          enum: [301, 302, 303, 307, 308],
+        },
+      },
+      required: ['url'],
+      additionalProperties: false,
+    },
+  },
 }

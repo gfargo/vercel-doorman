@@ -6,6 +6,7 @@ A powerful CLI tool for managing Vercel Firewall rules as code, enabling version
 
 - 🔒 **Manage Firewall Rules**: Create, update, and delete Vercel Firewall rules using a simple configuration file
 - 🔄 **Sync Rules**: Easily sync rules between your configuration file and Vercel
+- ⬇️ **Download Rules**: Import existing firewall rules from your Vercel project
 - ✅ **Validation**: Built-in configuration validation to prevent errors
 - 📋 **List Rules**: View current firewall rules in table or JSON format
 - 🚀 **CI/CD Integration**: Automate firewall rule management in your deployment pipeline
@@ -31,10 +32,39 @@ Create a `vercel-firewall.config.json` file in your project root:
     {
       "name": "block-country",
       "type": "country",
-      "action": "block",
+      "action": "deny",
       "values": ["CN", "RU"],
       "active": true,
       "description": "Block traffic from specific countries"
+    },
+    {
+      "name": "rate-limit-api",
+      "type": "path",
+      "values": ["/api"],
+      "active": true,
+      "description": "Rate limit API endpoints",
+      "action": {
+        "type": "log",
+        "rateLimit": {
+          "requests": 100,
+          "window": "60s"
+        },
+        "duration": "1h"
+      }
+    },
+    {
+      "name": "redirect-legacy",
+      "type": "path",
+      "values": ["/old-path"],
+      "active": true,
+      "description": "Redirect legacy paths",
+      "action": {
+        "type": "allow",
+        "redirect": {
+          "url": "https://example.com/new-path",
+          "status": 301
+        }
+      }
     }
   ]
 }
@@ -71,6 +101,32 @@ Options:
 - `--projectId, -p`: Vercel Project ID (can be set in config file)
 - `--teamId, -t`: Vercel Team ID (can be set in config file)
 - `--token`: Vercel API token
+
+#### Download Remote Rules
+
+```bash
+vercel-doorman download --token YOUR_TOKEN
+```
+
+Downloads remote firewall rules from your Vercel project and updates your local configuration file. Includes a confirmation prompt before making changes.
+
+Options:
+
+- `--config, -c`: Path to config file (defaults to vercel-firewall.config.json)
+- `--projectId, -p`: Vercel Project ID (can be set in config file)
+- `--teamId, -t`: Vercel Team ID (can be set in config file)
+- `--token`: Vercel API token
+- `--dry-run, -d`: Preview changes without modifying the config file
+
+Example workflow:
+
+```bash
+# First, preview the rules that would be downloaded
+vercel-doorman download --dry-run
+
+# Then, if the rules look correct, download and update the config
+vercel-doorman download
+```
 
 #### Validate Configuration
 

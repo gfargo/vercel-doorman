@@ -77,7 +77,7 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
     } else if (error instanceof Error && error.name === 'ValidationError') {
       logger.error(error)
     } else {
-      logger.warn(
+      logger.error(
         ErrorFormatter.wrapErrorBlock([
           'Error syncing firewall rules:',
           `  ${error instanceof Error ? error.message : String(error)}`,

@@ -49,14 +49,22 @@ export class VercelClient {
   }
 
   async updateFirewallRule(rule: VercelRule): Promise<void> {
+    const body = {
+      action: rule.id ? 'rules.update' : 'rules.insert',
+      id: rule.id !== '-' && rule.id ? rule.id : null,
+      value: {
+        name: rule.name,
+        description: rule.description,
+        action: rule.action,
+        conditionGroup: rule.conditionGroup,
+        active: rule.active,
+      },
+    }
+
     const response = await fetch(this.getUrl(), {
       method: 'PATCH',
       headers: this.getHeaders(),
-      body: JSON.stringify({
-        action: rule.id ? 'rules.update' : 'rules.insert',
-        id: rule.id || null,
-        value: rule,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -65,14 +73,17 @@ export class VercelClient {
     }
   }
 
-  async deleteFirewallRule(ruleId: string): Promise<void> {
+  async deleteFirewallRule(rule: VercelRule): Promise<void> {
+    const body = JSON.stringify({
+      action: 'rules.remove',
+      id: rule.id,
+      value: null,
+    })
+
     const response = await fetch(this.getUrl(), {
       method: 'PATCH',
       headers: this.getHeaders(),
-      body: JSON.stringify({
-        action: 'rules.delete',
-        id: ruleId,
-      }),
+      body,
     })
 
     if (!response.ok) {

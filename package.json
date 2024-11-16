@@ -18,6 +18,7 @@
     "url": "git+ssh://git@github.com/gfargo/vercel-doorman.git"
   },
   "scripts": {
+    "prebuild": "pnpm run build:schema",
     "build": "tsup-node",
     "build:schema": "ts-node ./scripts/generate-schema.ts ",
     "build:watch": "tsup-node --watch",

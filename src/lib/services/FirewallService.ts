@@ -18,7 +18,7 @@ export class FirewallService {
 
     // Delete rules that are no longer in config
     for (const rule of toDelete) {
-      await this.client.deleteFirewallRule(rule.id!)
+      await this.client.deleteFirewallRule(rule)
     }
 
     // Add new rules
@@ -85,7 +85,7 @@ export class FirewallService {
       configRule.action !== existingRule.action ||
       configRule.type !== existingRule.type ||
       configRule.description !== existingRule.description ||
-      JSON.stringify(configRule.values.sort()) !== JSON.stringify(existingRule.values.sort())
+      JSON.stringify(configRule.values?.sort() || []) !== JSON.stringify(existingRule.values?.sort() || [])
     )
   }
 }

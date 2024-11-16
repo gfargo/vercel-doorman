@@ -28,6 +28,9 @@
     "ConfigRule": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -43,8 +46,21 @@
             "type": "string"
           }
         },
+        "conditionGroup": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/VercelConditionGroup"
+          }
+        },
         "action": {
-          "$ref": "#/definitions/RuleAction"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RuleAction"
+            },
+            {
+              "$ref": "#/definitions/RuleActionType"
+            }
+          ]
         },
         "active": {
           "type": "boolean"
@@ -52,8 +68,6 @@
       },
       "required": [
         "name",
-        "type",
-        "values",
         "action",
         "active"
       ],
@@ -62,19 +76,169 @@
     "RuleType": {
       "type": "string",
       "enum": [
-        "ip",
-        "asn",
+        "host",
         "path",
-        "cookie"
+        "method",
+        "header",
+        "query",
+        "cookie",
+        "target_path",
+        "ip_address",
+        "region",
+        "protocol",
+        "scheme",
+        "environment",
+        "user_agent",
+        "geo_continent",
+        "geo_country",
+        "geo_country_region",
+        "geo_city",
+        "geo_as_number",
+        "ja4_digest",
+        "ja3_digest",
+        "rate_limit_api_id"
+      ]
+    },
+    "VercelConditionGroup": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/VercelCondition"
+          }
+        }
+      },
+      "required": [
+        "conditions"
+      ],
+      "additionalProperties": false
+    },
+    "VercelCondition": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "$ref": "#/definitions/RuleOperator"
+        },
+        "type": {
+          "$ref": "#/definitions/RuleType"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "op",
+        "type",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "RuleOperator": {
+      "type": "string",
+      "enum": [
+        "re",
+        "eq",
+        "neq",
+        "ex",
+        "nex",
+        "inc",
+        "ninc",
+        "pre",
+        "suf",
+        "sub",
+        "gt",
+        "gte",
+        "lt",
+        "lte"
       ]
     },
     "RuleAction": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/RuleActionType"
+        },
+        "rateLimit": {
+          "$ref": "#/definitions/RuleRateLimit"
+        },
+        "redirect": {
+          "$ref": "#/definitions/RuleRedirect"
+        },
+        "duration": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "RuleActionType": {
       "type": "string",
       "enum": [
         "allow",
         "deny",
-        "challenge"
+        "challenge",
+        "log"
       ]
+    },
+    "RuleRateLimit": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "number"
+        },
+        "window": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requests",
+        "window"
+      ],
+      "additionalProperties": false
+    },
+    "RuleRedirect": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "status": {
+          "type": "number",
+          "enum": [
+            301,
+            302,
+            303,
+            307,
+            308
+          ]
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
     }
   }
 }
