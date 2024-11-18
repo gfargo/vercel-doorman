@@ -1,9 +1,8 @@
-import chalk from 'chalk'
-import CliTable3 from 'cli-table3'
+import { displayRulesTable } from 'src/lib/ui/table'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
+import { logger } from '../lib/logger'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
-import { logger } from '../logger'
 
 interface ListOptions {
   projectId: string
@@ -72,33 +71,7 @@ export const handler = async (argv: Arguments<ListOptions>) => {
     if (argv.format === 'json') {
       logger.info(JSON.stringify(configRules, null, 2))
     } else {
-      const table = new CliTable3({
-        head: [
-          chalk.dim('#'),
-          chalk.bold('Name'),
-          chalk.bold('Type'),
-          chalk.bold('Action'),
-          chalk.bold('Values'),
-          chalk.bold('Active'),
-          chalk.bold('Description'),
-        ],
-        wordWrap: true,
-        wrapOnWordBoundary: true,
-        colWidths: [4, 36, 10, 10, 18, 8],
-      })
-
-      configRules.forEach((rule, index) => {
-        table.push([
-          chalk.dim(index + 1),
-          rule.name,
-          rule.type,
-          rule.action,
-          rule.values.join(', '),
-          rule.active ? chalk.green('✓') : chalk.red('✗'),
-          rule.description || '',
-        ])
-      })
-      logger.log(table.toString())
+      displayRulesTable(configRules)
     }
   } catch (error) {
     logger.error(error instanceof Error)

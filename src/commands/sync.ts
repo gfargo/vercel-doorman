@@ -1,12 +1,12 @@
 import { readFileSync } from 'fs'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
+import { logger } from '../lib/logger'
 import { FirewallService } from '../lib/services/FirewallService'
 import { ValidationService } from '../lib/services/ValidationService'
 import { FirewallConfig } from '../lib/types/configTypes'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
-import { logger } from '../logger'
 
 interface SyncOptions {
   config?: string

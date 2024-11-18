@@ -1,10 +1,10 @@
 import chalk from 'chalk'
 import { readFileSync } from 'fs'
 import { Arguments } from 'yargs'
+import { logger } from '../lib/logger'
 import { ValidationService } from '../lib/services/ValidationService'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
-import { logger } from '../logger'
 
 interface ValidateOptions {
   config?: string
