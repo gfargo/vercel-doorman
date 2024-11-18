@@ -10,7 +10,6 @@ A simple CLI tool for managing [Vercel Firewall](https://vercel.com/docs/securit
 - ✅ **Validation**: Built-in configuration validation to prevent errors
 - 📋 **List Rules**: View current firewall rules in table or JSON format
 - 🚀 **CI/CD Integration**: Automate firewall rule management in your deployment pipeline
-- 🔑 **Team Support**: Full support for team and project-specific configurations
 
 ## Installation
 
@@ -18,6 +17,8 @@ A simple CLI tool for managing [Vercel Firewall](https://vercel.com/docs/securit
 npm install vercel-doorman
 # or
 yarn add vercel-doorman
+# or
+pnpm add vercel-doorman
 ```
 
 ## Configuration
