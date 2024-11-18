@@ -1,14 +1,13 @@
 import chalk from 'chalk'
-import Table from 'cli-table3'
 import { readFileSync, writeFileSync } from 'fs'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
+import { logger } from '../lib/logger'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
-import { FirewallConfig, RuleAction, RuleActionType } from '../lib/types/configTypes'
-import { VercelConditionGroup } from '../lib/types/vercelTypes'
+import { FirewallConfig } from '../lib/types/configTypes'
+import { displayRulesTable } from '../lib/ui/table'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
-import { logger } from '../logger'
 
 interface DownloadOptions {
   config?: string
@@ -47,69 +46,6 @@ export const builder = {
     description: 'Show rules that would be downloaded without making changes',
     default: false,
   },
-}
-
-const formatConditionGroups = (groups: VercelConditionGroup[] = []): string => {
-  return groups
-    .map((group, groupIndex) => {
-      const conditions = group.conditions.map((c) => chalk.cyan(`${c.type}:${c.op}:${chalk.white(c.value)}`)).join('\n')
-      return groupIndex > 0 ? `${chalk.yellow('OR')}\n${conditions}` : conditions
-    })
-    .join('\n')
-}
-
-const formatAction = (action: RuleAction | RuleActionType): string => {
-  if (typeof action === 'string') {
-    return action
-  }
-
-  const parts = [chalk.cyan(action.type)]
-
-  if (action.rateLimit) {
-    parts.push(chalk.yellow(`${action.rateLimit.requests}/${action.rateLimit.window}`))
-  }
-  if (action.redirect) {
-    parts.push(chalk.magenta(`→ ${action.redirect.location}`))
-    if (action.redirect.permanent) {
-      parts[parts.length - 1] += chalk.gray(` (${action.redirect.permanent ? 'permanent' : 'temporary'})`)
-    }
-  }
-  if (action.duration) {
-    parts.push(chalk.gray(`for ${action.duration}`))
-  }
-
-  return parts.join('\n')
-}
-
-const displayRulesTable = (rules: FirewallConfig['rules']) => {
-  const table = new Table({
-    head: [
-      chalk.bold(''),
-      chalk.bold('ID'),
-      chalk.bold('Name'),
-      chalk.bold('Conditions'),
-      chalk.bold('Action'),
-      chalk.bold('Description'),
-    ],
-    wordWrap: true,
-    truncate: '...',
-    wrapOnWordBoundary: true,
-    colWidths: [3, 32, 24, 24, 8, 36],
-  })
-
-  rules.forEach((rule) => {
-    table.push([
-      rule.active ? chalk.green('✓') : chalk.red('✗'),
-      rule.id ? chalk.gray(rule.id) : chalk.gray('-'),
-      rule.name,
-      formatConditionGroups(rule.conditionGroup),
-      formatAction(rule.action),
-      rule.description || '',
-    ])
-  })
-
-  logger.log(chalk.bold('\nRemote Firewall Rules to Download:\n'))
-  logger.log(table.toString())
 }
 
 export const handler = async (argv: Arguments<DownloadOptions>) => {
