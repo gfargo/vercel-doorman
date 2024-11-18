@@ -1,6 +1,6 @@
 # Vercel Doorman
 
-A powerful CLI tool for managing Vercel Firewall rules as code, enabling version control and automated deployment of your project's security configuration.
+A simple CLI tool for managing [Vercel Firewall](https://vercel.com/docs/security/vercel-firewall) rules as code, enabling version control and automated deployment of your project's security configuration.
 
 ## Features
 
