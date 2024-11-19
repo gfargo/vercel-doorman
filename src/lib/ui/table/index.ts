@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import Table from 'cli-table3'
-import { logger } from 'src/lib/logger'
+import { logger } from '../../logger'
 import { FirewallConfig } from '../../types/configTypes'
 import { formatAction } from './formatAction'
 import { formatConditionGroups } from './formatConditionGroups'
