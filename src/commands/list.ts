@@ -1,8 +1,8 @@
-import { displayRulesTable } from 'src/lib/ui/table'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
 import { logger } from '../lib/logger'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
+import { displayRulesTable } from '../lib/ui/table'
 
 interface ListOptions {
   projectId: string
