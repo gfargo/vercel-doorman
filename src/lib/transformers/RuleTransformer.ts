@@ -23,9 +23,12 @@ export class RuleTransformer {
     }
 
     validateActionType(action.type)
+
+    // TODO: Implement rate limit validation
     // if (action.rateLimit) {
     //   this.validateRateLimit(action.rateLimit)
     // }
+
     if (action.redirect) {
       validateRedirect(action.redirect)
     }
@@ -116,9 +119,12 @@ function validateConfigRule(rule: ConfigRule) {
     validateActionType(rule.action)
   } else if (typeof rule.action === 'object') {
     validateActionType(rule.action.type)
+
+    // TODO: Implement rate limit validation
     // if (rule.action.rateLimit) {
     //   this.validateRateLimit(rule.action.rateLimit)
     // }
+
     if (rule.action.redirect) {
       validateRedirect(rule.action.redirect)
     }
@@ -199,9 +205,12 @@ function transformActionFromVercel(action: VercelAction): RuleAction {
   }
 
   // Validate complex configuration
+
+  // TODO: Implement rate limit validation
   // if (mitigate.rateLimit) {
   //   this.validateRateLimit(mitigate.rateLimit)
   // }
+
   if (mitigate.redirect) {
     validateRedirect(mitigate.redirect)
   }
