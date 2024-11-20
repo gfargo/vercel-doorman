@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import { LogLevels } from 'consola'
 import { readFileSync, writeFileSync } from 'fs'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
@@ -15,6 +16,7 @@ interface DownloadOptions {
   teamId?: string
   token?: string
   dryRun?: boolean
+  debug?: boolean
 }
 
 export const command = 'download'
@@ -46,10 +48,22 @@ export const builder = {
     description: 'Show rules that would be downloaded without making changes',
     default: false,
   },
+  debug: {
+    type: 'boolean',
+    description: 'Enable debug logging',
+    default: false,
+  },
 }
 
 export const handler = async (argv: Arguments<DownloadOptions>) => {
   try {
+    if (argv.debug) {
+      logger.level = LogLevels.debug
+    }
+
+    logger.debug('Starting download command')
+    logger.debug(`Command arguments: ${JSON.stringify(argv)}`)
+
     // Get token from args or environment
     const token = argv.token || process.env.VERCEL_TOKEN
     if (!token) {
@@ -66,10 +80,12 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
         )
       }
     }
+    logger.debug(`Config file path: ${configPath}`)
 
     // Read and parse existing config file to get project settings
     const configContent = readFileSync(configPath, 'utf8')
     const existingConfig: FirewallConfig = JSON.parse(configContent)
+    logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
 
     // Get project settings from args or config
     const projectId = argv.projectId || existingConfig.projectId
@@ -83,13 +99,17 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
       throw new Error('No Team ID provided. Use --teamId or set in config file')
     }
 
+    logger.debug(`Project ID: ${projectId}, Team ID: ${teamId}`)
+
     // Initialize client
     const client = new VercelClient(projectId, teamId, token)
 
     // Fetch remote rules
     logger.start('Fetching remote firewall rules...')
     const vercelRules = await client.fetchFirewallRules()
+    logger.debug(`Fetched Vercel rules: ${JSON.stringify(vercelRules)}`)
     const configRules = vercelRules.map(RuleTransformer.fromVercelRule)
+    logger.debug(`Transformed config rules: ${JSON.stringify(configRules)}`)
 
     // Display rules that would be downloaded
     logger.log(chalk.bold('\nRemote Firewall Rules to Download:\n'))
@@ -113,6 +133,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
       ...existingConfig,
       rules: configRules,
     }
+    logger.debug(`New config to be written: ${JSON.stringify(newConfig)}`)
 
     // Write the new config
     writeFileSync(configPath, JSON.stringify(newConfig, null, 2))
