@@ -1,3 +1,4 @@
+import { LogLevels } from 'consola'
 import { VercelClient } from '../fetchUtility'
 import { logger } from '../logger'
 import { RuleTransformer } from '../transformers/RuleTransformer'
@@ -8,13 +9,18 @@ interface SyncOptions {
   batchSize?: number
   dryRun?: boolean
   retryAttempts?: number
+  debug?: boolean
 }
 
 export class FirewallService {
   constructor(private client: VercelClient) {}
 
   async syncRules(config: FirewallConfig, options: SyncOptions = {}): Promise<void> {
-    const { batchSize = 10, dryRun = false, retryAttempts = 3 } = options
+    const { batchSize = 10, dryRun = false, retryAttempts = 3, debug = false } = options
+
+    if (debug) {
+      logger.level = LogLevels.debug
+    }
 
     try {
       const existingRules = await this.client.fetchFirewallRules()
@@ -35,7 +41,7 @@ export class FirewallService {
         ...toAdd.map(
           (rule) => () =>
             this.retryOperation(
-              () => this.client.updateFirewallRule(RuleTransformer.toVercelRule(rule)),
+              () => this.client.createFirewallRule(RuleTransformer.toVercelRule(rule)),
               retryAttempts,
             ),
         ),
@@ -78,37 +84,61 @@ export class FirewallService {
     const toAdd: ConfigRule[] = []
     const toUpdate: VercelRule[] = []
     const toDelete = [...existingVercelRules]
+    logger.debug('Starting diffRules')
+    logger.debug(`Config rules: ${JSON.stringify(configRules)}`)
+    logger.debug(`Existing config rules: ${JSON.stringify(existingConfigRules)}`)
+    logger.debug(`Existing Vercel rules: ${JSON.stringify(existingVercelRules)}`)
 
     for (const configRule of configRules) {
+      logger.debug(`Processing config rule: ${JSON.stringify(configRule)}`)
       const existingIndexById = existingConfigRules.findIndex((r) => r.id === configRule.id)
-      const existingIndexByContent = existingConfigRules.findIndex((r) =>
-        this.isDeepEqual(this.omitId(configRule), this.omitId(r)),
+      const existingIndexByContent = existingConfigRules.findIndex(
+        (r: ConfigRule) => this.isDeepEqual(this.omitId(configRule), this.omitId(r)) && r.id !== configRule.id,
       )
 
-      if (existingIndexById === -1 && existingIndexByContent === -1) {
+      logger.debug(`existingIndexById: ${existingIndexById}, existingIndexByContent: ${existingIndexByContent}`)
+
+      if (existingIndexById === -1) {
+        logger.debug(`Rule doesn't exist or has been renamed: ${configRule.id}`)
         toAdd.push(configRule)
-      } else if (existingIndexById === -1 && existingIndexByContent !== -1) {
-        // Renamed rule
-        toAdd.push(configRule)
-        const deleteIndex = existingVercelRules[existingIndexByContent]
-          ? toDelete.findIndex((r) => r.id === existingVercelRules[existingIndexByContent]?.id)
-          : -1
-        if (deleteIndex !== -1) toDelete.splice(deleteIndex, 1)
+        if (existingIndexByContent !== -1) {
+          logger.debug(`Found renamed rule: ${configRule.id}`)
+          const oldRuleIndex = toDelete.findIndex((r) => r.id === existingVercelRules[existingIndexByContent]?.id)
+          if (oldRuleIndex === -1) {
+            logger.debug(`Old rule not in toDelete list: ${existingVercelRules[existingIndexByContent]?.id}`)
+            if (existingVercelRules[existingIndexByContent]) {
+              logger.debug(`Adding old rule back to toDelete: ${existingVercelRules[existingIndexByContent].id}`)
+              toDelete.push(existingVercelRules[existingIndexByContent])
+            }
+          } else {
+            logger.debug(`Old rule already in toDelete list: ${existingVercelRules[existingIndexByContent]?.id}`)
+          }
+        }
       } else {
+        logger.debug(`Rule exists with the same ID: ${configRule.id}`)
         const existingRule = existingConfigRules[existingIndexById]
         const existingVercelRule = existingVercelRules[existingIndexById]
 
-        const deleteIndex = existingVercelRule ? toDelete.findIndex((r) => r.id === existingVercelRule.id) : -1
-        if (deleteIndex !== -1) toDelete.splice(deleteIndex, 1)
+        const deleteIndex = toDelete.findIndex((r) => r.id === existingVercelRule?.id)
+        if (deleteIndex !== -1) {
+          logger.debug(`Removing rule from toDelete: ${existingVercelRule?.id}`)
+          toDelete.splice(deleteIndex, 1)
+        }
 
         if (existingRule && !this.isDeepEqual(this.omitId(configRule), this.omitId(existingRule))) {
+          logger.debug(`Rule content has changed: ${configRule.id}`)
           if (existingVercelRule) {
             const updatedRule = { ...RuleTransformer.toVercelRule(configRule), id: existingVercelRule.id }
+            logger.debug(`Adding rule to toUpdate: ${JSON.stringify(updatedRule)}`)
             toUpdate.push(updatedRule)
           }
         }
       }
     }
+
+    logger.debug(`diffRules result - toAdd: ${JSON.stringify(toAdd)}`)
+    logger.debug(`diffRules result - toUpdate: ${JSON.stringify(toUpdate)}`)
+    logger.debug(`diffRules result - toDelete: ${JSON.stringify(toDelete)}`)
 
     return { toAdd, toUpdate, toDelete }
   }

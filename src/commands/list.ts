@@ -10,7 +10,7 @@ interface ListOptions {
   teamId: string
   token?: string
   format?: 'json' | 'table'
-  verbose: boolean
+  debug: boolean
 }
 
 export const command = 'list'
@@ -38,10 +38,9 @@ export const builder = {
     choices: ['json', 'table'],
     default: 'table',
   },
-  verbose: {
-    alias: 'v',
+  debug: {
     type: 'boolean',
-    description: 'Enable verbose logging',
+    description: 'Enable debug logging',
     default: false,
   },
 }
@@ -64,7 +63,10 @@ export const handler = async (argv: Arguments<ListOptions>) => {
       throw new Error('No Vercel team ID provided. Use --teamId or set VERCEL_TEAM_ID environment variable')
     }
 
-    logger.level = argv.verbose ? LogLevels.verbose : LogLevels.info
+    if (argv.debug) {
+      logger.level = LogLevels.debug
+    }
+
     // Initialize client
     const client = new VercelClient(projectId, teamId, token)
 
