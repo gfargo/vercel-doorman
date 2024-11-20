@@ -1,10 +1,13 @@
-import { readFileSync } from 'fs'
+import chalk from 'chalk'
+import { readFileSync, writeFileSync } from 'fs'
+import { VercelClient } from 'src/lib/services/VercelClient'
 import { Arguments } from 'yargs'
-import { VercelClient } from '../lib/fetchUtility'
 import { logger } from '../lib/logger'
 import { FirewallService } from '../lib/services/FirewallService'
 import { ValidationService } from '../lib/services/ValidationService'
 import { FirewallConfig } from '../lib/types/configTypes'
+import { prompt } from '../lib/ui/prompt'
+import { displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
@@ -48,7 +51,6 @@ export const builder = {
 
 export const handler = async (argv: Arguments<SyncOptions>) => {
   try {
-    // Get token from args or environment
     const token = argv.token || process.env.VERCEL_TOKEN
     if (!token) {
       throw new Error('No Vercel token provided. Use --token or set VERCEL_TOKEN environment variable')
@@ -65,18 +67,14 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       }
     }
 
-    // Read and parse config file
+    // Read, parse, and validate config file
     const configContent = readFileSync(configPath, 'utf8')
     const configJson = JSON.parse(configContent)
 
-    // Validate config
     const validator: ValidationService = ValidationService.getInstance()
     validator.validateConfig(configJson)
-
-    // Config is now type-safe
     const config: FirewallConfig = configJson
 
-    // Get project settings from args or config
     const projectId = argv.projectId || config.projectId
     const teamId = argv.teamId || config.teamId
 
@@ -88,14 +86,66 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       throw new Error('No Team ID provided. Use --teamId or set in config file')
     }
 
-    // Initialize client and service
     const client = new VercelClient(projectId, teamId, token)
     const service = new FirewallService(client)
 
-    // Perform sync
+    logger.start('Calculating firewall rule changes...')
+    const { toAdd, toUpdate, toDelete } = await service.getChanges(config)
+
+    if (toAdd.length === 0 && toUpdate.length === 0 && toDelete.length === 0) {
+      logger.success('No changes detected. Firewall rules are in sync.')
+      return
+    }
+
+    logger.log(chalk.bold('\nProposed Firewall Rule Changes:\n'))
+    displayRulesTable(
+      [
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...toAdd.map((rule: any) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id as string })),
+        ...toUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id as string })),
+        ...toDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id as string })),
+      ],
+      { showStatus: true },
+    )
+
+    const confirmed = await prompt('Do you want to apply these changes?', { type: 'confirm' })
+    if (!confirmed) {
+      logger.info(chalk.yellow('\nSync cancelled.'))
+      return
+    }
+
     logger.start('Starting firewall rules sync...')
-    await service.syncRules(config, { debug: argv.debug })
+    const { rulesToUpdateLocally } = await service.syncRules(config, {
+      debug: argv.debug,
+    })
     logger.success('Firewall rules sync completed successfully')
+
+    if (rulesToUpdateLocally.length > 0) {
+      logger.info(chalk.yellow('\nSome rules have IDs that do not match their expected snake_case name:'))
+      rulesToUpdateLocally.forEach((rule) => {
+        logger.info(`  - Rule "${rule.name}": ${chalk.red(rule.oldId)} -> ${chalk.green(rule.newId)}`)
+      })
+
+      const updateConfirmed = await prompt('Do you want to update the local config with the new IDs?', {
+        type: 'confirm',
+      })
+
+      if (updateConfirmed) {
+        // Update config with new IDs
+        const updatedConfig: FirewallConfig = {
+          ...config,
+          rules: config.rules.map((rule) => {
+            const ruleToUpdate = rulesToUpdateLocally.find((r) => r.oldId === rule.id)
+            return ruleToUpdate ? { ...rule, id: ruleToUpdate.newId } : rule
+          }),
+        }
+
+        writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2))
+        logger.success('Local config updated with new rule IDs')
+      } else {
+        logger.info(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
+      }
+    }
   } catch (error) {
     if (error instanceof SyntaxError) {
       logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
