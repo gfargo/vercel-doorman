@@ -30,7 +30,6 @@ export const builder = {
 
 export const handler = async (argv: Arguments<ValidateOptions>) => {
   try {
-    // Find and read config file
     let configPath = argv.config
     if (!configPath) {
       configPath = await ConfigFinder.findConfig()
@@ -40,24 +39,18 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
         )
       }
     }
-
-    // Read and parse config file
     const configContent = readFileSync(configPath, 'utf8')
     const configJson = JSON.parse(configContent)
-
-    // Get validator instance
     const validator: ValidationService = ValidationService.getInstance()
 
     if (argv.verbose) {
       logger.start('Validating configuration file...\n')
     }
 
-    // Validate config
     validator.validateConfig(configJson)
 
     // If we get here, validation passed
     if (argv.verbose) {
-      // Show detailed validation results for each rule
       for (const rule of configJson.rules) {
         const checks = [
           { name: 'Name format', passed: true },

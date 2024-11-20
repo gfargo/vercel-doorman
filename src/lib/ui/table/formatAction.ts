@@ -1,7 +1,19 @@
 import chalk from 'chalk'
 import { RuleAction, RuleActionType } from '../../types/configTypes'
 
-export const formatAction = (action: RuleAction | RuleActionType): string => {
+/**
+ * Formats a `RuleAction` or `RuleActionType` into a string representation.
+ *
+ * @param action - The action to format. It can be either a `RuleAction` object or a `RuleActionType` string.
+ * @returns A formatted string representation of the action.
+ *
+ * The formatted string includes:
+ * - The action type in cyan color.
+ * - The rate limit in yellow color, if present.
+ * - The redirect location in magenta color, with an indication of whether it is permanent or temporary in gray color, if present.
+ * - The duration in gray color, if present.
+ */
+export function formatAction(action: RuleAction | RuleActionType): string {
   if (typeof action === 'string') {
     return action
   }

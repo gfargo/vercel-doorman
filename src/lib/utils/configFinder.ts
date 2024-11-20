@@ -3,7 +3,6 @@ import { existsSync } from 'fs'
 import { dirname, resolve } from 'path'
 
 const CONFIG_FILE_NAME = 'vercel-firewall.config.json'
-
 export class ConfigFinder {
   /**
    * Find the config file by looking in the current directory and walking up

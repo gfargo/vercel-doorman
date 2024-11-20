@@ -67,6 +67,7 @@ export class ValidationService {
 
     // Additional custom validations
     this.validateRuleNames(config as FirewallConfig)
+    this.validateRuleStructure(config as FirewallConfig)
     this.validateRuleValues(config as FirewallConfig)
   }
 
@@ -81,31 +82,57 @@ export class ValidationService {
     }
   }
 
+  private validateRuleStructure(config: FirewallConfig): void {
+    for (const rule of config.rules) {
+      if (!rule.conditionGroup && (!rule.type || !rule.values)) {
+        throw new ValidationError(
+          `Rule "${rule.name}" is missing required fields. Either conditionGroup or type+values must be provided`,
+          null,
+        )
+      }
+      if (rule.conditionGroup && (rule.type || rule.values)) {
+        throw new ValidationError(
+          `Rule "${rule.name}" has conflicting fields. Use either conditionGroup or type+values, not both`,
+          null,
+        )
+      }
+    }
+  }
+
   private validateRuleValues(config: FirewallConfig): void {
     for (const rule of config.rules) {
-      // Ensure values array is not empty
-      if (!(rule?.values?.length ?? 0) && (rule.conditionGroup?.length ?? 0) === 0) {
-        throw new ValidationError(`Rule "${rule.name}" has no values`, null)
-      }
-
-      // Validate values based on rule type
-      for (const value of rule?.values || []) {
-        switch (rule.type) {
-          case 'ip_address':
-            if (!this.isValidIP(value)) {
-              throw new ValidationError(`Invalid IP address in rule "${rule.name}": "${value}"`, null)
+      if (rule.type && rule.values) {
+        // Validate values based on rule type
+        for (const value of rule.values) {
+          switch (rule.type) {
+            case 'ip_address':
+              if (!this.isValidIP(value)) {
+                throw new ValidationError(`Invalid IP address in rule "${rule.name}": "${value}"`, null)
+              }
+              break
+            case 'geo_as_number':
+              if (!this.isValidASN(value)) {
+                throw new ValidationError(`Invalid ASN in rule "${rule.name}": "${value}"`, null)
+              }
+              break
+            case 'path':
+              if (!this.isValidPath(value)) {
+                throw new ValidationError(`Invalid path in rule "${rule.name}": "${value}"`, null)
+              }
+              break
+          }
+        }
+      } else if (rule.conditionGroup) {
+        // Validate conditionGroup structure
+        for (const group of rule.conditionGroup) {
+          if (!group.conditions || group.conditions.length === 0) {
+            throw new ValidationError(`Rule "${rule.name}" has an empty condition group`, null)
+          }
+          for (const condition of group.conditions) {
+            if (!condition.type || !condition.op || !condition.value) {
+              throw new ValidationError(`Rule "${rule.name}" has an invalid condition`, null)
             }
-            break
-          case 'geo_as_number':
-            if (!this.isValidASN(value)) {
-              throw new ValidationError(`Invalid ASN in rule "${rule.name}": "${value}"`, null)
-            }
-            break
-          case 'path':
-            if (!this.isValidPath(value)) {
-              throw new ValidationError(`Invalid path in rule "${rule.name}": "${value}"`, null)
-            }
-            break
+          }
         }
       }
     }
