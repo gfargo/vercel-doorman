@@ -13,6 +13,7 @@ interface SyncOptions {
   projectId?: string
   teamId?: string
   token?: string
+  debug?: boolean
 }
 
 export const command = 'sync'
@@ -37,6 +38,11 @@ export const builder = {
   token: {
     type: 'string',
     description: 'Vercel API token (defaults to VERCEL_TOKEN env var)',
+  },
+  debug: {
+    type: 'boolean',
+    description: 'Enable debug logging',
+    default: false,
   },
 }
 
@@ -88,7 +94,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
 
     // Perform sync
     logger.start('Starting firewall rules sync...')
-    await service.syncRules(config)
+    await service.syncRules(config, { debug: argv.debug })
     logger.success('Firewall rules sync completed successfully')
   } catch (error) {
     if (error instanceof SyntaxError) {

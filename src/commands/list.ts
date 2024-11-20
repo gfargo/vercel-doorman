@@ -1,3 +1,4 @@
+import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { VercelClient } from '../lib/fetchUtility'
 import { logger } from '../lib/logger'
@@ -9,6 +10,7 @@ interface ListOptions {
   teamId: string
   token?: string
   format?: 'json' | 'table'
+  debug: boolean
 }
 
 export const command = 'list'
@@ -36,6 +38,11 @@ export const builder = {
     choices: ['json', 'table'],
     default: 'table',
   },
+  debug: {
+    type: 'boolean',
+    description: 'Enable debug logging',
+    default: false,
+  },
 }
 
 export const handler = async (argv: Arguments<ListOptions>) => {
@@ -56,11 +63,17 @@ export const handler = async (argv: Arguments<ListOptions>) => {
       throw new Error('No Vercel team ID provided. Use --teamId or set VERCEL_TEAM_ID environment variable')
     }
 
+    if (argv.debug) {
+      logger.level = LogLevels.debug
+    }
+
     // Initialize client
     const client = new VercelClient(projectId, teamId, token)
 
     // Fetch rules
-    logger.start('Fetching firewall rules...')
+    logger.start(`Fetching firewall rules ...`)
+    logger.verbose(`Token: ${token}\t projectId: ${projectId}\t teamId: ${teamId}`)
+
     const rules = await client.fetchFirewallRules()
 
     logger.info(`Found ${rules.length} firewall rules`)

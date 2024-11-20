@@ -49,9 +49,10 @@ export class VercelClient {
   }
 
   async updateFirewallRule(rule: VercelRule): Promise<void> {
+    const isNewRule = !rule.id || rule.id === '-'
     const body = {
-      action: rule.id ? 'rules.update' : 'rules.insert',
-      id: rule.id !== '-' && rule.id ? rule.id : null,
+      action: isNewRule ? 'rules.insert' : 'rules.update',
+      id: isNewRule ? null : rule.id,
       value: {
         name: rule.name,
         description: rule.description,
@@ -69,8 +70,12 @@ export class VercelClient {
 
     if (!response.ok) {
       const error = await response.text()
-      throw new Error(`Error updating firewall rule: ${response.statusText}\n${error}`)
+      throw new Error(`Error ${isNewRule ? 'creating' : 'updating'} firewall rule: ${response.statusText}\n${error}`)
     }
+  }
+
+  async createFirewallRule(rule: Omit<VercelRule, 'id'>): Promise<void> {
+    return this.updateFirewallRule({ ...rule, id: '-' } as VercelRule)
   }
 
   async deleteFirewallRule(rule: VercelRule): Promise<void> {
