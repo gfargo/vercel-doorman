@@ -1,36 +1,69 @@
 import { VercelClient } from '../fetchUtility'
+import { logger } from '../logger'
 import { RuleTransformer } from '../transformers/RuleTransformer'
 import { ConfigRule, FirewallConfig } from '../types/configTypes'
 import { VercelRule } from '../types/vercelTypes'
 
+interface SyncOptions {
+  batchSize?: number
+  dryRun?: boolean
+  retryAttempts?: number
+}
+
 export class FirewallService {
   constructor(private client: VercelClient) {}
 
-  async syncRules(config: FirewallConfig): Promise<void> {
-    const existingRules = await this.client.fetchFirewallRules()
-    const configRules = config.rules
+  async syncRules(config: FirewallConfig, options: SyncOptions = {}): Promise<void> {
+    const { batchSize = 10, dryRun = false, retryAttempts = 3 } = options
 
-    // Convert existing rules to config format for comparison
-    const existingConfigRules = existingRules.map(RuleTransformer.fromVercelRule)
+    try {
+      const existingRules = await this.client.fetchFirewallRules()
+      const configRules = config.rules
 
-    // Find rules to add, update, and delete
-    const { toAdd, toUpdate, toDelete } = this.diffRules(configRules, existingConfigRules, existingRules)
+      const existingConfigRules = existingRules.map(RuleTransformer.fromVercelRule)
 
-    // Delete rules that are no longer in config
-    for (const rule of toDelete) {
-      await this.client.deleteFirewallRule(rule)
+      const { toAdd, toUpdate, toDelete } = this.diffRules(configRules, existingConfigRules, existingRules)
+
+      if (dryRun) {
+        logger.info('Dry run mode. The following changes would be made:')
+        logger.info(`Add: ${toAdd.length}, Update: ${toUpdate.length}, Delete: ${toDelete.length}`)
+        return
+      }
+
+      const operations = [
+        ...toDelete.map((rule) => () => this.retryOperation(() => this.client.deleteFirewallRule(rule), retryAttempts)),
+        ...toAdd.map(
+          (rule) => () =>
+            this.retryOperation(
+              () => this.client.updateFirewallRule(RuleTransformer.toVercelRule(rule)),
+              retryAttempts,
+            ),
+        ),
+        ...toUpdate.map((rule) => () => this.retryOperation(() => this.client.updateFirewallRule(rule), retryAttempts)),
+      ]
+
+      for (let i = 0; i < operations.length; i += batchSize) {
+        const batch = operations.slice(i, i + batchSize)
+        await Promise.all(batch.map((op) => op()))
+      }
+
+      logger.success(`Sync completed. Added: ${toAdd.length}, Updated: ${toUpdate.length}, Deleted: ${toDelete.length}`)
+    } catch (error) {
+      logger.error('Error during sync:', error)
+      throw error
     }
+  }
 
-    // Add new rules
-    for (const rule of toAdd) {
-      const vercelRule = RuleTransformer.toVercelRule(rule)
-      await this.client.updateFirewallRule(vercelRule)
+  private async retryOperation<T>(operation: () => Promise<T>, attempts: number): Promise<T> {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await operation()
+      } catch (error) {
+        if (i === attempts - 1) throw error
+        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, i) * 1000))
+      }
     }
-
-    // Update existing rules
-    for (const rule of toUpdate) {
-      await this.client.updateFirewallRule(rule)
-    }
+    throw new Error('Retry attempts exhausted')
   }
 
   private diffRules(
@@ -47,31 +80,32 @@ export class FirewallService {
     const toDelete = [...existingVercelRules]
 
     for (const configRule of configRules) {
-      // Find matching rule by name
-      const existingIndex = existingConfigRules.findIndex((r) => r.name === configRule.name)
+      const existingIndexById = existingConfigRules.findIndex((r) => r.id === configRule.id)
+      const existingIndexByContent = existingConfigRules.findIndex((r) =>
+        this.isDeepEqual(this.omitId(configRule), this.omitId(r)),
+      )
 
-      if (existingIndex === -1) {
-        // Rule doesn't exist, add it
+      if (existingIndexById === -1 && existingIndexByContent === -1) {
         toAdd.push(configRule)
+      } else if (existingIndexById === -1 && existingIndexByContent !== -1) {
+        // Renamed rule
+        toAdd.push(configRule)
+        const deleteIndex = existingVercelRules[existingIndexByContent]
+          ? toDelete.findIndex((r) => r.id === existingVercelRules[existingIndexByContent]?.id)
+          : -1
+        if (deleteIndex !== -1) toDelete.splice(deleteIndex, 1)
       } else {
-        const existingRule = existingConfigRules[existingIndex]
-        const existingVercelRule = existingVercelRules[existingIndex]
+        const existingRule = existingConfigRules[existingIndexById]
+        const existingVercelRule = existingVercelRules[existingIndexById]
 
-        if (existingVercelRule) {
-          // Remove from delete list since we found it
-          const deleteIndex = toDelete.findIndex((r) => r.id === existingVercelRule.id)
-          if (deleteIndex !== -1) {
-            toDelete.splice(deleteIndex, 1)
-          }
-        }
+        const deleteIndex = existingVercelRule ? toDelete.findIndex((r) => r.id === existingVercelRule.id) : -1
+        if (deleteIndex !== -1) toDelete.splice(deleteIndex, 1)
 
-        // Check if rule needs updating
-        if (existingRule && this.hasRuleChanged(configRule, existingRule)) {
-          const updatedRule = RuleTransformer.toVercelRule(configRule)
+        if (existingRule && !this.isDeepEqual(this.omitId(configRule), this.omitId(existingRule))) {
           if (existingVercelRule) {
-            updatedRule.id = existingVercelRule.id
+            const updatedRule = { ...RuleTransformer.toVercelRule(configRule), id: existingVercelRule.id }
+            toUpdate.push(updatedRule)
           }
-          toUpdate.push(updatedRule)
         }
       }
     }
@@ -79,13 +113,28 @@ export class FirewallService {
     return { toAdd, toUpdate, toDelete }
   }
 
-  private hasRuleChanged(configRule: ConfigRule, existingRule: ConfigRule): boolean {
-    return (
-      configRule.active !== existingRule.active ||
-      configRule.action !== existingRule.action ||
-      configRule.type !== existingRule.type ||
-      configRule.description !== existingRule.description ||
-      JSON.stringify(configRule.values?.sort() || []) !== JSON.stringify(existingRule.values?.sort() || [])
-    )
+  private omitId(rule: ConfigRule): Omit<ConfigRule, 'id'> {
+    const { id, ...rest } = rule
+    return rest
+  }
+
+  private isDeepEqual(obj1: unknown, obj2: unknown): boolean {
+    if (obj1 === obj2) return true
+    if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false
+
+    const keys1 = Object.keys(obj1)
+    const keys2 = Object.keys(obj2)
+
+    if (keys1.length !== keys2.length) return false
+
+    for (const key of keys1) {
+      if (
+        !keys2.includes(key) ||
+        !this.isDeepEqual((obj1 as Record<string, unknown>)[key], (obj2 as Record<string, unknown>)[key])
+      )
+        return false
+    }
+
+    return true
   }
 }

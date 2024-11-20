@@ -8,14 +8,15 @@ import { formatConditionGroups } from './formatConditionGroups'
 export function displayRulesTable(rules: FirewallConfig['rules']) {
   const table = new Table({
     head: [
-      chalk.bold(''),
-      chalk.bold('ID'),
-      chalk.bold('Name'),
-      chalk.bold('Conditions'),
-      chalk.bold('Action'),
-      chalk.bold('Description'),
+      chalk.bold.gray(''),
+      chalk.bold.gray('ID'),
+      chalk.bold.gray('Name'),
+      chalk.bold.gray('Conditions'),
+      chalk.bold.gray('Action'),
+      chalk.bold.gray('Description'),
     ],
     wordWrap: true,
+    colAligns: ['center', 'left', 'left', 'left', 'center', 'left'],
     truncate: '...',
     wrapOnWordBoundary: true,
     colWidths: [3, 32, 24, 24, 8, 36],
@@ -24,14 +25,12 @@ export function displayRulesTable(rules: FirewallConfig['rules']) {
   rules.forEach((rule) => {
     table.push([
       rule.active ? chalk.green('✓') : chalk.red('✗'),
-      rule.id ? chalk.gray(rule.id) : chalk.gray('-'),
+      rule.id ? chalk.white(rule.id) : chalk.gray('-'),
       rule.name,
       formatConditionGroups(rule.conditionGroup),
       formatAction(rule.action),
       rule.description || '',
     ])
   })
-
-  logger.log(chalk.bold('\nRemote Firewall Rules to Download:\n'))
   logger.log(table.toString())
 }

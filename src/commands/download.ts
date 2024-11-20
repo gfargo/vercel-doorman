@@ -92,6 +92,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     const configRules = vercelRules.map(RuleTransformer.fromVercelRule)
 
     // Display rules that would be downloaded
+    logger.log(chalk.bold('\nRemote Firewall Rules to Download:\n'))
     displayRulesTable(configRules)
 
     // If dry run, stop here
