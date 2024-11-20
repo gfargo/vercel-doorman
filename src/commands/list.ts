@@ -1,7 +1,7 @@
 import { LogLevels } from 'consola'
-import { VercelClient } from 'src/lib/services/VercelClient'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
+import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
 import { displayRulesTable } from '../lib/ui/table'
 
