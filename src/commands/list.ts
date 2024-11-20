@@ -1,6 +1,6 @@
 import { LogLevels } from 'consola'
+import { VercelClient } from 'src/lib/services/VercelClient'
 import { Arguments } from 'yargs'
-import { VercelClient } from '../lib/fetchUtility'
 import { logger } from '../lib/logger'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
 import { displayRulesTable } from '../lib/ui/table'
@@ -67,10 +67,8 @@ export const handler = async (argv: Arguments<ListOptions>) => {
       logger.level = LogLevels.debug
     }
 
-    // Initialize client
     const client = new VercelClient(projectId, teamId, token)
 
-    // Fetch rules
     logger.start(`Fetching firewall rules ...`)
     logger.verbose(`Token: ${token}\t projectId: ${projectId}\t teamId: ${teamId}`)
 
@@ -84,7 +82,7 @@ export const handler = async (argv: Arguments<ListOptions>) => {
     if (argv.format === 'json') {
       logger.info(JSON.stringify(configRules, null, 2))
     } else {
-      displayRulesTable(configRules)
+      displayRulesTable(configRules, { showStatus: false })
     }
   } catch (error) {
     logger.error(error instanceof Error)
