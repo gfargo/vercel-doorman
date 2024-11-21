@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import { LogLevels } from 'consola'
 import { logger } from '../logger'
 import { RuleTransformer } from '../transformers/RuleTransformer'
@@ -98,7 +99,7 @@ export class FirewallService {
       }
 
       logger.success(
-        `Sync completed. Added: ${addedRules.length}, Updated: ${updatedRules.length}, Deleted: ${deletedRules.length}`,
+        `Sync completed. Added: ${chalk.green(addedRules.length)}, Updated: ${chalk.cyan(updatedRules.length)}, Deleted: ${chalk.red(deletedRules.length)}`,
       )
       return { addedRules, updatedRules, deletedRules, rulesToUpdateLocally }
     } catch (error) {

@@ -121,9 +121,12 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     logger.success('Firewall rules sync completed successfully')
 
     if (rulesToUpdateLocally.length > 0) {
-      logger.info(chalk.yellow('\nSome rules have IDs that do not match their expected snake_case name:'))
+      logger.log('')
+      logger.info(chalk.yellow('Some rules have IDs that do not match their expected snake_case name:'))
       rulesToUpdateLocally.forEach((rule) => {
-        logger.info(`  - Rule "${rule.name}": ${chalk.red(rule.oldId)} -> ${chalk.green(rule.newId)}`)
+        logger.log(
+          `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
+        )
       })
 
       const updateConfirmed = await prompt('Do you want to update the local config with the new IDs?', {
@@ -135,7 +138,9 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
         const updatedConfig: FirewallConfig = {
           ...config,
           rules: config.rules.map((rule) => {
-            const ruleToUpdate = rulesToUpdateLocally.find((r) => r.oldId === rule.id)
+            const ruleToUpdate = rulesToUpdateLocally.find(
+              (r) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name),
+            )
             return ruleToUpdate ? { ...rule, id: ruleToUpdate.newId } : rule
           }),
         }
