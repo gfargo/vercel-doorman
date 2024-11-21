@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import { VercelAction } from 'src/lib/types/vercelTypes'
 import { RuleAction, RuleActionType } from '../../types/configTypes'
 
 /**
@@ -13,9 +14,13 @@ import { RuleAction, RuleActionType } from '../../types/configTypes'
  * - The redirect location in magenta color, with an indication of whether it is permanent or temporary in gray color, if present.
  * - The duration in gray color, if present.
  */
-export function formatAction(action: RuleAction | RuleActionType): string {
+export function formatAction(action: RuleAction | RuleActionType | VercelAction): string {
   if (typeof action === 'string') {
     return action
+  }
+
+  if ('mitigate' in action) {
+    return chalk.cyan((action as VercelAction).mitigate.action)
   }
 
   const parts = [chalk.cyan(action.type)]
