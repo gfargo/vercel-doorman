@@ -11,9 +11,14 @@
  * @returns The converted snake_case string.
  */
 export function convertToSnakeCase(str: string): string {
-  return str
-    .replace(/([A-Z])/g, ' $1')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-zA-Z0-9]+/g, '_')
+  return (
+    str
+      .replace(/([A-Z])/g, ' $1')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .trim()
+      // if last character is an underscore, remove it
+      .replace(/_$/, '')
+  )
 }
