@@ -1,0 +1,67 @@
+{
+  "rules": [
+    {
+      "name": "Block Bad Bots",
+      "description": "Block known bad bot user agents",
+      "type": "user_agent",
+      "values": ["PetalBot", "Scrapy", "zgrab"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Legacy Browser Protection",
+      "description": "Challenge requests from very old browsers",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "re",
+              "type": "user_agent",
+              "value": "MSIE [6-9]\\."
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "op": "re",
+              "type": "user_agent",
+              "value": "Firefox/[1-2]\\."
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "redirect": {
+          "location": "/upgrade-browser.html",
+          "permanent": false
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Mobile App Version Check",
+      "description": "Redirect old mobile app versions to store",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "re",
+              "type": "user_agent",
+              "value": "MyApp/[1-2]\\."
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/update-app.html",
+          "permanent": false
+        }
+      },
+      "active": true
+    }
+  ]
+}

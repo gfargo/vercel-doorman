@@ -1,0 +1,76 @@
+{
+  "rules": [
+    {
+      "name": "POST Only Endpoints",
+      "description": "Ensure specific endpoints only accept POST requests",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/submit"
+            },
+            {
+              "op": "neq",
+              "type": "method",
+              "value": "POST"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/405.html",
+          "permanent": false
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Block PUT/DELETE Methods",
+      "description": "Prevent PUT and DELETE methods on public endpoints",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/public/"
+            },
+            {
+              "op": "inc",
+              "type": "method",
+              "value": ["PUT", "DELETE"]
+            }
+          ]
+        }
+      ],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "GET/HEAD Only Static",
+      "description": "Allow only GET and HEAD methods for static assets",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "re",
+              "type": "path",
+              "value": "\\.(jpg|jpeg|png|gif|css|js|ico)$"
+            },
+            {
+              "op": "ninc",
+              "type": "method",
+              "value": ["GET", "HEAD"]
+            }
+          ]
+        }
+      ],
+      "action": "deny",
+      "active": true
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "rules": [
+    {
+      "name": "Complex Bot Detection",
+      "description": "Detect and block suspicious bot behavior",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "re",
+              "type": "user_agent",
+              "value": "(?i)(bot|crawler|spider)"
+            },
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "x-bot-verification"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "duration": "1h"
+      },
+      "active": true
+    },
+    {
+      "name": "Admin Access Control",
+      "description": "Restrict admin access by multiple conditions",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/admin"
+            },
+            {
+              "op": "ninc",
+              "type": "ip_address",
+              "value": "10.0.0.0/8"
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/admin"
+            },
+            {
+              "op": "nex",
+              "type": "cookie",
+              "value": "admin_session"
+            }
+          ]
+        }
+      ],
+      "action": "deny",
+      "active": true
+    }
+  ]
+}

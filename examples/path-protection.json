@@ -1,0 +1,69 @@
+{
+  "rules": [
+    {
+      "name": "Protect Sensitive Paths",
+      "description": "Block access to sensitive paths",
+      "type": "path",
+      "values": ["/.env", "/.git/*", "/wp-admin/*", "/phpMyAdmin/*"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "API Documentation Access",
+      "description": "Restrict access to API docs",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/docs/api"
+            },
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "x-api-key"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/docs/login",
+          "permanent": false
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Development Endpoints",
+      "description": "Protect development-only endpoints",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/__debug"
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/dev-"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "duration": "15m"
+      },
+      "active": true
+    }
+  ]
+}

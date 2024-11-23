@@ -1,0 +1,116 @@
+{
+  "rules": [
+    {
+      "name": "Complete API Protection",
+      "description": "Comprehensive API endpoint protection",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/v1/"
+            },
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "x-api-key"
+            },
+            {
+              "op": "ninc",
+              "type": "ip_address",
+              "value": "10.0.0.0/8"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "rateLimit": {
+          "requests": 3,
+          "window": "1m"
+        },
+        "duration": "1h"
+      },
+      "active": true
+    },
+    {
+      "name": "Secure Admin Access",
+      "description": "Multi-factor admin access protection",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/admin"
+            },
+            {
+              "op": "ninc",
+              "type": "geo_country",
+              "value": ["US", "CA", "GB"]
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/admin"
+            },
+            {
+              "op": "nex",
+              "type": "cookie",
+              "value": "admin_session"
+            },
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "x-2fa-token"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "duration": "30m"
+      },
+      "active": true
+    },
+    {
+      "name": "Dynamic Content Protection",
+      "description": "Protect dynamic content endpoints",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "re",
+              "type": "path",
+              "value": "\\.(php|aspx|jsp)$"
+            },
+            {
+              "op": "re",
+              "type": "user_agent",
+              "value": "(?i)(curl|wget|postman)"
+            },
+            {
+              "op": "gt",
+              "type": "rate_limit_api_id",
+              "value": "10"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "rateLimit": {
+          "requests": 50,
+          "window": "5m"
+        },
+        "duration": "15m"
+      },
+      "active": true
+    }
+  ]
+}

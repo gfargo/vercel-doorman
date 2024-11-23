@@ -1,0 +1,87 @@
+{
+  "rules": [
+    {
+      "name": "API Version Control",
+      "description": "Manage API version through headers",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/"
+            },
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "x-api-version"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/api/docs/versioning",
+          "permanent": false
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "CORS Protection",
+      "description": "Validate origin headers for CORS requests",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "method",
+              "value": "OPTIONS"
+            },
+            {
+              "op": "ninc",
+              "type": "header",
+              "value": ["origin", "access-control-request-method"]
+            }
+          ]
+        }
+      ],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Content-Type Enforcement",
+      "description": "Ensure proper content-type headers",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/"
+            },
+            {
+              "op": "eq",
+              "type": "method",
+              "value": "POST"
+            },
+            {
+              "op": "neq",
+              "type": "header",
+              "value": "application/json"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/api/docs/content-type",
+          "permanent": false
+        }
+      },
+      "active": true
+    }
+  ]
+}

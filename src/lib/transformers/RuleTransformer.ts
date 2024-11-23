@@ -2,15 +2,22 @@ import { ConfigRule, RuleAction, RuleActionType } from '../types/configTypes'
 import { RuleOperator, RuleType, VercelAction, VercelCondition, VercelRule } from '../types/vercelTypes'
 
 export class RuleTransformer {
-  // TODO: Implement rate limit validation
-  // private static validateRateLimit(rateLimit: { requests: number; window: string }) {
-  //   if (typeof rateLimit.requests !== 'number' || rateLimit.requests <= 0) {
-  //     throw new Error('Invalid rate limit configuration: requests must be positive')
-  //   }
-  //   if (typeof rateLimit.window !== 'string' || !/^\d+[smhd]$/.test(rateLimit.window)) {
-  //     throw new Error('Invalid rate limit configuration: invalid window format')
-  //   }
-  // }
+  static validateRateLimit(rateLimit: { requests: number; window: string }) {
+    if (typeof rateLimit.requests !== 'number' || rateLimit.requests <= 0) {
+      throw new Error('Invalid rate limit configuration: requests must be positive')
+    }
+    if (typeof rateLimit.window !== 'string') {
+      throw new Error('Invalid rate limit configuration: window must be a string')
+    }
+    const match = rateLimit.window.match(/^(\d+)([smhd])$/)
+    if (!match) {
+      throw new Error('Invalid rate limit configuration: invalid window format')
+    }
+    const [, value, _unit] = match
+    if (value === undefined || parseInt(value) <= 0) {
+      throw new Error('Invalid rate limit configuration: window duration must be positive')
+    }
+  }
 
   static transformActionToVercel(action: RuleAction | RuleActionType): VercelAction {
     if (typeof action === 'string') {
@@ -24,10 +31,9 @@ export class RuleTransformer {
 
     validateActionType(action.type)
 
-    // TODO: Implement rate limit validation
-    // if (action.rateLimit) {
-    //   this.validateRateLimit(action.rateLimit)
-    // }
+    if (action.rateLimit) {
+      RuleTransformer.validateRateLimit(action.rateLimit)
+    }
 
     if (action.redirect) {
       validateRedirect(action.redirect)
@@ -120,10 +126,9 @@ function validateConfigRule(rule: ConfigRule) {
   } else if (typeof rule.action === 'object') {
     validateActionType(rule.action.type)
 
-    // TODO: Implement rate limit validation
-    // if (rule.action.rateLimit) {
-    //   this.validateRateLimit(rule.action.rateLimit)
-    // }
+    if (rule.action.rateLimit) {
+      RuleTransformer.validateRateLimit(rule.action.rateLimit)
+    }
 
     if (rule.action.redirect) {
       validateRedirect(rule.action.redirect)
@@ -206,10 +211,9 @@ function transformActionFromVercel(action: VercelAction): RuleAction {
 
   // Validate complex configuration
 
-  // TODO: Implement rate limit validation
-  // if (mitigate.rateLimit) {
-  //   this.validateRateLimit(mitigate.rateLimit)
-  // }
+  if (mitigate.rateLimit) {
+    RuleTransformer.validateRateLimit(mitigate.rateLimit)
+  }
 
   if (mitigate.redirect) {
     validateRedirect(mitigate.redirect)

@@ -1,0 +1,40 @@
+{
+  "rules": [
+    {
+      "name": "Block Country",
+      "description": "Block access from specific countries",
+      "type": "geo_country",
+      "values": ["CN", "RU"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Allow Continent",
+      "description": "Allow access from specific continent",
+      "type": "geo_continent",
+      "values": ["EU"],
+      "action": "allow",
+      "active": true
+    },
+    {
+      "name": "Challenge City",
+      "description": "Present challenge for specific cities",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "geo_city",
+              "value": "London"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "duration": "1h"
+      },
+      "active": true
+    }
+  ]
+}

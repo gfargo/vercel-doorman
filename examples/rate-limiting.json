@@ -1,0 +1,47 @@
+{
+  "rules": [
+    {
+      "name": "API Rate Limit",
+      "description": "Rate limit API endpoints",
+      "type": "path",
+      "values": ["/api/*"],
+      "action": {
+        "type": "deny",
+        "rateLimit": {
+          "requests": 100,
+          "window": "1m"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Login Rate Limit",
+      "description": "Protect login endpoint from brute force",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "path",
+              "value": "/auth/login"
+            },
+            {
+              "op": "eq",
+              "type": "method",
+              "value": "POST"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "rateLimit": {
+          "requests": 5,
+          "window": "5m"
+        },
+        "duration": "30m"
+      },
+      "active": true
+    }
+  ]
+}

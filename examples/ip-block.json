@@ -1,0 +1,40 @@
+{
+  "rules": [
+    {
+      "name": "Block Single IP",
+      "description": "Block a specific IP address",
+      "type": "ip_address",
+      "values": ["192.168.1.1"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Block IP Range",
+      "description": "Block an IP range using CIDR notation",
+      "type": "ip_address",
+      "values": ["10.0.0.0/24"],
+      "action": {
+        "type": "deny",
+        "duration": "24h"
+      },
+      "active": true
+    },
+    {
+      "name": "Allow Trusted IPs",
+      "description": "Allow specific IPs with custom condition group",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "inc",
+              "type": "ip_address",
+              "value": "172.16.0.0/16"
+            }
+          ]
+        }
+      ],
+      "action": "allow",
+      "active": true
+    }
+  ]
+}

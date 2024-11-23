@@ -1,0 +1,82 @@
+{
+  "rules": [
+    {
+      "name": "Search Protection",
+      "description": "Challenge excessive search requests",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/search"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "rateLimit": {
+          "requests": 30,
+          "window": "1m"
+        },
+        "duration": "10m"
+      },
+      "active": true
+    },
+    {
+      "name": "Unknown Browser Challenge",
+      "description": "Challenge requests with suspicious or missing User-Agent",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "nex",
+              "type": "user_agent",
+              "value": ".*"
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "op": "re",
+              "type": "user_agent",
+              "value": "^(curl|wget|postman)"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "duration": "5m"
+      },
+      "active": true
+    },
+    {
+      "name": "Suspicious Traffic Challenge",
+      "description": "Challenge traffic with suspicious patterns",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "referer"
+            },
+            {
+              "op": "eq",
+              "type": "method",
+              "value": "POST"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "duration": "15m"
+      },
+      "active": true
+    }
+  ]
+}
