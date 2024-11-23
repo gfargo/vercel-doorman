@@ -1,0 +1,72 @@
+{
+  "rules": [
+    {
+      "name": "Force HTTPS",
+      "description": "Redirect HTTP traffic to HTTPS",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "scheme",
+              "value": "http"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "https://${host}${path}",
+          "permanent": true
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Block Non-HTTP",
+      "description": "Block non-HTTP protocols",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "ninc",
+              "type": "protocol",
+              "value": ["http/1.1", "http/2", "h2", "https"]
+            }
+          ]
+        }
+      ],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "HTTP/2 Only API",
+      "description": "Ensure API endpoints use HTTP/2",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/v2/"
+            },
+            {
+              "op": "ninc",
+              "type": "protocol",
+              "value": ["http/2", "h2"]
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/upgrade-client.html",
+          "permanent": false
+        }
+      },
+      "active": true
+    }
+  ]
+}

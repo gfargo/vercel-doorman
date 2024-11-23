@@ -1,0 +1,42 @@
+{
+  "rules": [
+    {
+      "name": "Legacy Path Redirect",
+      "description": "Redirect old paths to new ones",
+      "type": "path",
+      "values": ["/old-blog/*"],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/blog/",
+          "permanent": true
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Maintenance Redirect",
+      "description": "Redirect during maintenance",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/maintenance.html",
+          "permanent": false
+        },
+        "duration": "2h"
+      },
+      "active": true
+    }
+  ]
+}

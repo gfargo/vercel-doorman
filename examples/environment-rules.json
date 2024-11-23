@@ -1,0 +1,85 @@
+{
+  "rules": [
+    {
+      "name": "Preview Environment Protection",
+      "description": "Protect preview environments with authentication",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "environment",
+              "value": "preview"
+            },
+            {
+              "op": "nex",
+              "type": "cookie",
+              "value": "preview_token"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "/preview-auth",
+          "permanent": false
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Development API Mocking",
+      "description": "Route development API calls to mock server",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "environment",
+              "value": "development"
+            },
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "redirect": {
+          "location": "http://mock-api.local${path}",
+          "permanent": false
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Production Security Headers",
+      "description": "Enforce security headers in production",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "environment",
+              "value": "production"
+            },
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "x-frame-options"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "challenge",
+        "duration": "1h"
+      },
+      "active": true
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "rules": [
+    {
+      "name": "API Key Rate Limit",
+      "description": "Rate limit based on API key header",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/"
+            },
+            {
+              "op": "ex",
+              "type": "header",
+              "value": "x-api-key"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "rateLimit": {
+          "requests": 1000,
+          "window": "1h"
+        },
+        "duration": "1h"
+      },
+      "active": true
+    },
+    {
+      "name": "Anonymous API Limit",
+      "description": "Stricter rate limit for requests without API key",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "pre",
+              "type": "path",
+              "value": "/api/"
+            },
+            {
+              "op": "nex",
+              "type": "header",
+              "value": "x-api-key"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "rateLimit": {
+          "requests": 50,
+          "window": "1h"
+        },
+        "duration": "2h"
+      },
+      "active": true
+    },
+    {
+      "name": "Custom Client Limits",
+      "description": "Different rate limits based on client type",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "op": "eq",
+              "type": "header",
+              "value": "x-client-type=mobile"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "type": "deny",
+        "rateLimit": {
+          "requests": 200,
+          "window": "5m"
+        }
+      },
+      "active": true
+    }
+  ]
+}
