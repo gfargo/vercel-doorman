@@ -110,7 +110,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
 
     const confirmed = await prompt('Do you want to apply these changes?', { type: 'confirm' })
     if (!confirmed) {
-      logger.info(chalk.yellow('\nSync cancelled.'))
+      logger.info(chalk.yellow('Sync cancelled.'))
       return
     }
 

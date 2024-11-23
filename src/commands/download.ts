@@ -119,7 +119,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
 
     const confirmed = await prompt('Do you want to download these rules?', { type: 'confirm' })
     if (!confirmed) {
-      logger.info(chalk.yellow('\nDownload cancelled.'))
+      logger.info(chalk.yellow('Download cancelled.'))
       return
     }
 
