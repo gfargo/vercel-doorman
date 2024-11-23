@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains example configurations demonstrating different firewall rule variations and settings.  These
+This directory contains example configurations demonstrating different firewall rule variations and settings.
 
 ## Categories
 
