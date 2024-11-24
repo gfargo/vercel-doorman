@@ -65,11 +65,11 @@ export class VercelClient {
   }
 
   /**
-   * Fetches the firewall rules for the Vercel project.
-   * @returns A promise that resolves to an array of VercelRule objects.
+   * Fetches the active firewall config for the Vercel project.
+   * @returns A promise that resolves to the active firewall config.
    * @throws An error if the fetch request fails.
    */
-  async fetchFirewallRules(): Promise<VercelRule[]> {
+  async fetchActiveFirewallConfig(): Promise<ApiResponse['active']> {
     const response = await fetch(this.getUrl(), {
       method: 'GET',
       headers: this.getHeaders(),
@@ -81,7 +81,17 @@ export class VercelClient {
     }
 
     const data = (await response.json()) as ApiResponse
-    return data.active.rules
+    return data.active
+  }
+
+  /**
+   * Fetches the active firewall rules for the Vercel project.
+   * @returns A promise that resolves to an array of VercelRule objects.
+   * @throws An error if the fetch request fails.
+   */
+  async fetchActiveFirewallRules(): Promise<VercelRule[]> {
+    const data = await this.fetchActiveFirewallConfig()
+    return data.rules
   }
 
   /**

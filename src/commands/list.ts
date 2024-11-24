@@ -72,7 +72,7 @@ export const handler = async (argv: Arguments<ListOptions>) => {
     logger.start(`Fetching firewall rules ...`)
     logger.verbose(`Token: ${token}\t projectId: ${projectId}\t teamId: ${teamId}`)
 
-    const rules = await client.fetchFirewallRules()
+    const rules = await client.fetchActiveFirewallRules()
 
     logger.info(`Found ${rules.length} firewall rules`)
 
