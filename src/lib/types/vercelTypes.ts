@@ -76,3 +76,11 @@ export interface VercelRule {
   conditionGroup: VercelConditionGroup[]
   action: VercelAction
 }
+
+export interface VercelIPBlockingRule {
+  action: 'deny'
+  hostname: string
+  notes?: string
+  id?: string | null
+  ip: string
+}

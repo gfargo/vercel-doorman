@@ -1,10 +1,12 @@
-import { VercelRule } from '../types/vercelTypes'
+import { VercelIPBlockingRule, VercelRule } from '../types/vercelTypes'
 
 export interface ApiResponse {
   active: {
     version: number
     firewallEnabled: boolean
+    crs: unknown
     rules: VercelRule[]
+    ips: VercelIPBlockingRule[]
     ownerId: string
     updatedAt: string
     id: string

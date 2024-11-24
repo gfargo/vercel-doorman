@@ -35,8 +35,17 @@ export interface ProjectConfig {
   teamId?: string
 }
 
+export interface IPBlockingRule {
+  id?: string
+  ip: string
+  hostname: string
+  notes?: string
+  action: 'deny' // Currently only 'deny' is supported for IP blocking
+}
+
 export interface FirewallConfig extends ProjectConfig {
   rules: ConfigRule[]
+  ips: IPBlockingRule[]
   version?: number
   updatedAt?: string
 }
