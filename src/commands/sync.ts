@@ -73,7 +73,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
 
     const validator: ValidationService = ValidationService.getInstance()
     validator.validateConfig(configJson)
-    const config: FirewallConfig = configJson
+    let config: FirewallConfig = configJson
 
     const projectId = argv.projectId || config.projectId
     const teamId = argv.teamId || config.teamId
@@ -115,10 +115,31 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     }
 
     logger.start('Starting firewall rules sync...')
-    const { rulesToUpdateLocally } = await service.syncRules(config, {
+
+    // Create backup of original config
+    const backupConfig = JSON.parse(JSON.stringify(config))
+
+    // Perform sync operation
+    const syncResult = await service.syncRules(config, {
       debug: argv.debug,
     })
+    const { rulesToUpdateLocally } = syncResult
     logger.success('Firewall rules sync completed successfully')
+
+    // Validate and update config metadata
+    try {
+      const updatedConfig = await service.validateAndUpdateConfig(config, syncResult, { dryRun: false })
+      config = updatedConfig // Update our working copy
+    } catch (error) {
+      logger.error('Failed to validate sync result or update config metadata')
+      logger.error(error instanceof Error ? error.message : String(error))
+
+      // Write backup to config file
+      writeFileSync(configPath, JSON.stringify(backupConfig, null, 2))
+
+      logger.info(chalk.yellow('Restored original config due to validation failure'))
+      throw new Error('Sync validation failed - original config restored')
+    }
 
     if (rulesToUpdateLocally.length > 0) {
       logger.log('')
@@ -134,7 +155,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       })
 
       if (updateConfirmed) {
-        // Update config with new IDs
+        // Update config with new IDs and preserve metadata
         const updatedConfig: FirewallConfig = {
           ...config,
           rules: config.rules.map((rule) => {

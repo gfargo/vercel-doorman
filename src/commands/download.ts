@@ -103,9 +103,9 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     const client = new VercelClient(projectId, teamId, token)
 
     logger.start('Fetching remote firewall rules...')
-    const vercelRules = await client.fetchFirewallRules()
-    logger.debug(`Fetched Vercel rules: ${JSON.stringify(vercelRules)}`)
-    const configRules = vercelRules.map(RuleTransformer.fromVercelRule)
+    const activeConfig = await client.fetchActiveFirewallConfig()
+    logger.debug(`Fetched Vercel config: ${JSON.stringify(activeConfig)}`)
+    const configRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
     logger.debug(`Transformed config rules: ${JSON.stringify(configRules)}`)
 
     logger.log(chalk.bold('\nRemote Firewall Rules to Download:\n'))
@@ -126,6 +126,8 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     const newConfig: FirewallConfig = {
       ...existingConfig,
       rules: configRules,
+      version: activeConfig.version,
+      updatedAt: activeConfig.updatedAt,
     }
     logger.debug(`New config to be written: ${JSON.stringify(newConfig)}`)
     writeFileSync(configPath, JSON.stringify(newConfig, null, 2))

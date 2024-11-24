@@ -5,6 +5,7 @@ import { RuleTransformer } from '../transformers/RuleTransformer'
 import { ConfigRule, FirewallConfig } from '../types/configTypes'
 import { VercelRule } from '../types/vercelTypes'
 import { isDeepEqual } from '../utils/isDeepEqual'
+import { retry } from '../utils/retry'
 import { convertToSnakeCase } from '../utils/toSnakeCase'
 import { VercelClient } from './VercelClient'
 
@@ -24,7 +25,7 @@ export class FirewallService {
   }> {
     try {
       logger.debug('Fetching existing firewall rules')
-      const existingRules = await this.client.fetchFirewallRules()
+      const existingRules = await this.client.fetchActiveFirewallRules()
       logger.debug(`Fetched ${existingRules.length} existing rules`)
 
       const configRules = config.rules
@@ -68,7 +69,7 @@ export class FirewallService {
       // Delete rules
       for (const rule of toDelete) {
         logger.debug(`Deleting rule: ${rule.id}`)
-        await this.retryOperation(() => this.client.deleteFirewallRule(rule), retryAttempts)
+        await retry(() => this.client.deleteFirewallRule(rule), { maxAttempts: retryAttempts })
         deletedRules.push(rule)
         logger.debug(`Rule deleted: ${rule.id}`)
       }
@@ -77,10 +78,9 @@ export class FirewallService {
       for (const rule of toAdd) {
         const expectedId = `rule_${convertToSnakeCase(rule.name)}`
         logger.debug(`Adding new rule: ${rule.name}`)
-        const newRule = await this.retryOperation(
-          () => this.client.createFirewallRule(RuleTransformer.toVercelRule(rule)),
-          retryAttempts,
-        )
+        const newRule = await retry(() => this.client.createFirewallRule(RuleTransformer.toVercelRule(rule)), {
+          maxAttempts: retryAttempts,
+        })
         addedRules.push(newRule)
         logger.debug(`New rule added: ${newRule.id}`)
 
@@ -93,7 +93,7 @@ export class FirewallService {
       // Update existing rules
       for (const rule of toUpdate) {
         logger.debug(`Updating rule: ${rule.id}`)
-        const updatedRule = await this.retryOperation(() => this.client.updateFirewallRule(rule), retryAttempts)
+        const updatedRule = await retry(() => this.client.updateFirewallRule(rule), { maxAttempts: retryAttempts })
         updatedRules.push(updatedRule)
         logger.debug(`Rule updated: ${updatedRule.id}`)
       }
@@ -106,23 +106,6 @@ export class FirewallService {
       logger.error('Error during sync:', error)
       throw new Error('Failed to synchronize firewall rules. Please check the error logs and try again.')
     }
-  }
-
-  private async retryOperation<T>(operation: () => Promise<T>, attempts: number): Promise<T> {
-    for (let i = 0; i < attempts; i++) {
-      try {
-        return await operation()
-      } catch (error) {
-        if (i === attempts - 1) {
-          logger.error(`Operation failed after ${attempts} attempts:`, error)
-          throw error
-        }
-        const delay = Math.pow(2, i) * 1000
-        logger.warn(`Operation failed, retrying in ${delay}ms...`)
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
-    throw new Error('Retry attempts exhausted')
   }
 
   private diffRules(
@@ -160,5 +143,74 @@ export class FirewallService {
   private omitId(rule: ConfigRule): Omit<ConfigRule, 'id'> {
     const { id, ...rest } = rule
     return rest
+  }
+
+  async validateAndUpdateConfig(
+    config: FirewallConfig,
+    syncResult: {
+      addedRules: VercelRule[]
+      updatedRules: VercelRule[]
+      deletedRules: VercelRule[]
+    },
+    options: { dryRun?: boolean } = {},
+  ): Promise<FirewallConfig> {
+    if (options.dryRun) {
+      logger.info(chalk.cyan('Dry run: Config metadata would be updated after successful sync'))
+      return config
+    }
+
+    // Add delay to allow changes to propagate
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    // Fetch latest config with retries
+    const activeConfig = await retry(() => this.client.fetchActiveFirewallConfig(), {
+      maxAttempts: 3,
+      delayMs: 1000,
+      backoff: true,
+    })
+
+    // Transform rules for comparison
+    const transformedLocalRules = config.rules.map(RuleTransformer.toVercelRule)
+    const remoteRules = activeConfig.rules
+
+    // Validate rules match expected state
+    const addedIds = new Set(syncResult.addedRules.map((r) => r.id))
+    const updatedIds = new Set(syncResult.updatedRules.map((r) => r.id))
+    const deletedIds = new Set(syncResult.deletedRules.map((r) => r.id))
+
+    // Check if all remote rules match our expectations
+    const unexpectedRules = remoteRules.filter((remoteRule) => {
+      // Skip rules we just added or updated
+      if (addedIds.has(remoteRule.id) || updatedIds.has(remoteRule.id)) {
+        return false
+      }
+      // Rule should not exist if we deleted it
+      if (deletedIds.has(remoteRule.id)) {
+        return true
+      }
+      // Rule should match our local config if unchanged
+      const localRule = transformedLocalRules.find((r) => r.id === remoteRule.id)
+      if (!localRule) {
+        return true
+      }
+      // Compare rule contents (excluding id)
+      const { id: _rid1, ...remoteRuleContent } = remoteRule
+      const { id: _rid2, ...localRuleContent } = localRule
+      return !isDeepEqual(remoteRuleContent, localRuleContent)
+    })
+
+    if (unexpectedRules.length > 0) {
+      const errorDetails = unexpectedRules.map((rule) => `  - ${rule.name} (${rule.id})`).join('\n')
+      throw new Error(
+        'Firewall configuration validation failed. The following rules have unexpected state:\n' + errorDetails,
+      )
+    }
+
+    // Update local config with new metadata
+    return {
+      ...config,
+      version: activeConfig.version,
+      updatedAt: activeConfig.updatedAt,
+    }
   }
 }

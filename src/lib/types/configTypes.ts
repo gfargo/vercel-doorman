@@ -37,4 +37,6 @@ export interface ProjectConfig {
 
 export interface FirewallConfig extends ProjectConfig {
   rules: ConfigRule[]
+  version?: number
+  updatedAt?: string
 }
