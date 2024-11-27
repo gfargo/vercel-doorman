@@ -1,9 +1,9 @@
-import { ConfigRule } from '../../types/configTypes'
+import { CustomRule } from '../../types/configTypes'
 import { RuleTransformer } from '../RuleTransformer'
 
 describe('RuleTransformer Rate Limit Validation', () => {
   it('should validate rate limit requests are positive', () => {
-    const ruleWithNegativeRequests: ConfigRule = {
+    const ruleWithNegativeRequests: CustomRule = {
       name: 'test-rule',
       type: 'path',
       values: ['/api'],
@@ -23,7 +23,7 @@ describe('RuleTransformer Rate Limit Validation', () => {
   })
 
   it('should validate rate limit window format', () => {
-    const ruleWithInvalidWindow: ConfigRule = {
+    const ruleWithInvalidWindow: CustomRule = {
       name: 'test-rule',
       type: 'path',
       values: ['/api'],
@@ -47,7 +47,7 @@ describe('RuleTransformer Rate Limit Validation', () => {
     const invalidWindows = ['60', '-1s', '0m', '24x']
 
     validWindows.forEach((window) => {
-      const rule: ConfigRule = {
+      const rule: CustomRule = {
         name: 'test-rule',
         type: 'path',
         values: ['/api'],
@@ -65,7 +65,7 @@ describe('RuleTransformer Rate Limit Validation', () => {
     })
 
     invalidWindows.forEach((window) => {
-      const rule: ConfigRule = {
+      const rule: CustomRule = {
         name: 'test-rule',
         type: 'path',
         values: ['/api'],
@@ -84,7 +84,7 @@ describe('RuleTransformer Rate Limit Validation', () => {
   })
 
   it('should handle missing rate limit fields', () => {
-    const ruleWithoutRequests: ConfigRule = {
+    const ruleWithoutRequests: CustomRule = {
       name: 'test-rule',
       type: 'path',
       values: ['/api'],
@@ -98,7 +98,7 @@ describe('RuleTransformer Rate Limit Validation', () => {
       active: true,
     }
 
-    const ruleWithoutWindow: ConfigRule = {
+    const ruleWithoutWindow: CustomRule = {
       name: 'test-rule',
       type: 'path',
       values: ['/api'],

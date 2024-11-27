@@ -1,10 +1,10 @@
-import { ConfigRule } from '../../types/configTypes'
+import { CustomRule } from '../../types/configTypes'
 import { RuleTransformer } from '../RuleTransformer'
 
 describe('RuleTransformer Condition Validation', () => {
   describe('condition group validation', () => {
     it('should require either conditionGroup or type+values', () => {
-      const invalidRule: ConfigRule = {
+      const invalidRule: CustomRule = {
         name: 'test-rule',
         action: 'deny',
         active: true,
@@ -16,7 +16,7 @@ describe('RuleTransformer Condition Validation', () => {
     })
 
     it('should validate non-empty condition groups', () => {
-      const emptyGroupRule: ConfigRule = {
+      const emptyGroupRule: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {
@@ -33,7 +33,7 @@ describe('RuleTransformer Condition Validation', () => {
     })
 
     it('should validate condition value types', () => {
-      const ruleWithInvalidValue: ConfigRule = {
+      const ruleWithInvalidValue: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {
@@ -56,7 +56,7 @@ describe('RuleTransformer Condition Validation', () => {
 
   describe('condition type validation', () => {
     it('should validate condition types in groups', () => {
-      const invalidTypeRule: ConfigRule = {
+      const invalidTypeRule: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {
@@ -78,7 +78,7 @@ describe('RuleTransformer Condition Validation', () => {
     })
 
     it('should validate condition types in simple rules', () => {
-      const invalidTypeRule: ConfigRule = {
+      const invalidTypeRule: CustomRule = {
         name: 'test-rule',
         // @ts-expect-error Testing invalid type
         type: 'invalid_type',
@@ -93,7 +93,7 @@ describe('RuleTransformer Condition Validation', () => {
 
   describe('complex condition scenarios', () => {
     it('should handle multiple condition groups', () => {
-      const multiGroupRule: ConfigRule = {
+      const multiGroupRule: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {
@@ -128,7 +128,7 @@ describe('RuleTransformer Condition Validation', () => {
     })
 
     it('should handle multiple conditions in a group', () => {
-      const multiConditionRule: ConfigRule = {
+      const multiConditionRule: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {
@@ -160,7 +160,7 @@ describe('RuleTransformer Condition Validation', () => {
     })
 
     it('should convert simple rules to condition groups', () => {
-      const simpleRule: ConfigRule = {
+      const simpleRule: CustomRule = {
         name: 'test-rule',
         type: 'path',
         values: ['/api/v1', '/api/v2'],

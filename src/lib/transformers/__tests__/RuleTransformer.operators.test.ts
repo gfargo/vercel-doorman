@@ -1,10 +1,10 @@
-import { ConfigRule } from '../../types/configTypes'
+import { CustomRule } from '../../types/configTypes'
 import { RuleTransformer } from '../RuleTransformer'
 
 describe('RuleTransformer Operator Handling', () => {
   describe('determineOperator', () => {
     it('should handle IP address operators correctly', () => {
-      const cidrRule: ConfigRule = {
+      const cidrRule: CustomRule = {
         name: 'cidr-rule',
         type: 'ip_address',
         values: ['192.168.1.0/24'],
@@ -12,7 +12,7 @@ describe('RuleTransformer Operator Handling', () => {
         active: true,
       }
 
-      const singleIpRule: ConfigRule = {
+      const singleIpRule: CustomRule = {
         name: 'ip-rule',
         type: 'ip_address',
         values: ['192.168.1.1'],
@@ -28,7 +28,7 @@ describe('RuleTransformer Operator Handling', () => {
     })
 
     it('should use prefix match for paths', () => {
-      const pathRule: ConfigRule = {
+      const pathRule: CustomRule = {
         name: 'path-rule',
         type: 'path',
         values: ['/api/v1'],
@@ -41,7 +41,7 @@ describe('RuleTransformer Operator Handling', () => {
     })
 
     it('should handle cookie existence checks', () => {
-      const cookieExistsRule: ConfigRule = {
+      const cookieExistsRule: CustomRule = {
         name: 'cookie-rule',
         type: 'cookie',
         values: ['session'],
@@ -49,7 +49,7 @@ describe('RuleTransformer Operator Handling', () => {
         active: true,
       }
 
-      const cookieNotExistsRule: ConfigRule = {
+      const cookieNotExistsRule: CustomRule = {
         name: 'cookie-rule',
         type: 'cookie',
         values: [''],
@@ -80,9 +80,9 @@ describe('RuleTransformer Operator Handling', () => {
       ]
 
       types.forEach((type) => {
-        const rule: ConfigRule = {
+        const rule: CustomRule = {
           name: `${type}-rule`,
-          type: type as ConfigRule['type'],
+          type: type as CustomRule['type'],
           values: ['test-value'],
           action: 'deny',
           active: true,
@@ -96,7 +96,7 @@ describe('RuleTransformer Operator Handling', () => {
 
   describe('complex operator combinations', () => {
     it('should handle multiple conditions with different operators', () => {
-      const rule: ConfigRule = {
+      const rule: CustomRule = {
         name: 'complex-rule',
         conditionGroup: [
           {
@@ -129,7 +129,7 @@ describe('RuleTransformer Operator Handling', () => {
     })
 
     it('should preserve operator when converting back and forth', () => {
-      const originalRule: ConfigRule = {
+      const originalRule: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {

@@ -1,4 +1,4 @@
-import { ConfigRule, RuleAction, RuleActionType } from '../types/configTypes'
+import { CustomRule, RuleAction, RuleActionType } from '../types/configTypes'
 import { RuleOperator, RuleType, VercelAction, VercelCondition, VercelRule } from '../types/vercelTypes'
 
 export class RuleTransformer {
@@ -19,40 +19,7 @@ export class RuleTransformer {
     }
   }
 
-  static transformActionToVercel(action: RuleAction | RuleActionType): VercelAction {
-    if (typeof action === 'string') {
-      validateActionType(action)
-      return {
-        mitigate: {
-          action,
-        },
-      }
-    }
-
-    validateActionType(action.type)
-
-    if (action.rateLimit) {
-      RuleTransformer.validateRateLimit(action.rateLimit)
-    }
-
-    if (action.redirect) {
-      validateRedirect(action.redirect)
-    }
-    if (action.duration) {
-      validateDuration(action.duration)
-    }
-
-    return {
-      mitigate: {
-        action: action.type,
-        rateLimit: action.rateLimit,
-        redirect: action.redirect,
-        actionDuration: action.duration,
-      },
-    }
-  }
-
-  static toVercelRule(config: ConfigRule): VercelRule {
+  static toVercelRule(config: CustomRule): VercelRule {
     validateConfigRule(config)
 
     return {
@@ -65,7 +32,7 @@ export class RuleTransformer {
           conditions: config.values?.map((value) => this.createCondition(config.type || 'ip_address', value)) || [],
         },
       ],
-      action: this.transformActionToVercel(config.action),
+      action: transformActionToVercel(config.action),
     }
   }
 
@@ -91,7 +58,7 @@ export class RuleTransformer {
     }
   }
 
-  static fromVercelRule(rule: VercelRule): ConfigRule {
+  static fromVercelRule(rule: VercelRule): CustomRule {
     validateVercelRule(rule)
 
     return {
@@ -105,13 +72,46 @@ export class RuleTransformer {
   }
 }
 
+function transformActionToVercel(action: RuleAction | RuleActionType): VercelAction {
+  if (typeof action === 'string') {
+    validateActionType(action)
+    return {
+      mitigate: {
+        action,
+      },
+    }
+  }
+
+  validateActionType(action.type)
+
+  if (action.rateLimit) {
+    RuleTransformer.validateRateLimit(action.rateLimit)
+  }
+
+  if (action.redirect) {
+    validateRedirect(action.redirect)
+  }
+  if (action.duration) {
+    validateDuration(action.duration)
+  }
+
+  return {
+    mitigate: {
+      action: action.type,
+      ...(action.rateLimit && { rateLimit: action.rateLimit }),
+      ...(action.redirect && { redirect: action.redirect }),
+      ...(action.duration && { actionDuration: action.duration }),
+    },
+  }
+}
+
 function validateDuration(duration: string) {
   if (!/^\d+[smhd]$|^permanent$/.test(duration)) {
     throw new Error(`Invalid action duration format: ${duration}`)
   }
 }
 
-function validateConfigRule(rule: ConfigRule) {
+function validateConfigRule(rule: CustomRule) {
   if (!rule.name) {
     throw new Error('Rule name is required')
   }
