@@ -81,7 +81,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     const client = new VercelClient(projectId, teamId, token)
     const service = new FirewallService(client)
 
-    logger.start('Calculating firewall configuration changes...')
+    logger.start(chalk.magenta('Calculating firewall configuration changes...'))
     const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } = await service.getChanges(config)
 
     const hasCustomRuleChanges = toAdd.length > 0 || toUpdate.length > 0 || toDelete.length > 0

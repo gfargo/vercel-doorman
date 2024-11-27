@@ -86,7 +86,7 @@ export class VercelClient {
 
     const data = (await response.json()) as ApiResponse
 
-    logger.debug('fetchActiveFirewallConfig:::', { config: data.active })
+    logger.debug('Live Config Version:', data.active.version)
 
     return data.active
   }
