@@ -46,27 +46,19 @@ export const builder = {
   },
 }
 
+import { promptForCredentials } from '../lib/utils/promptForCredentials'
+
 export const handler = async (argv: Arguments<ListOptions>) => {
   try {
-    // Get token from args or environment
-    const token = argv.token || process.env.VERCEL_TOKEN
-    if (!token) {
-      throw new Error('No Vercel token provided. Use --token or set VERCEL_TOKEN environment variable')
-    }
-
-    const projectId = argv.projectId || process.env.VERCEL_PROJECT_ID
-    if (!projectId) {
-      throw new Error('No Vercel project ID provided. Use --projectId or set VERCEL_PROJECT_ID environment variable')
-    }
-
-    const teamId = argv.teamId || process.env.VERCEL_TEAM_ID
-    if (!teamId) {
-      throw new Error('No Vercel team ID provided. Use --teamId or set VERCEL_TEAM_ID environment variable')
-    }
-
     if (argv.debug) {
       logger.level = LogLevels.debug
     }
+
+    const { token, projectId, teamId } = await promptForCredentials({
+      token: argv.token,
+      projectId: argv.projectId,
+      teamId: argv.teamId,
+    })
 
     const client = new VercelClient(projectId, teamId, token)
 

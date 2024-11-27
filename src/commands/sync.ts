@@ -49,13 +49,10 @@ export const builder = {
   },
 }
 
+import { promptForCredentials } from '../lib/utils/promptForCredentials'
+
 export const handler = async (argv: Arguments<SyncOptions>) => {
   try {
-    const token = argv.token || process.env.VERCEL_TOKEN
-    if (!token) {
-      throw new Error('No Vercel token provided. Use --token or set VERCEL_TOKEN environment variable')
-    }
-
     // Find and read config file
     let configPath = argv.config
     if (!configPath) {
@@ -75,16 +72,11 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     validator.validateConfig(configJson)
     let config: FirewallConfig = configJson
 
-    const projectId = argv.projectId || config.projectId
-    const teamId = argv.teamId || config.teamId
-
-    if (!projectId) {
-      throw new Error('No Project ID provided. Use --projectId or set in config file')
-    }
-
-    if (!teamId) {
-      throw new Error('No Team ID provided. Use --teamId or set in config file')
-    }
+    const { token, projectId, teamId } = await promptForCredentials({
+      token: argv.token,
+      projectId: argv.projectId || config.projectId,
+      teamId: argv.teamId || config.teamId,
+    })
 
     const client = new VercelClient(projectId, teamId, token)
     const service = new FirewallService(client)
