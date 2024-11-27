@@ -1,3 +1,4 @@
+pnpm build:schema
 pnpm lint:fix
 pnpm format:fix
 pnpm test
