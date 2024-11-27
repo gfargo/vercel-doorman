@@ -56,6 +56,8 @@ export const builder = {
   },
 }
 
+import { promptForCredentials } from '../lib/utils/promptForCredentials'
+
 export const handler = async (argv: Arguments<DownloadOptions>) => {
   try {
     if (argv.debug) {
@@ -64,11 +66,6 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
 
     logger.debug('Starting download command')
     logger.debug(`Command arguments: ${JSON.stringify(argv)}`)
-
-    const token = argv.token || process.env.VERCEL_TOKEN
-    if (!token) {
-      throw new Error('No Vercel token provided. Use --token or set VERCEL_TOKEN environment variable')
-    }
 
     // Find and read config file
     let configPath = argv.config
@@ -87,16 +84,11 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     const existingConfig: FirewallConfig = JSON.parse(configContent)
     logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
 
-    const projectId = argv.projectId || existingConfig.projectId
-    const teamId = argv.teamId || existingConfig.teamId
-
-    if (!projectId) {
-      throw new Error('No Project ID provided. Use --projectId or set in config file')
-    }
-
-    if (!teamId) {
-      throw new Error('No Team ID provided. Use --teamId or set in config file')
-    }
+    const { token, projectId, teamId } = await promptForCredentials({
+      token: argv.token,
+      projectId: argv.projectId || existingConfig.projectId,
+      teamId: argv.teamId || existingConfig.teamId,
+    })
 
     logger.debug(`Project ID: ${projectId}, Team ID: ${teamId}`)
 
