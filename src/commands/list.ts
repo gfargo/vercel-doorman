@@ -3,7 +3,8 @@ import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
-import { displayRulesTable } from '../lib/ui/table'
+import { IPBlockingRule } from '../lib/types/configTypes'
+import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
 
 interface ListOptions {
   projectId: string
@@ -69,20 +70,38 @@ export const handler = async (argv: Arguments<ListOptions>) => {
 
     const client = new VercelClient(projectId, teamId, token)
 
-    logger.start(`Fetching firewall rules ...`)
+    logger.start(`Fetching firewall configuration ...`)
     logger.verbose(`Token: ${token}\t projectId: ${projectId}\t teamId: ${teamId}`)
 
-    const rules = await client.fetchActiveFirewallRules()
+    const activeConfig = await client.fetchActiveFirewallConfig()
 
-    logger.info(`Found ${rules.length} firewall rules`)
+    // Convert custom rules to config format for cleaner output
+    const configRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
+    const ipBlockingRules = activeConfig.ips as IPBlockingRule[]
 
-    // Convert to config format for cleaner output
-    const configRules = rules.map(RuleTransformer.fromVercelRule)
+    logger.info(`Found ${configRules.length} custom rules and ${ipBlockingRules.length} IP blocking rules`)
 
     if (argv.format === 'json') {
-      logger.info(JSON.stringify(configRules, null, 2))
+      logger.info(
+        JSON.stringify(
+          {
+            rules: configRules,
+            ips: ipBlockingRules,
+          },
+          null,
+          2,
+        ),
+      )
     } else {
-      displayRulesTable(configRules, { showStatus: false })
+      if (configRules.length > 0) {
+        logger.log('\nCustom Rules:\n')
+        displayRulesTable(configRules, { showStatus: false })
+      }
+
+      if (ipBlockingRules.length > 0) {
+        logger.log('\nIP Blocking Rules:\n')
+        displayIPBlockingTable(ipBlockingRules, { showStatus: false })
+      }
     }
   } catch (error) {
     logger.error(error instanceof Error)

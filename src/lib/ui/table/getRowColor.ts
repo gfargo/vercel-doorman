@@ -1,8 +1,9 @@
 import chalk from 'chalk'
 import { RuleChangeStatus } from '.'
 
-export function getRowColor(status: RuleChangeStatus): (text: string) => string {
+export function getRowColor(status?: RuleChangeStatus): (text: string) => string {
   switch (status) {
+    default:
     case 'unchanged':
       return chalk.white
     case 'modified':

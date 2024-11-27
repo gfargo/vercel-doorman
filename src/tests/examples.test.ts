@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals'
 import { readdirSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { ValidationService } from '../lib/services/ValidationService'
-import { ConfigRule, FirewallConfig, RuleAction } from '../lib/types/configTypes'
+import { CustomRule, FirewallConfig, RuleAction } from '../lib/types/configTypes'
 import { VercelCondition, VercelConditionGroup } from '../lib/types/vercelTypes'
 
 describe('Example Configurations', () => {
@@ -32,7 +32,7 @@ describe('Example Configurations', () => {
     expect(config).toHaveProperty('rules')
     expect(Array.isArray(config.rules)).toBeTruthy()
 
-    config.rules.forEach((rule: ConfigRule) => {
+    config.rules.forEach((rule: CustomRule) => {
       expect(rule).toHaveProperty('name')
       expect(rule).toHaveProperty('action')
       expect(rule).toHaveProperty('active')
@@ -64,7 +64,7 @@ describe('Example Configurations', () => {
     const configContent = readFileSync(configPath, 'utf8')
     const config = JSON.parse(configContent) as FirewallConfig
 
-    config.rules.forEach((rule: ConfigRule) => {
+    config.rules.forEach((rule: CustomRule) => {
       if (typeof rule.action === 'object') {
         const action = rule.action as RuleAction
         expect(action).toHaveProperty('type')

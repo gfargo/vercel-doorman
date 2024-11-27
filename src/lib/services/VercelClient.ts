@@ -1,10 +1,13 @@
-import { VercelRule } from '../types/vercelTypes'
+import { logger } from '../logger'
+import { VercelIPBlockingRule, VercelRule } from '../types/vercelTypes'
 
 export interface ApiResponse {
   active: {
     version: number
     firewallEnabled: boolean
+    crs: unknown
     rules: VercelRule[]
+    ips: VercelIPBlockingRule[]
     ownerId: string
     updatedAt: string
     id: string
@@ -44,8 +47,9 @@ export class VercelClient {
    * Constructs the URL for the Vercel API requests.
    * @returns The constructed URL.
    */
-  private getUrl() {
-    return `${VERCEL_API_BASE_URL}?projectId=${this.projectId}&teamId=${this.teamId}`
+  private getUrl(version?: number) {
+    const baseUrl = version !== undefined ? `${VERCEL_API_BASE_URL}/${version}` : VERCEL_API_BASE_URL
+    return `${baseUrl}?projectId=${this.projectId}&teamId=${this.teamId}`
   }
 
   /**
@@ -81,6 +85,9 @@ export class VercelClient {
     }
 
     const data = (await response.json()) as ApiResponse
+
+    logger.debug('fetchActiveFirewallConfig:::', { config: data.active })
+
     return data.active
   }
 
@@ -160,6 +167,65 @@ export class VercelClient {
     if (!response.ok) {
       const error = await response.text()
       throw new Error(`Error deleting firewall rule: ${response.statusText}\n${error}`)
+    }
+  }
+
+  /**
+   * Updates an existing IP blocking rule or creates a new one if the rule ID is not provided.
+   */
+  async updateIPBlockingRule(rule: VercelIPBlockingRule): Promise<VercelIPBlockingRule> {
+    const isNewRule = !rule.id || rule.id === '-'
+    const body = {
+      action: isNewRule ? 'ip.insert' : 'ip.update',
+      id: isNewRule ? null : rule.id,
+      value: {
+        action: rule.action,
+        hostname: rule.hostname,
+        ip: rule.ip,
+        ...(rule.notes && { notes: rule.notes }),
+      },
+    }
+
+    const response = await fetch(this.getUrl(), {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Error ${isNewRule ? 'creating' : 'updating'} IP blocking rule: ${response.statusText}\n${error}`)
+    }
+
+    return (await response.json()) as VercelIPBlockingRule
+  }
+
+  /**
+   * Creates a new IP blocking rule.
+   */
+  async createIPBlockingRule(rule: Omit<VercelIPBlockingRule, 'id'>): Promise<VercelIPBlockingRule> {
+    return this.updateIPBlockingRule({ ...rule, id: '-' })
+  }
+
+  /**
+   * Deletes an existing IP blocking rule.
+   */
+  async deleteIPBlockingRule(rule: VercelIPBlockingRule): Promise<void> {
+    const body = JSON.stringify({
+      action: 'ip.remove',
+      id: rule.id,
+      value: null,
+    })
+
+    const response = await fetch(this.getUrl(), {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body,
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Error deleting IP blocking rule: ${response.statusText}\n${error}`)
     }
   }
 }

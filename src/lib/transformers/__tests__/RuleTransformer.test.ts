@@ -1,11 +1,11 @@
-import { ConfigRule, RuleAction } from '../../types/configTypes'
+import { CustomRule, RuleAction } from '../../types/configTypes'
 import { VercelRule } from '../../types/vercelTypes'
 import { RuleTransformer } from '../RuleTransformer'
 
 describe('RuleTransformer', () => {
   describe('toVercelRule', () => {
     it('should transform a legacy rule with simple type and values', () => {
-      const configRule: ConfigRule = {
+      const configRule: CustomRule = {
         name: 'block-ip',
         description: 'Block specific IP',
         type: 'ip_address',
@@ -40,7 +40,7 @@ describe('RuleTransformer', () => {
     })
 
     it('should preserve existing conditionGroup when provided', () => {
-      const configRule: ConfigRule = {
+      const configRule: CustomRule = {
         name: 'complex-rule',
         conditionGroup: [
           {
@@ -76,7 +76,7 @@ describe('RuleTransformer', () => {
     })
 
     it('should handle complex action configuration', () => {
-      const configRule: ConfigRule = {
+      const configRule: CustomRule = {
         name: 'rate-limit',
         type: 'path',
         values: ['/api'],
@@ -109,7 +109,7 @@ describe('RuleTransformer', () => {
     })
 
     it('should preserve rule ID when present', () => {
-      const configRule: ConfigRule = {
+      const configRule: CustomRule = {
         id: 'fr1_abc123',
         name: 'test-rule',
         type: 'ip_address',
@@ -296,13 +296,13 @@ describe('RuleTransformer', () => {
         values: ['1.1.1.1'],
         action: 'deny',
         active: true,
-      } as ConfigRule
+      } as CustomRule
 
       expect(() => RuleTransformer.toVercelRule(invalidRule)).toThrow('Rule name is required')
     })
 
     it('should handle invalid action type', () => {
-      const ruleWithInvalidAction: ConfigRule = {
+      const ruleWithInvalidAction: CustomRule = {
         name: 'test-rule',
         type: 'ip_address',
         values: ['1.1.1.1'],
@@ -315,7 +315,7 @@ describe('RuleTransformer', () => {
     })
 
     it('should handle invalid condition operator', () => {
-      const ruleWithInvalidOp: ConfigRule = {
+      const ruleWithInvalidOp: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {
@@ -337,7 +337,7 @@ describe('RuleTransformer', () => {
     })
 
     it('should handle invalid condition type', () => {
-      const ruleWithInvalidType: ConfigRule = {
+      const ruleWithInvalidType: CustomRule = {
         name: 'test-rule',
         conditionGroup: [
           {
@@ -380,7 +380,7 @@ describe('RuleTransformer', () => {
     // })
 
     it('should handle invalid redirect configuration', () => {
-      const ruleWithInvalidRedirect: ConfigRule = {
+      const ruleWithInvalidRedirect: CustomRule = {
         name: 'test-rule',
         type: 'path',
         values: ['/old'],
@@ -417,7 +417,7 @@ describe('RuleTransformer', () => {
     })
 
     it('should handle invalid action duration format', () => {
-      const ruleWithInvalidDuration: ConfigRule = {
+      const ruleWithInvalidDuration: CustomRule = {
         name: 'test-rule',
         type: 'path',
         values: ['/api'],
