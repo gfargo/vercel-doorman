@@ -1,6 +1,5 @@
 {
   "semi": false,
   "printWidth": 120,
-  "singleQuote": true,
-  "typescript.format.semicolons": "remove"
+  "singleQuote": true
 }
