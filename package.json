@@ -24,7 +24,6 @@
     "build:watch": "tsup-node --watch",
     "clean": "rimraf dist",
     "commit": "cz",
-    "commit:coco": "git commit -m \"$(coco -a 'OUTPUT MUST FOLLOW CZ CONVENTIONAL COMMIT RULES e.g TYPE and SUBJECT in BODY, BODY NO LONGER THAN 280 CHARACTERS')\"",
     "commitlint": "commitlint --edit",
     "compile": "tsc",
     "format": "prettier . --check",
