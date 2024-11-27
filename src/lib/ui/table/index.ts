@@ -5,6 +5,7 @@ import { FirewallConfig } from '../../types/configTypes'
 import { formatAction } from './formatAction'
 import { formatChangeStatus } from './formatChangeStatus'
 import { formatConditionGroups } from './formatConditionGroups'
+import { formatIPBlockingRule } from './formatIPBlockingRule'
 import { getRowColor } from './getRowColor'
 
 export type RuleChangeStatus = 'unchanged' | 'modified' | 'new' | 'deleted'
@@ -63,6 +64,57 @@ export function displayRulesTable(
 
     if (hasStatus) {
       rowColumns.unshift(rowColor(formatChangeStatus((rule as RuleWithChangeStatus).changeStatus)))
+    }
+
+    table.push(rowColumns)
+  })
+
+  logger.log(table.toString())
+}
+
+export type IPBlockingRuleWithStatus = FirewallConfig['ips'][number] & { changeStatus?: RuleChangeStatus }
+
+export function displayIPBlockingTable(
+  rules: IPBlockingRuleWithStatus[],
+  { showStatus }: { showStatus: boolean },
+): void {
+  const tableHead = [
+    chalk.bold.gray('ID'),
+    chalk.bold.gray('IP'),
+    chalk.bold.gray('Hostname'),
+    chalk.bold.gray('Notes'),
+    chalk.bold.gray('Action'),
+  ]
+  const tableColAligns = ['left', 'left', 'left', 'left', 'center'] as HorizontalAlignment[]
+
+  if (showStatus) {
+    tableHead.unshift(chalk.bold.gray('Status'))
+    tableColAligns.unshift('center')
+  }
+
+  const table = new Table({
+    head: tableHead,
+    colAligns: tableColAligns,
+    wrapOnWordBoundary: true,
+    wordWrap: true,
+    truncate: '...',
+  })
+
+  rules.forEach((rule) => {
+    const hasStatus = rule.changeStatus !== undefined && showStatus
+    const rowColor = hasStatus ? getRowColor(rule.changeStatus) : chalk.white
+    const formattedRule = formatIPBlockingRule(rule)
+
+    const rowColumns = [
+      rowColor(formattedRule.id),
+      rowColor(formattedRule.ip),
+      rowColor(formattedRule.hostname),
+      rowColor(formattedRule.notes),
+      formattedRule.status,
+    ]
+
+    if (hasStatus) {
+      rowColumns.unshift(rowColor(formatChangeStatus(rule.changeStatus!)))
     }
 
     table.push(rowColumns)
