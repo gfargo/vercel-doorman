@@ -19,7 +19,7 @@ export interface RuleAction {
   duration?: string // e.g., "1h", "1d", "permanent"
 }
 
-export interface ConfigRule {
+export interface CustomRule {
   id?: string // Vercel rule ID, present for existing rules
   name: string
   description?: string
@@ -44,8 +44,8 @@ export interface IPBlockingRule {
 }
 
 export interface FirewallConfig extends ProjectConfig {
-  rules: ConfigRule[]
-  ips: IPBlockingRule[]
+  rules: CustomRule[]
+  ips?: IPBlockingRule[]
   version?: number
   updatedAt?: string
 }
