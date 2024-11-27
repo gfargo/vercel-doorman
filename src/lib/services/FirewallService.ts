@@ -159,10 +159,13 @@ export class FirewallService {
         logger.debug(`IP blocking rule updated: ${updatedRule.id}`)
       }
 
-      logger.box(
-        `Sync completed.\n` +
-          `Custom Rules - Added: ${chalk.green(addedRules.length)}, Updated: ${chalk.cyan(updatedRules.length)}, Deleted: ${chalk.red(deletedRules.length)}\n` +
-          `IP Rules - Added: ${chalk.green(addedIPRules.length)}, Updated: ${chalk.cyan(updatedIPRules.length)}, Deleted: ${chalk.red(deletedIPRules.length)}`,
+      logger.debug(
+        `${chalk.underline('Custom Rules:')} ${chalk.green('Added:')} ${chalk.green(addedRules.length)}, ` +
+          `${chalk.cyan('Updated:')} ${chalk.cyan(updatedRules.length)}, ${chalk.red('Deleted:')} ${chalk.red(deletedRules.length)}`,
+      )
+      logger.debug(
+        `${chalk.underline('IP Rules:')} ${chalk.green('Added:')} ${chalk.green(addedIPRules.length)}, ` +
+          `${chalk.cyan('Updated:')} ${chalk.cyan(updatedIPRules.length)}, ${chalk.red('Deleted:')} ${chalk.red(deletedIPRules.length)}`,
       )
 
       return {
