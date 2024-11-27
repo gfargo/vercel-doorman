@@ -7,7 +7,7 @@ import { ValidationService } from '../lib/services/ValidationService'
 import { VercelClient } from '../lib/services/VercelClient'
 import { FirewallConfig } from '../lib/types/configTypes'
 import { prompt } from '../lib/ui/prompt'
-import { displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
+import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
@@ -89,24 +89,47 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     const client = new VercelClient(projectId, teamId, token)
     const service = new FirewallService(client)
 
-    logger.start('Calculating firewall rule changes...')
-    const { toAdd, toUpdate, toDelete } = await service.getChanges(config)
+    logger.start('Calculating firewall configuration changes...')
+    const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } = await service.getChanges(config)
 
-    if (toAdd.length === 0 && toUpdate.length === 0 && toDelete.length === 0) {
-      logger.success('No changes detected. Firewall rules are in sync.')
+    const hasCustomRuleChanges = toAdd.length > 0 || toUpdate.length > 0 || toDelete.length > 0
+    const hasIPRuleChanges = ipsToAdd.length > 0 || ipsToUpdate.length > 0 || ipsToDelete.length > 0
+    const hasVersionChange = config.version !== version
+
+    if (!hasCustomRuleChanges && !hasIPRuleChanges && !hasVersionChange) {
+      logger.success(chalk.green('No changes detected. Firewall rules are in sync.'))
       return
     }
 
-    logger.log(chalk.bold('\nProposed Firewall Rule Changes:\n'))
-    displayRulesTable(
-      [
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...toAdd.map((rule: any) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id as string })),
-        ...toUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id as string })),
-        ...toDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id as string })),
-      ],
-      { showStatus: true },
-    )
+    if (hasCustomRuleChanges) {
+      logger.log(chalk.bold('\nProposed Custom Rule Changes:\n'))
+      displayRulesTable(
+        [
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ...toAdd.map((rule: any) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id as string })),
+          ...toUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id as string })),
+          ...toDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id as string })),
+        ],
+        { showStatus: true },
+      )
+    }
+
+    if (hasIPRuleChanges) {
+      logger.log(chalk.bold('\nProposed IP Blocking Rule Changes:\n'))
+      displayIPBlockingTable(
+        [
+          ...ipsToAdd.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id || undefined })),
+          ...ipsToUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id || undefined })),
+          ...ipsToDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id || undefined })),
+        ],
+        { showStatus: true },
+      )
+    }
+
+    if (hasVersionChange) {
+      logger.log(chalk.bold('\nProposed Metadata Changes:\n'))
+      logger.log(`  - Version: ${chalk.red(config.version)} ${chalk.dim('->')} ${chalk.green(version)}`)
+    }
 
     const confirmed = await prompt('Do you want to apply these changes?', { type: 'confirm' })
     if (!confirmed) {
@@ -117,7 +140,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
     logger.start('Starting firewall rules sync...')
 
     // Create backup of original config
-    const backupConfig = JSON.parse(JSON.stringify(config))
+    const backupConfig = JSON.parse(JSON.stringify(config)) as FirewallConfig
 
     // Perform sync operation
     const syncResult = await service.syncRules(config, {
@@ -164,6 +187,8 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
             )
             return ruleToUpdate ? { ...rule, id: ruleToUpdate.newId } : rule
           }),
+          // Preserve IP blocking rules
+          ips: config.ips || [],
         }
 
         writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2))
@@ -171,6 +196,9 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       } else {
         logger.info(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
       }
+    } else if (backupConfig.version !== config.version) {
+      writeFileSync(configPath, JSON.stringify(config, null, 2))
+      logger.success('Local config updated with new version and metadata')
     }
   } catch (error) {
     if (error instanceof SyntaxError) {

@@ -5,9 +5,9 @@ import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
-import { FirewallConfig } from '../lib/types/configTypes'
+import { FirewallConfig, IPBlockingRule } from '../lib/types/configTypes'
 import { prompt } from '../lib/ui/prompt'
-import { displayRulesTable } from '../lib/ui/table'
+import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
@@ -102,14 +102,21 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
 
     const client = new VercelClient(projectId, teamId, token)
 
-    logger.start('Fetching remote firewall rules...')
+    logger.start('Fetching remote firewall configuration...')
     const activeConfig = await client.fetchActiveFirewallConfig()
     logger.debug(`Fetched Vercel config: ${JSON.stringify(activeConfig)}`)
-    const configRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
-    logger.debug(`Transformed config rules: ${JSON.stringify(configRules)}`)
 
-    logger.log(chalk.bold('\nRemote Firewall Rules to Download:\n'))
+    const configRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
+    logger.debug(`Transformed custom rules: ${JSON.stringify(configRules)}`)
+
+    const ipBlockingRules = activeConfig.ips as IPBlockingRule[]
+    logger.debug(`IP blocking rules: ${JSON.stringify(ipBlockingRules)}`)
+
+    logger.log(chalk.bold('\nRemote Custom Rules to Download:\n'))
     displayRulesTable(configRules, { showStatus: false })
+
+    logger.log(chalk.bold('\nRemote IP Blocking Rules to Download:\n'))
+    displayIPBlockingTable(ipBlockingRules, { showStatus: false })
 
     // If dry run, stop here
     if (argv.dryRun) {
@@ -125,9 +132,10 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
 
     const newConfig: FirewallConfig = {
       ...existingConfig,
-      rules: configRules,
       version: activeConfig.version,
       updatedAt: activeConfig.updatedAt,
+      rules: configRules,
+      ips: ipBlockingRules,
     }
     logger.debug(`New config to be written: ${JSON.stringify(newConfig)}`)
     writeFileSync(configPath, JSON.stringify(newConfig, null, 2))
