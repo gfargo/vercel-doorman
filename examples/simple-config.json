@@ -1,0 +1,38 @@
+{
+  "projectId": "prj_...",
+  "teamId": "team_...",
+  "rules": [
+    {
+      "name": "Block Bad IPs",
+      "description": "Block known malicious IP addresses",
+      "type": "ip_address",
+      "values": ["192.168.1.1", "10.0.0.0/24"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Block ASNs",
+      "description": "Block traffic from specific autonomous systems",
+      "type": "geo_as_number",
+      "values": ["12345", "67890"],
+      "action": "deny",
+      "active": true
+    },
+    {
+      "name": "Challenge API Requests",
+      "description": "Challenge requests to API endpoints without session cookie",
+      "type": "path",
+      "values": ["/api"],
+      "action": "challenge",
+      "active": true
+    },
+    {
+      "name": "Block No Cookie",
+      "description": "Block requests without specific cookie",
+      "type": "cookie",
+      "values": ["_session"],
+      "action": "deny",
+      "active": true
+    }
+  ]
+}
