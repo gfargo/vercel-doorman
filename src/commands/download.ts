@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { LogLevels } from 'consola'
-import { readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { dirname } from 'path'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
 import { VercelClient } from '../lib/services/VercelClient'
@@ -71,18 +72,32 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     let configPath = argv.config
     if (!configPath) {
       configPath = await ConfigFinder.findConfig()
-      if (!configPath) {
-        throw new Error(
-          `No config file found. Create ${ConfigFinder.getDefaultConfigPath()} or specify path with --config`,
-        )
+    }
+
+    let existingConfig: Partial<FirewallConfig> = {}
+
+    if (!configPath) {
+      const createNewConfig = await prompt('No config file found. Would you like to create a new one?', {
+        type: 'confirm',
+      })
+      if (!createNewConfig) {
+        logger.info(chalk.yellow('Download cancelled. No config file created.'))
+        return
+      }
+      configPath = ConfigFinder.getDefaultConfigPath()
+      logger.info(`Creating new config file at ${configPath}`)
+    } else {
+      try {
+        const configContent = readFileSync(configPath, 'utf8')
+        existingConfig = JSON.parse(configContent)
+        logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
+      } catch (error) {
+        logger.warn(`Failed to read or parse existing config file: ${error.message}`)
+        logger.info('Proceeding with empty configuration')
       }
     }
-    logger.debug(`Config file path: ${configPath}`)
 
-    // Read and parse existing config file to get project settings
-    const configContent = readFileSync(configPath, 'utf8')
-    const existingConfig: FirewallConfig = JSON.parse(configContent)
-    logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
+    logger.debug(`Config file path: ${configPath}`)
 
     const { token, projectId, teamId } = await promptForCredentials({
       token: argv.token,
@@ -104,11 +119,19 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     const ipBlockingRules = activeConfig.ips as IPBlockingRule[]
     logger.debug(`IP blocking rules: ${JSON.stringify(ipBlockingRules)}`)
 
-    logger.log(chalk.bold('\nRemote Custom Rules to Download:\n'))
-    displayRulesTable(configRules, { showStatus: false })
+    if (configRules.length > 0) {
+      logger.log(chalk.bold('\nRemote Custom Rules to Download:\n'))
+      displayRulesTable(configRules, { showStatus: false })
+    } else {
+      logger.info('No custom rules to download...')
+    }
 
-    logger.log(chalk.bold('\nRemote IP Blocking Rules to Download:\n'))
-    displayIPBlockingTable(ipBlockingRules, { showStatus: false })
+    if (ipBlockingRules.length > 0) {
+      logger.log(chalk.bold('\nRemote IP Blocking Rules to Download:\n'))
+      displayIPBlockingTable(ipBlockingRules, { showStatus: false })
+    } else {
+      logger.info('No IP blocking rules to download...')
+    }
 
     // If dry run, stop here
     if (argv.dryRun) {
@@ -124,14 +147,24 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
 
     const newConfig: FirewallConfig = {
       ...existingConfig,
+      projectId,
+      teamId,
       version: activeConfig.version,
       updatedAt: activeConfig.updatedAt,
       rules: configRules,
       ips: ipBlockingRules,
     }
     logger.debug(`New config to be written: ${JSON.stringify(newConfig)}`)
+    logger.info(`Saving configuration with version: ${newConfig.version}`)
+
+    // Ensure the directory exists before writing the file
+    const configDir = dirname(configPath)
+    if (!existsSync(configDir)) {
+      mkdirSync(configDir, { recursive: true })
+    }
+
     writeFileSync(configPath, JSON.stringify(newConfig, null, 2))
-    logger.success(`\nSuccessfully downloaded and updated ${configPath}`)
+    logger.success(`Successfully downloaded and updated ${configPath}`)
   } catch (error) {
     if (error instanceof SyntaxError) {
       logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
