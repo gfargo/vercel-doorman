@@ -329,7 +329,7 @@ export class FirewallService {
         return true
       }
       // Rule should match our local config if unchanged
-      const localRule = config.ips.find((r) => r.id === remoteRule.id)
+      const localRule = config.ips?.find((r) => r.id === remoteRule.id)
       if (!localRule) {
         return true
       }

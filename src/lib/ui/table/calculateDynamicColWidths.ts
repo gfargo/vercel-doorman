@@ -1,5 +1,6 @@
 /**
  * Calculates dynamic column widths based on available terminal width
+ *
  * @param terminalWidth - Current terminal width in characters
  * @param minWidths - Array of minimum widths for each column
  * @param maxWidths - Array of maximum widths for each column (null for unlimited)
@@ -36,14 +37,8 @@ export const calculateDynamicColWidths = (
 
   // Default terminal width if not available
   const maxWidth = terminalWidth || 400
-
-  // Initialize the column widths with minimum values
   const colWidths = [...minWidths]
-
-  // Calculate total minimum width needed
   const totalMinWidth = minWidths.reduce((sum, width) => sum + width, 0)
-
-  // Calculate remaining space to distribute
   let remainingWidth = maxWidth - totalMinWidth - 28 // Leave some padding for status and padding
 
   if (remainingWidth > 0 && flexColumns.length > 0) {

@@ -32,16 +32,13 @@ const RuleTableConfig: ColumnConfig = {
   minWidths: [10, 28, 24, 5, 8, 35],
   // Maximum widths (null means unlimited)
   maxWidths: [15, 36, 26, 8, 12, null],
-  // Specify which columns can flex (0-based indices)
   flexColumns: [0, 1, 2, 5],
 }
 
 const IPTableConfig: ColumnConfig = {
-  // Minimum widths for each column [id, name, description, status, time, details]
+  // Minimum widths for each column [id, ip, hostname, notes, action]
   minWidths: [10, 28, 24, 5, 12],
-  // Maximum widths (null means unlimited)
   maxWidths: [20, 32, 26, null, 16],
-  // Specify which columns can flex (0-based indices)
   flexColumns: [0, 1, 3],
 }
 
