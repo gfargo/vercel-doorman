@@ -3,8 +3,9 @@ import { LogLevels } from 'consola'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
 import { Arguments } from 'yargs'
+import { z } from 'zod'
 import { logger } from '../lib/logger'
-import { FirewallConfig, IPBlockingRule } from '../lib/schemas/firewallSchemas'
+import { FirewallConfig, IPBlockingRule, configVersionSchema } from '../lib/schemas/firewallSchemas'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
 import { prompt } from '../lib/ui/prompt'
@@ -19,12 +20,18 @@ interface DownloadOptions {
   token?: string
   dryRun?: boolean
   debug?: boolean
+  configVersion?: number
 }
 
-export const command = 'download'
-export const desc = 'Download remote Vercel Firewall rules and update local config'
+export const command = 'download [configVersion]'
+export const desc =
+  'Download remote Vercel Firewall rules and update local config, optionally for a specific configuration version'
 
 export const builder = {
+  configVersion: {
+    type: 'number',
+    description: 'Specific configuration version to download (defaults to latest)',
+  },
   config: {
     alias: 'c',
     type: 'string',
@@ -107,16 +114,31 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
 
     logger.debug(`Project ID: ${projectId}, Team ID: ${teamId}`)
 
+    // Validate version if provided
+    if (argv.configVersion !== undefined) {
+      try {
+        configVersionSchema.parse(argv.configVersion)
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          logger.error('Invalid configuration version number. Version must be a positive integer.')
+          process.exit(1)
+        }
+        throw error
+      }
+    }
+
     const client = new VercelClient(projectId, teamId, token)
 
-    logger.start('Fetching remote firewall configuration...')
-    const activeConfig = await client.fetchActiveFirewallConfig()
-    logger.debug(`Fetched Vercel config: ${JSON.stringify(activeConfig)}`)
+    logger.start(
+      `Fetching remote firewall configuration${argv.configVersion ? ` version ${argv.configVersion}` : ''} ...`,
+    )
+    const config = await client.fetchFirewallConfig(argv.configVersion)
+    logger.debug(`Fetched Vercel config: ${JSON.stringify(config)}`)
 
-    const configRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
+    const configRules = config.rules.map(RuleTransformer.fromVercelRule)
     logger.debug(`Transformed custom rules: ${JSON.stringify(configRules)}`)
 
-    const ipBlockingRules = activeConfig.ips as IPBlockingRule[]
+    const ipBlockingRules = config.ips as IPBlockingRule[]
     logger.debug(`IP blocking rules: ${JSON.stringify(ipBlockingRules)}`)
 
     if (configRules.length > 0) {
@@ -139,7 +161,10 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
       return
     }
 
-    const confirmed = await prompt('Do you want to download these rules?', { type: 'confirm' })
+    const confirmed = await prompt(
+      `Do you want to download${argv.configVersion ? ` version ${argv.configVersion}` : ' the latest version'} of these rules? This will overwrite your local configuration.`,
+      { type: 'confirm' },
+    )
     if (!confirmed) {
       logger.info(chalk.yellow('Download cancelled.'))
       return
@@ -149,8 +174,8 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
       ...existingConfig,
       projectId,
       teamId,
-      version: activeConfig.version,
-      updatedAt: activeConfig.updatedAt,
+      version: config.version,
+      updatedAt: config.updatedAt,
       rules: configRules,
       ips: ipBlockingRules,
     }

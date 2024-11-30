@@ -42,7 +42,7 @@ export class FirewallService {
       }
 
       logger.debug('Fetching existing firewall configuration')
-      const activeConfig = await this.client.fetchActiveFirewallConfig()
+      const activeConfig = await this.client.fetchFirewallConfig()
       logger.debug(`Fetched ${activeConfig.rules.length} custom rules and ${activeConfig.ips.length} IP blocking rules`)
 
       // Handle custom rules
@@ -288,7 +288,7 @@ export class FirewallService {
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
     // Fetch latest config with retries
-    const activeConfig = await retry(() => this.client.fetchActiveFirewallConfig(), {
+    const activeConfig = await retry(() => this.client.fetchFirewallConfig(), {
       maxAttempts: 3,
       delayMs: 1000,
       backoff: true,
