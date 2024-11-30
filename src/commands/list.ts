@@ -2,7 +2,8 @@ import chalk from 'chalk'
 import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { IPBlockingRule } from '../lib/schemas/firewallSchemas'
+import { IPBlockingRule, configVersionSchema } from '../lib/schemas/firewallSchemas'
+import { z } from 'zod'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
@@ -14,12 +15,17 @@ interface ListOptions {
   token?: string
   format?: 'json' | 'table'
   debug: boolean
+  configVersion?: number
 }
 
-export const command = 'list'
-export const desc = 'List current Vercel Firewall rules'
+export const command = 'list [configVersion]'
+export const desc = 'List Vercel Firewall rules, optionally for a specific configuration version'
 
 export const builder = {
+  configVersion: {
+    type: 'number',
+    description: 'Specific configuration version to fetch (defaults to latest)',
+  },
   projectId: {
     alias: 'p',
     type: 'string',
@@ -60,18 +66,31 @@ export const handler = async (argv: Arguments<ListOptions>) => {
       teamId: argv.teamId,
     })
 
+    // Validate version if provided
+    if (argv.configVersion !== undefined) {
+      try {
+        configVersionSchema.parse(argv.configVersion)
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          logger.error('Invalid configuration version number. Version must be a positive integer.')
+          process.exit(1)
+        }
+        throw error
+      }
+    }
+
     const client = new VercelClient(projectId, teamId, token)
 
-    logger.start(`Fetching firewall configuration ...`)
+    logger.start(`Fetching firewall configuration${argv.configVersion ? ` version ${argv.configVersion}` : ''} ...`)
     logger.verbose(`Token: ${token}\t projectId: ${projectId}\t teamId: ${teamId}`)
 
-    const activeConfig = await client.fetchActiveFirewallConfig()
+    const config = await client.fetchFirewallConfig(argv.configVersion)
 
     // Convert custom rules to config format for cleaner output
-    const configRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
-    const ipBlockingRules = activeConfig.ips as IPBlockingRule[]
+    const configRules = config.rules.map(RuleTransformer.fromVercelRule)
+    const ipBlockingRules = config.ips as IPBlockingRule[]
 
-    const lastUpdated = new Date(activeConfig.updatedAt)
+    const lastUpdated = new Date(config.updatedAt)
     const formattedDate = new Intl.DateTimeFormat('en-US', {
       dateStyle: 'medium',
       timeStyle: 'medium',
@@ -79,15 +98,15 @@ export const handler = async (argv: Arguments<ListOptions>) => {
 
     logger.info(
       `Found ${chalk.cyan(configRules.length)} custom rules and ${chalk.cyan(ipBlockingRules.length)} IP blocking rules\n` +
-        chalk.dim(`Version: ${chalk.yellow(activeConfig.version)} • Last Updated: ${chalk.yellow(formattedDate)}`),
+        chalk.dim(`Version: ${chalk.yellow(config.version)} • Last Updated: ${chalk.yellow(formattedDate)}`),
     )
 
     if (argv.format === 'json') {
       logger.info(
         JSON.stringify(
           {
-            version: activeConfig.version,
-            updatedAt: activeConfig.updatedAt,
+            version: config.version,
+            updatedAt: config.updatedAt,
             lastUpdated: formattedDate,
             rules: configRules,
             ips: ipBlockingRules,
