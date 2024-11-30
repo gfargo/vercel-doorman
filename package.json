@@ -1,6 +1,6 @@
 {
   "name": "vercel-doorman",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Manage Vercel Firewall rules in code",
   "bin": {
     "vercel-doorman": "./bin/run"
