@@ -1,19 +1,25 @@
 import { logger } from '../logger'
 import { VercelIPBlockingRule, VercelRule } from '../schemas/firewallSchemas'
 
-export interface ApiResponse {
-  active: {
-    version: number
-    firewallEnabled: boolean
-    crs: unknown
-    rules: VercelRule[]
-    ips: VercelIPBlockingRule[]
-    ownerId: string
-    updatedAt: string
-    id: string
-    projectKey: string
-  }
+export type ApiResponse = LatestConfigResponse | TargetVersionConfig
+
+export type TargetVersionConfig = VercelConfig
+
+export type LatestConfigResponse = {
+  active: VercelConfig
 }
+interface VercelConfig {
+  version: number
+  firewallEnabled: boolean
+  crs: unknown
+  rules: VercelRule[]
+  ips: VercelIPBlockingRule[]
+  ownerId: string
+  updatedAt: string
+  id: string
+  projectKey: string
+}
+
 export const VERCEL_API_BASE_URL = 'https://api.vercel.com/v1/security/firewall/config'
 
 /**
@@ -47,8 +53,9 @@ export class VercelClient {
    * Constructs the URL for the Vercel API requests.
    * @returns The constructed URL.
    */
-  private getUrl(version?: number) {
-    const baseUrl = version !== undefined ? `${VERCEL_API_BASE_URL}/${version}` : VERCEL_API_BASE_URL
+  private getUrl(configVersion?: number) {
+    const baseUrl = configVersion !== undefined ? `${VERCEL_API_BASE_URL}/${configVersion}` : VERCEL_API_BASE_URL
+    logger.debug('API URL:', baseUrl)
     return `${baseUrl}?projectId=${this.projectId}&teamId=${this.teamId}`
   }
 
@@ -69,12 +76,13 @@ export class VercelClient {
   }
 
   /**
-   * Fetches the active firewall config for the Vercel project.
-   * @returns A promise that resolves to the active firewall config.
+   * Fetches the firewall config for the Vercel project.
+   * @param configVersion - Optional version number to fetch a specific config version
+   * @returns A promise that resolves to the firewall config.
    * @throws An error if the fetch request fails.
    */
-  async fetchActiveFirewallConfig(): Promise<ApiResponse['active']> {
-    const response = await fetch(this.getUrl(), {
+  async fetchFirewallConfig(configVersion?: number): Promise<VercelConfig> {
+    const response = await fetch(this.getUrl(configVersion), {
       method: 'GET',
       headers: this.getHeaders(),
     })
@@ -86,9 +94,13 @@ export class VercelClient {
 
     const data = (await response.json()) as ApiResponse
 
-    logger.debug('Live Config Version:', data.active.version)
+    logger.debug('Config Version:', configVersion ?? 'latest')
 
-    return data.active
+    if (configVersion) {
+      return data as TargetVersionConfig
+    }
+
+    return (data as LatestConfigResponse).active
   }
 
   /**
@@ -97,7 +109,7 @@ export class VercelClient {
    * @throws An error if the fetch request fails.
    */
   async fetchActiveFirewallRules(): Promise<VercelRule[]> {
-    const data = await this.fetchActiveFirewallConfig()
+    const data = await this.fetchFirewallConfig()
     return data.rules
   }
 

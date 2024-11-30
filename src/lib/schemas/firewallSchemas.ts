@@ -20,6 +20,8 @@ import type {
 } from '../types/vercelTypes'
 
 // Basic schemas
+export const configVersionSchema = z.number().int().positive().optional()
+
 export const ipAddressSchema = z
   .string()
   .ip()
