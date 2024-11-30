@@ -79,8 +79,8 @@ export interface VercelRule {
 
 export interface VercelIPBlockingRule {
   action: 'deny'
+  ip: string
   hostname: string
   notes?: string
   id?: string | null
-  ip: string
 }

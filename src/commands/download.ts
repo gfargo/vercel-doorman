@@ -4,9 +4,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
+import { FirewallConfig, IPBlockingRule } from '../lib/schemas/firewallSchemas'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
-import { FirewallConfig, IPBlockingRule } from '../lib/types/configTypes'
 import { prompt } from '../lib/ui/prompt'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
 import { ConfigFinder } from '../lib/utils/configFinder'
@@ -92,7 +92,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
         existingConfig = JSON.parse(configContent)
         logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
       } catch (error) {
-        logger.warn(`Failed to read or parse existing config file: ${error.message}`)
+        logger.error(error)
         logger.info('Proceeding with empty configuration')
       }
     }

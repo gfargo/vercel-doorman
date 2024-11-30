@@ -13,18 +13,6 @@ importers:
 
   .:
     dependencies:
-      '@semantic-release/changelog':
-        specifier: ^6.0.3
-        version: 6.0.3(semantic-release@24.2.0(typescript@5.4.5))
-      '@semantic-release/git':
-        specifier: ^10.0.1
-        version: 10.0.1(semantic-release@24.2.0(typescript@5.4.5))
-      '@semantic-release/github':
-        specifier: ^11.0.1
-        version: 11.0.1(semantic-release@24.2.0(typescript@5.4.5))
-      '@semantic-release/npm':
-        specifier: ^12.0.1
-        version: 12.0.1(semantic-release@24.2.0(typescript@5.4.5))
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -46,6 +34,9 @@ importers:
       yargs:
         specifier: ^17.7.2
         version: 17.7.2
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
     devDependencies:
       '@commitlint/cli':
         specifier: ^18.6.1
@@ -56,6 +47,18 @@ importers:
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
+      '@semantic-release/changelog':
+        specifier: ^6.0.3
+        version: 6.0.3(semantic-release@24.2.0(typescript@5.4.5))
+      '@semantic-release/git':
+        specifier: ^10.0.1
+        version: 10.0.1(semantic-release@24.2.0(typescript@5.4.5))
+      '@semantic-release/github':
+        specifier: ^11.0.1
+        version: 11.0.1(semantic-release@24.2.0(typescript@5.4.5))
+      '@semantic-release/npm':
+        specifier: ^12.0.1
+        version: 12.0.1(semantic-release@24.2.0(typescript@5.4.5))
       '@tsconfig/node20':
         specifier: ^20.1.4
         version: 20.1.4
@@ -3920,6 +3923,9 @@ packages:
   yoctocolors@2.0.2:
     resolution: {integrity: sha512-Ct97huExsu7cWeEjmrXlofevF8CvzUglJ4iGUet5B8xn1oumtAZBpHU4GzYuoE6PVqcZ5hghtBrSlhwHuR1Jmw==}
     engines: {node: '>=18'}
+
+  zod@3.23.8:
+    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
 
 snapshots:
 
@@ -8158,3 +8164,5 @@ snapshots:
   yocto-queue@1.1.1: {}
 
   yoctocolors@2.0.2: {}
+
+  zod@3.23.8: {}
