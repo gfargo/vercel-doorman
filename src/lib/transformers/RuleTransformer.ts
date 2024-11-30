@@ -1,5 +1,13 @@
-import { CustomRule, RuleAction, RuleActionType } from '../types/configTypes'
-import { RuleOperator, RuleType, VercelAction, VercelCondition, VercelRule } from '../types/vercelTypes'
+import {
+  CustomRule,
+  RuleAction,
+  RuleActionType,
+  RuleOperator,
+  RuleType,
+  VercelAction,
+  VercelCondition,
+  VercelRule,
+} from '../schemas/firewallSchemas'
 
 export class RuleTransformer {
   static validateRateLimit(rateLimit: { requests: number; window: string }) {

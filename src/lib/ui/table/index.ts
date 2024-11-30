@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import Table, { HorizontalAlignment } from 'cli-table3'
 import { logger } from '../../logger'
-import { FirewallConfig } from '../../types/configTypes'
+import { FirewallConfig } from '../../schemas/firewallSchemas'
 import { calculateDynamicColWidths } from './calculateDynamicColWidths'
 import { formatAction } from './formatAction'
 import { formatChangeStatus } from './formatChangeStatus'

@@ -1,6 +1,5 @@
 import chalk from 'chalk'
-import { VercelAction } from 'src/lib/types/vercelTypes'
-import { RuleAction, RuleActionType } from '../../types/configTypes'
+import { RuleAction, RuleActionType, VercelAction } from '../../schemas/firewallSchemas'
 
 /**
  * Formats a `RuleAction` or `RuleActionType` into a string representation.

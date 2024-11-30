@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { VercelConditionGroup } from '../../types/vercelTypes'
+import { VercelConditionGroup } from '../../schemas/firewallSchemas'
 
 /**
  * Formats an array of condition groups into a string representation.

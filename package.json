@@ -49,6 +49,10 @@
     "@commitlint/cli": "^18.6.1",
     "@commitlint/config-conventional": "^18.6.3",
     "@jest/globals": "^29.7.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.1",
+    "@semantic-release/npm": "^12.0.1",
     "@tsconfig/node20": "^20.1.4",
     "@types/find-up": "^4.0.2",
     "@types/jest": "^29.5.12",
@@ -58,10 +62,6 @@
     "@types/yargs": "^17.0.32",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/github": "^11.0.1",
-    "@semantic-release/npm": "^12.0.1",
     "commitizen": "^4.3.0",
     "cz-conventional-changelog": "^3.3.0",
     "eslint": "^8.57.0",
@@ -87,7 +87,8 @@
     "consola": "^3.2.3",
     "dotenv": "^16.4.5",
     "find-up": "^6.3.0",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "zod": "^3.23.8"
   },
   "config": {
     "commitizen": {

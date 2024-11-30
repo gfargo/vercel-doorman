@@ -1,10 +1,12 @@
+import chalk from 'chalk'
 import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
+import { IPBlockingRule } from '../lib/schemas/firewallSchemas'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
-import { IPBlockingRule } from '../lib/types/configTypes'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
+import { promptForCredentials } from '../lib/utils/promptForCredentials'
 
 interface ListOptions {
   projectId: string
@@ -46,8 +48,6 @@ export const builder = {
   },
 }
 
-import { promptForCredentials } from '../lib/utils/promptForCredentials'
-
 export const handler = async (argv: Arguments<ListOptions>) => {
   try {
     if (argv.debug) {
@@ -71,12 +71,24 @@ export const handler = async (argv: Arguments<ListOptions>) => {
     const configRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
     const ipBlockingRules = activeConfig.ips as IPBlockingRule[]
 
-    logger.info(`Found ${configRules.length} custom rules and ${ipBlockingRules.length} IP blocking rules`)
+    const lastUpdated = new Date(activeConfig.updatedAt)
+    const formattedDate = new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'medium',
+    }).format(lastUpdated)
+
+    logger.info(
+      `Found ${chalk.cyan(configRules.length)} custom rules and ${chalk.cyan(ipBlockingRules.length)} IP blocking rules\n` +
+        chalk.dim(`Version: ${chalk.yellow(activeConfig.version)} • Last Updated: ${chalk.yellow(formattedDate)}`),
+    )
 
     if (argv.format === 'json') {
       logger.info(
         JSON.stringify(
           {
+            version: activeConfig.version,
+            updatedAt: activeConfig.updatedAt,
+            lastUpdated: formattedDate,
             rules: configRules,
             ips: ipBlockingRules,
           },
@@ -85,14 +97,23 @@ export const handler = async (argv: Arguments<ListOptions>) => {
         ),
       )
     } else {
+      if (configRules.length === 0 && ipBlockingRules.length === 0) {
+        logger.info(chalk.yellow('No rules found'))
+        return
+      }
+
       if (configRules.length > 0) {
-        logger.log('\nCustom Rules:\n')
+        logger.log(chalk.bold.underline('\nCustom Rules:'), '\n')
         displayRulesTable(configRules, { showStatus: false })
+      } else {
+        logger.info(chalk.yellow('\nNo custom rules found'))
       }
 
       if (ipBlockingRules.length > 0) {
-        logger.log('\nIP Blocking Rules:\n')
+        logger.log(chalk.bold.underline('\nIP Blocking Rules:'), '\n')
         displayIPBlockingTable(ipBlockingRules, { showStatus: false })
+      } else {
+        logger.info(chalk.yellow('\nNo IP blocking rules found'))
       }
     }
   } catch (error) {

@@ -1,10 +1,17 @@
 import chalk from 'chalk'
 import { LogLevels } from 'consola'
 import { logger } from '../logger'
+import {
+  CustomRule,
+  FirewallConfig,
+  IPBlockingRule,
+  VercelIPBlockingRule,
+  VercelRule,
+  firewallConfigSchema,
+} from '../schemas/firewallSchemas'
 import { RuleTransformer } from '../transformers/RuleTransformer'
-import { CustomRule, FirewallConfig, IPBlockingRule } from '../types/configTypes'
-import { VercelIPBlockingRule, VercelRule } from '../types/vercelTypes'
 import { isDeepEqual } from '../utils/isDeepEqual'
+import { omitId } from '../utils/omitId'
 import { retry } from '../utils/retry'
 import { convertToSnakeCase } from '../utils/toSnakeCase'
 import { VercelClient } from './VercelClient'
@@ -28,6 +35,12 @@ export class FirewallService {
     ipsToDelete: VercelIPBlockingRule[]
   }> {
     try {
+      // Validate config against schema
+      const validationResult = firewallConfigSchema.safeParse(config)
+      if (!validationResult.success) {
+        throw new Error(`Invalid firewall configuration: ${validationResult.error.message}`)
+      }
+
       logger.debug('Fetching existing firewall configuration')
       const activeConfig = await this.client.fetchActiveFirewallConfig()
       logger.debug(`Fetched ${activeConfig.rules.length} custom rules and ${activeConfig.ips.length} IP blocking rules`)
@@ -36,6 +49,11 @@ export class FirewallService {
       const configRules = config.rules
       const existingConfigRules = activeConfig.rules.map(RuleTransformer.fromVercelRule)
       const { toAdd, toUpdate, toDelete } = this.diffRules(configRules, existingConfigRules, activeConfig.rules)
+
+      logger.debug('Pre Filter IP Rules:', {
+        ips: config.ips,
+        activeConfig: activeConfig.ips,
+      })
 
       // Handle IP blocking rules
       const { ipsToAdd, ipsToUpdate, ipsToDelete } = this.diffIPRules(config.ips || [], activeConfig.ips)
@@ -96,9 +114,11 @@ export class FirewallService {
       const addedRules: VercelRule[] = []
       const updatedRules: VercelRule[] = []
       const deletedRules: VercelRule[] = []
+
       const addedIPRules: VercelIPBlockingRule[] = []
       const updatedIPRules: VercelIPBlockingRule[] = []
       const deletedIPRules: VercelIPBlockingRule[] = []
+
       const rulesToUpdateLocally: { oldId: string; newId: string; name: string }[] = []
 
       // Delete custom rules
@@ -136,11 +156,11 @@ export class FirewallService {
       // Add new IP blocking rules
       for (const rule of ipsToAdd) {
         logger.debug(`Adding new IP blocking rule: ${rule.ip}`)
-        const newRule = await retry(() => this.client.createIPBlockingRule(rule), {
+        await retry(() => this.client.createIPBlockingRule(rule), {
           maxAttempts: retryAttempts,
         })
-        addedIPRules.push(newRule)
-        logger.debug(`New IP blocking rule added: ${newRule.id}`)
+        addedIPRules.push(rule)
+        logger.debug(`New IP blocking rule added:  (hostname): ${rule.hostname} (ip): ${rule.ip}`)
       }
 
       // Update existing custom rules
@@ -202,7 +222,7 @@ export class FirewallService {
         toAdd.push(configRule)
       } else {
         const existingVercelRule = existingVercelRules.find((r) => r.id === configRule.id)
-        if (existingVercelRule && !isDeepEqual(this.omitId(configRule), this.omitId(existingRule))) {
+        if (existingVercelRule && !isDeepEqual(omitId(configRule), omitId(existingRule))) {
           toUpdate.push({ ...RuleTransformer.toVercelRule(configRule), id: existingVercelRule.id })
         }
         const deleteIndex = toDelete.findIndex((r) => r.id === existingVercelRule?.id)
@@ -213,16 +233,6 @@ export class FirewallService {
     }
 
     return { toAdd, toUpdate, toDelete }
-  }
-
-  private omitId(rule: CustomRule): Omit<CustomRule, 'id'> {
-    const { id, ...rest } = rule
-    return rest
-  }
-
-  private omitIPId(rule: IPBlockingRule | VercelIPBlockingRule): Omit<IPBlockingRule, 'id'> {
-    const { id, ...rest } = rule
-    return rest
   }
 
   private diffIPRules(
@@ -240,11 +250,13 @@ export class FirewallService {
     for (const configRule of configRules) {
       const existingRule = existingRules.find((r) => r.id === configRule.id)
       if (!existingRule) {
+        logger.debug('Rule not found in existing rules:', { configRule })
         ipsToAdd.push(configRule)
       } else {
-        if (!isDeepEqual(this.omitIPId(configRule), this.omitIPId(existingRule))) {
+        if (!isDeepEqual(omitId(configRule), omitId(existingRule))) {
           ipsToUpdate.push({ ...existingRule, ...configRule })
         }
+
         const deleteIndex = ipsToDelete.findIndex((r) => r.id === existingRule.id)
         if (deleteIndex !== -1) {
           ipsToDelete.splice(deleteIndex, 1)
@@ -289,12 +301,10 @@ export class FirewallService {
 
     // Validate custom rules match expected state
     const addedIds = new Set(syncResult.addedRules.map((r) => r.id))
-
-    // Validate IP rules match expected state
-    const addedIPIds = new Set(syncResult.addedIPRules.map((r) => r.id))
     const updatedIds = new Set(syncResult.updatedRules.map((r) => r.id))
     const deletedIds = new Set(syncResult.deletedRules.map((r) => r.id))
-    const updatedIPIds = new Set(syncResult.updatedIPRules.map((r) => r.id))
+
+    // Validate IP rules match expected state
     const deletedIPIds = new Set(syncResult.deletedIPRules.map((r) => r.id))
 
     // Check if all remote custom rules match our expectations
@@ -313,30 +323,23 @@ export class FirewallService {
         return true
       }
       // Compare rule contents (excluding id)
-      const { id: _rid1, ...remoteRuleContent } = remoteRule
-      const { id: _rid2, ...localRuleContent } = localRule
-      return !isDeepEqual(remoteRuleContent, localRuleContent)
+      return !isDeepEqual(omitId(remoteRule), omitId(localRule))
     })
 
     // Check if all remote IP rules match our expectations
     const unexpectedIPRules = remoteIPRules.filter((remoteRule) => {
-      // Skip rules we just added or updated
-      if (addedIPIds.has(remoteRule.id) || updatedIPIds.has(remoteRule.id)) {
-        return false
-      }
       // Rule should not exist if we deleted it
       if (deletedIPIds.has(remoteRule.id)) {
         return true
       }
+
       // Rule should match our local config if unchanged
-      const localRule = config.ips?.find((r) => r.id === remoteRule.id)
+      const localRule = config.ips?.find((r) => isDeepEqual(omitId(remoteRule), omitId(r)))
+
       if (!localRule) {
         return true
       }
-
-      // Compare rule contents (excluding id)
-      const isDeepEq = isDeepEqual(this.omitIPId(remoteRule), this.omitIPId(localRule))
-      return !isDeepEq
+      return false
     })
 
     const errors: string[] = []
@@ -355,11 +358,30 @@ export class FirewallService {
       throw new Error('Firewall configuration validation failed:\n' + errors.join('\n\n'))
     }
 
-    // Update local config with new metadata
-    return {
+    // Update local config with new metadata and remote IDs
+    const updatedConfig = {
       ...config,
       version: activeConfig.version,
       updatedAt: activeConfig.updatedAt,
     }
+
+    // Update IP rules with remote IDs
+    if (updatedConfig.ips) {
+      updatedConfig.ips = updatedConfig.ips.map((localRule): IPBlockingRule => {
+        if (!localRule.id || localRule.id === '-') {
+          // Find matching remote rule by comparing content without IDs
+          const matchingRemoteRule = remoteIPRules.find((remoteRule) =>
+            isDeepEqual(omitId(remoteRule), omitId(localRule)),
+          )
+          if (matchingRemoteRule) {
+            // Update local rule with remote ID while preserving all other properties
+            return { ...localRule, id: matchingRemoteRule.id as string }
+          }
+        }
+        return localRule
+      })
+    }
+
+    return updatedConfig
   }
 }

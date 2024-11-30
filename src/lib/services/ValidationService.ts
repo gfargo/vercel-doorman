@@ -1,24 +1,40 @@
 import type { ErrorObject } from 'ajv'
 import Ajv, { Ajv as AjvType } from 'ajv'
+import { z } from 'zod'
 import { schema } from '../../constants/schema'
+import { firewallConfigSchema } from '../schemas/firewallSchemas'
 import { FirewallConfig } from '../types/configTypes'
 import { ErrorFormatter } from '../utils/errorFormatter'
 
 export class ValidationError extends Error {
   constructor(
     message: string,
-    public errors: ErrorObject[] | null | undefined,
+    public ajvErrors: ErrorObject[] | null | undefined,
+    public zodError?: z.ZodError,
     public customErrors: string[] = [],
   ) {
     super(message)
     this.name = 'ValidationError'
   }
 
-  static formatErrors(schemaErrors: ErrorObject[] | null | undefined, customErrors: string[] = []): string {
+  static formatErrors(
+    ajvErrors: ErrorObject[] | null | undefined,
+    zodError?: z.ZodError,
+    customErrors: string[] = [],
+  ): string {
     const errors: string[] = []
 
-    if (schemaErrors?.length) {
-      errors.push(...schemaErrors.map(ErrorFormatter.formatValidationError))
+    if (ajvErrors?.length) {
+      errors.push(...ajvErrors.map(ErrorFormatter.formatValidationError))
+    }
+
+    if (zodError) {
+      errors.push(
+        ...zodError.errors.map((err) => {
+          const path = err.path.join('.')
+          return `${path}: ${err.message}`
+        }),
+      )
     }
 
     if (customErrors.length) {
@@ -29,7 +45,7 @@ export class ValidationError extends Error {
   }
 
   getFormattedMessage(): string {
-    return ValidationError.formatErrors(this.errors, this.customErrors)
+    return ValidationError.formatErrors(this.ajvErrors, this.zodError, this.customErrors)
   }
 }
 
@@ -55,20 +71,44 @@ export class ValidationService {
   }
 
   validateConfig(config: unknown): asserts config is FirewallConfig {
+    // AJV Validation
     const validate = this.ajv.compile(this.schema)
-    const valid = validate(config)
+    const ajvValid = validate(config)
+    const ajvErrors = validate.errors
 
-    if (!valid) {
-      throw new ValidationError(
-        'Invalid firewall configuration:\n' + ValidationError.formatErrors(validate.errors || []),
-        validate.errors,
-      )
+    // Zod Validation
+    const zodResult = firewallConfigSchema.safeParse(config)
+    let zodError: z.ZodError | undefined
+
+    if (!zodResult.success) {
+      zodError = zodResult.error
     }
 
-    // Additional custom validations
-    this.validateRuleNames(config as FirewallConfig)
-    this.validateRuleStructure(config as FirewallConfig)
-    this.validateRuleValues(config as FirewallConfig)
+    // Additional custom validations (only if basic validations pass)
+    const customErrors: string[] = []
+    if (ajvValid && zodResult.success) {
+      try {
+        this.validateRuleNames(config as FirewallConfig)
+        this.validateRuleStructure(config as FirewallConfig)
+        this.validateRuleValues(config as FirewallConfig)
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          customErrors.push(...(error.customErrors || []))
+        } else {
+          throw error
+        }
+      }
+    }
+
+    // If any validation failed, throw error with all collected errors
+    if (!ajvValid || !zodResult.success || customErrors.length > 0) {
+      throw new ValidationError(
+        'Invalid firewall configuration:\n' + ValidationError.formatErrors(ajvErrors, zodError, customErrors),
+        ajvErrors,
+        zodError,
+        customErrors,
+      )
+    }
   }
 
   private validateRuleNames(config: FirewallConfig): void {

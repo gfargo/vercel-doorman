@@ -1,5 +1,5 @@
 import { logger } from '../logger'
-import { VercelIPBlockingRule, VercelRule } from '../types/vercelTypes'
+import { VercelIPBlockingRule, VercelRule } from '../schemas/firewallSchemas'
 
 export interface ApiResponse {
   active: {
@@ -196,7 +196,6 @@ export class VercelClient {
       const error = await response.text()
       throw new Error(`Error ${isNewRule ? 'creating' : 'updating'} IP blocking rule: ${response.statusText}\n${error}`)
     }
-
     return (await response.json()) as VercelIPBlockingRule
   }
 
