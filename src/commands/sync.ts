@@ -1,15 +1,17 @@
 import chalk from 'chalk'
+import { LogLevels } from 'consola'
 import { readFileSync, writeFileSync } from 'fs'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
+import { FirewallConfig } from '../lib/schemas/firewallSchemas'
 import { FirewallService } from '../lib/services/FirewallService'
 import { ValidationService } from '../lib/services/ValidationService'
 import { VercelClient } from '../lib/services/VercelClient'
-import { FirewallConfig } from '../lib/schemas/firewallSchemas'
 import { prompt } from '../lib/ui/prompt'
 import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { promptForCredentials } from '../lib/utils/promptForCredentials'
 
 interface SyncOptions {
   config?: string
@@ -49,10 +51,12 @@ export const builder = {
   },
 }
 
-import { promptForCredentials } from '../lib/utils/promptForCredentials'
-
 export const handler = async (argv: Arguments<SyncOptions>) => {
   try {
+    if (argv.debug) {
+      logger.level = LogLevels.debug
+    }
+
     // Find and read config file
     let configPath = argv.config
     if (!configPath) {

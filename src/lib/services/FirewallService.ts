@@ -368,15 +368,14 @@ export class FirewallService {
     // Update IP rules with remote IDs
     if (updatedConfig.ips) {
       updatedConfig.ips = updatedConfig.ips.map((localRule): IPBlockingRule => {
-        if (!localRule.id || localRule.id === '-') {
-          // Find matching remote rule by comparing content without IDs
-          const matchingRemoteRule = remoteIPRules.find((remoteRule) =>
-            isDeepEqual(omitId(remoteRule), omitId(localRule)),
-          )
-          if (matchingRemoteRule) {
-            // Update local rule with remote ID while preserving all other properties
-            return { ...localRule, id: matchingRemoteRule.id as string }
-          }
+        // Find matching remote rule by comparing content without IDs
+        const matchingRemoteRule = remoteIPRules.find((remoteRule) =>
+          isDeepEqual(omitId(remoteRule), omitId(localRule)),
+        )
+
+        if (matchingRemoteRule && matchingRemoteRule.id !== localRule.id) {
+          // Update to use newest remote ID, if different
+          return { ...localRule, id: matchingRemoteRule.id as string }
         }
         return localRule
       })
