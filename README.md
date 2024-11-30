@@ -84,18 +84,33 @@ First, [create a Vercel API Token](https://vercel.com/guides/how-do-i-use-a-verc
 
 ### Available Commands
 
-#### List Current Rules
+#### List Rules
 
 ```bash
-vercel-doorman list --token YOUR_TOKEN
+vercel-doorman list [configVersion] --token YOUR_TOKEN
 ```
+
+Lists firewall rules, either the current active configuration or a specific version.
 
 Options:
 
+- `configVersion`: Optional version number to fetch a specific configuration version
 - `--projectId, -p`: Vercel Project ID
 - `--teamId, -t`: Vercel Team ID
 - `--token`: Vercel API token
 - `--format, -f`: Output format (json or table, defaults to table)
+
+Examples:
+```bash
+# List current active rules
+vercel-doorman list
+
+# List rules from a specific version
+vercel-doorman list 1
+
+# List specific version in JSON format
+vercel-doorman list 2 --format json
+```
 
 #### Sync Rules
 
@@ -113,27 +128,36 @@ Options:
 #### Download Remote Rules
 
 ```bash
-vercel-doorman download --token YOUR_TOKEN
+vercel-doorman download [configVersion] --token YOUR_TOKEN
 ```
 
-Downloads remote firewall rules from your Vercel project and updates your local configuration file. Includes a confirmation prompt before making changes.
+Downloads firewall rules from your Vercel project and updates your local configuration file. You can download either the current active configuration or a specific version. Includes a confirmation prompt before making changes.
 
 Options:
 
+- `configVersion`: Optional version number to download a specific configuration version
 - `--config, -c`: Path to config file (defaults to vercel-firewall.config.json)
 - `--projectId, -p`: Vercel Project ID (can be set in config file)
 - `--teamId, -t`: Vercel Team ID (can be set in config file)
 - `--token`: Vercel API token
 - `--dry-run, -d`: Preview changes without modifying the config file
 
-Example workflow:
+Example workflows:
 
 ```bash
-# First, preview the rules that would be downloaded
+# Download latest configuration
+# First, preview the rules
 vercel-doorman download --dry-run
 
-# Then, if the rules look correct, download and update the config
+# Then download and update the config
 vercel-doorman download
+
+# Download specific version
+# First, preview the rules from version 1
+vercel-doorman download 1 --dry-run
+
+# Then download version 1 and update the config
+vercel-doorman download 1
 ```
 
 #### Validate Configuration
