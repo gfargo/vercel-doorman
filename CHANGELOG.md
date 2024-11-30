@@ -1,3 +1,16 @@
+# [1.4.0](https://github.com/gfargo/vercel-doorman/compare/v1.3.3...v1.4.0) (2024-11-30)
+
+
+### Bug Fixes
+
+* enhance sync and update IP rules ([48cf546](https://github.com/gfargo/vercel-doorman/commit/48cf5465e0e04bc318a46ca99b68018242f11b45))
+
+
+### Features
+
+* add config version support to download command ([29a3bc6](https://github.com/gfargo/vercel-doorman/commit/29a3bc6651ea3297fd4759a550deb58b14f7048f))
+* add config version support to list command ([5d84b78](https://github.com/gfargo/vercel-doorman/commit/5d84b787740100c4386e656e909814549dd0d22d))
+
 ## [1.3.3](https://github.com/gfargo/vercel-doorman/compare/v1.3.2...v1.3.3) (2024-11-30)
 
 
