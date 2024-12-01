@@ -101,6 +101,7 @@ Options:
 - `--format, -f`: Output format (json or table, defaults to table)
 
 Examples:
+
 ```bash
 # List current active rules
 vercel-doorman list
