@@ -1,9 +1,9 @@
 import chalk from 'chalk'
 import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
+import { z } from 'zod'
 import { logger } from '../lib/logger'
 import { IPBlockingRule, configVersionSchema } from '../lib/schemas/firewallSchemas'
-import { z } from 'zod'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
@@ -125,14 +125,14 @@ export const handler = async (argv: Arguments<ListOptions>) => {
         logger.log(chalk.bold.underline('\nCustom Rules:'), '\n')
         displayRulesTable(configRules, { showStatus: false })
       } else {
-        logger.info(chalk.yellow('\nNo custom rules found'))
+        logger.info(chalk.cyan('No custom rules found'))
       }
 
       if (ipBlockingRules.length > 0) {
         logger.log(chalk.bold.underline('\nIP Blocking Rules:'), '\n')
         displayIPBlockingTable(ipBlockingRules, { showStatus: false })
       } else {
-        logger.info(chalk.yellow('\nNo IP blocking rules found'))
+        logger.info(chalk.cyan('No IP blocking rules found'))
       }
     }
   } catch (error) {
