@@ -4,8 +4,8 @@ import fs from 'fs'
 import path from 'path'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
+import { prompt } from '../lib/ui/prompt'
 import { FirewallConfig } from '../lib/schemas/firewallSchemas'
-import { templatesMetadata } from '../lib/templates/metadata'
 import { getConfig, saveConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
@@ -36,25 +36,33 @@ export const builder = {
   },
 }
 
-const listTemplates = () => {
+// const listTemplates = () => {
+//   const templatesDir = 'src/lib/templates'
+//   const templates = fs
+//     .readdirSync(templatesDir)
+//     .filter((file) => file.endsWith('.json'))
+//     .map((file) => ({
+//       name: path.basename(file, '.json'),
+//       path: path.join(templatesDir, file),
+//     }))
+//
+//   logger.log(chalk.bold('\nAvailable Templates:'))
+//   templates.forEach((template) => {
+//     const metadata = templatesMetadata[template.name]
+//     logger.log(`\n${chalk.cyan(template.name)}`)
+//     if (metadata) {
+//       logger.log(chalk.dim(`Description: ${metadata.title}`))
+//       logger.log(chalk.dim(`Reference: ${metadata.reference}`))
+//     }
+//   })
+// }
+
+const getAvailableTemplates = () => {
   const templatesDir = 'src/lib/templates'
-  const templates = fs
+  return fs
     .readdirSync(templatesDir)
     .filter((file) => file.endsWith('.json'))
-    .map((file) => ({
-      name: path.basename(file, '.json'),
-      path: path.join(templatesDir, file),
-    }))
-
-  logger.log(chalk.bold('\nAvailable Templates:'))
-  templates.forEach((template) => {
-    const metadata = templatesMetadata[template.name]
-    logger.log(`\n${chalk.cyan(template.name)}`)
-    if (metadata) {
-      logger.log(chalk.dim(`Description: ${metadata.title}`))
-      logger.log(chalk.dim(`Reference: ${metadata.reference}`))
-    }
-  })
+    .map((file) => path.basename(file, '.json'))
 }
 
 export const handler = async (argv: Arguments<TemplateOptions>) => {
@@ -65,18 +73,23 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
 
     logger.debug('Template command arguments:', argv)
 
-    // If no template name provided, show available templates
-    if (!argv.name) {
-      listTemplates()
-      return
+    // Get template name from argument or prompt
+    let templateName = argv.name
+    if (!templateName) {
+      const templates = getAvailableTemplates()
+      const selected = await prompt('Select a template to add:', {
+        type: 'select',
+        options: templates,
+        initial: templates[0],
+      })
+      templateName = selected as string
     }
 
     const templatesDir = 'src/lib/templates'
-    const templatePath = path.join(templatesDir, `${argv.name}.json`)
+    const templatePath = path.join(templatesDir, `${templateName}.json`)
 
     if (!fs.existsSync(templatePath)) {
-      logger.error(ErrorFormatter.wrapErrorBlock(['Template not found:', `  ${argv.name}`, '', 'Available templates:']))
-      listTemplates()
+      logger.error(ErrorFormatter.wrapErrorBlock(['Template not found:', `  ${templateName}`]))
       process.exit(1)
     }
 
@@ -103,7 +116,7 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
       // Save config with validation enabled and throwing on error
       logger.start('Saving updated configuration...')
       await saveConfig(updatedConfig, undefined, { validate: true, throwOnError: true })
-      logger.success(chalk.green(`\n✓ Successfully added template '${argv.name}' to configuration`))
+      logger.success(chalk.green(`\n✓ Successfully added template '${templateName}' to configuration`))
     } catch (error) {
       if (error instanceof SyntaxError) {
         logger.error(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in template file:', `  ${error.message}`]))
