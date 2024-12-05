@@ -255,8 +255,8 @@ function validateVercelRule(rule: VercelRule) {
   validateActionType(rule.action.mitigate.action)
 }
 
-function validateActionType(action: string): asserts action is RuleActionType {
-  const validActions = ['allow', 'deny', 'challenge', 'log']
+function validateActionType(action: RuleActionType): asserts action is RuleActionType {
+  const validActions = ['log', 'deny', 'challenge', 'bypass', 'rate_limit', 'redirect'] as RuleActionType[]
   if (!validActions.includes(action)) {
     throw new Error(`Invalid action type: ${action}`)
   }

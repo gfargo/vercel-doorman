@@ -96,10 +96,12 @@ export const ruleRedirectSchema = z.object({
 }) satisfies z.ZodType<RuleRedirectType>
 
 export const ruleActionTypeSchema = z.enum([
-  'allow',
+  'log',
   'deny',
   'challenge',
-  'log',
+  'bypass',
+  'rate_limit',
+  'redirect',
 ]) satisfies z.ZodType<RuleActionTypeEnum>
 
 export const ruleActionSchema = z.object({

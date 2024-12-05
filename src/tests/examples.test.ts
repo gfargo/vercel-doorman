@@ -90,7 +90,7 @@ describe('Example Configurations', () => {
         }
       } else {
         // If action is a string, it must be a valid RuleActionType
-        expect(['allow', 'deny', 'challenge', 'log']).toContain(rule.action)
+        expect(['log', 'deny', 'challenge', 'bypass', 'rate_limit']).toContain(rule.action)
       }
     })
   })

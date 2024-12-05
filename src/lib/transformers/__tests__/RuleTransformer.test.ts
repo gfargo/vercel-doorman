@@ -385,7 +385,7 @@ describe('RuleTransformer', () => {
         type: 'path',
         values: ['/old'],
         action: {
-          type: 'allow',
+          type: 'bypass',
           redirect: {
             // @ts-expect-error Missing required field
             url: 'https://example.com',

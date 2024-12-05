@@ -58,7 +58,7 @@ export interface Redirect {
 }
 
 export interface MitigationAction {
-  action: 'allow' | 'deny' | 'challenge' | 'log'
+  action: 'log' | 'deny' | 'challenge' | 'bypass' | 'rate_limit' | 'redirect'
   rateLimit?: RateLimit | null
   redirect?: Redirect | null
   actionDuration?: string | null // e.g., "1h", "1d", "permanent"

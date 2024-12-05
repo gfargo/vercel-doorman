@@ -13,7 +13,7 @@
       "description": "Allow access from specific continent",
       "type": "geo_continent",
       "values": ["EU"],
-      "action": "allow",
+      "action": "bypass",
       "active": true
     },
     {

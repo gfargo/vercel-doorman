@@ -178,7 +178,7 @@ export const schema = {
     },
     RuleActionType: {
       type: 'string',
-      enum: ['allow', 'deny', 'challenge', 'log'],
+      enum: ['log', 'deny', 'challenge', 'bypass', 'rate_limit', 'redirect'],
     },
     RuleRateLimit: {
       type: 'object',

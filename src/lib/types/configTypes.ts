@@ -1,6 +1,6 @@
 import { RuleType, VercelConditionGroup } from './vercelTypes'
 
-export type RuleActionType = 'allow' | 'deny' | 'challenge' | 'log'
+export type RuleActionType = 'log' | 'deny' | 'challenge' | 'bypass' | 'rate_limit' | 'redirect'
 
 export interface RuleRateLimit {
   requests: number
