@@ -6,8 +6,8 @@ import { logger } from '../lib/logger'
 import { IPBlockingRule, configVersionSchema } from '../lib/schemas/firewallSchemas'
 import { VercelClient } from '../lib/services/VercelClient'
 import { RuleTransformer } from '../lib/transformers/RuleTransformer'
+import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
-import { promptForCredentials } from '../lib/utils/promptForCredentials'
 
 interface ListOptions {
   projectId: string

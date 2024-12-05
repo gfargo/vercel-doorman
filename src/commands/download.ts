@@ -64,7 +64,7 @@ export const builder = {
   },
 }
 
-import { promptForCredentials } from '../lib/utils/promptForCredentials'
+import { promptForCredentials } from '../lib/ui/promptForCredentials'
 
 export const handler = async (argv: Arguments<DownloadOptions>) => {
   try {

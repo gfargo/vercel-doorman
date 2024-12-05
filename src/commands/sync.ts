@@ -8,10 +8,10 @@ import { FirewallService } from '../lib/services/FirewallService'
 import { ValidationService } from '../lib/services/ValidationService'
 import { VercelClient } from '../lib/services/VercelClient'
 import { prompt } from '../lib/ui/prompt'
+import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
 import { ConfigFinder } from '../lib/utils/configFinder'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
-import { promptForCredentials } from '../lib/utils/promptForCredentials'
 
 interface SyncOptions {
   config?: string
