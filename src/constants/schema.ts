@@ -1,3 +1,11 @@
+/**
+ * THIS FILE IS AUTO-GENERATED - DO NOT EDIT
+ *
+ * Generated using ts-json-schema-generator
+ * Run 'pnpm build:schema' to regenerate this file
+ * Source: schema/generate-schema.ts
+ */
+
 export const schema = {
   $schema: 'http://json-schema.org/draft-07/schema#',
   title: 'Doorman Config',
@@ -13,6 +21,9 @@ export const schema = {
         teamId: {
           type: 'string',
         },
+        version: {
+          type: 'number',
+        },
         rules: {
           type: 'array',
           items: {
@@ -24,9 +35,6 @@ export const schema = {
           items: {
             $ref: '#/definitions/IPBlockingRule',
           },
-        },
-        version: {
-          type: 'number',
         },
         updatedAt: {
           type: 'string',
@@ -47,37 +55,78 @@ export const schema = {
         description: {
           type: 'string',
         },
-        type: {
-          $ref: '#/definitions/RuleType',
-        },
-        values: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
         conditionGroup: {
           type: 'array',
           items: {
-            $ref: '#/definitions/VercelConditionGroup',
+            $ref: '#/definitions/ConditionGroup',
           },
         },
         action: {
-          anyOf: [
-            {
-              $ref: '#/definitions/RuleAction',
-            },
-            {
-              $ref: '#/definitions/RuleActionType',
-            },
-          ],
+          $ref: '#/definitions/RuleAction',
         },
         active: {
           type: 'boolean',
         },
       },
-      required: ['name', 'action', 'active'],
+      required: ['name', 'conditionGroup', 'action', 'active'],
       additionalProperties: false,
+      description: 'Rule Types',
+    },
+    ConditionGroup: {
+      type: 'object',
+      properties: {
+        conditions: {
+          type: 'array',
+          items: {
+            $ref: '#/definitions/RuleCondition',
+          },
+        },
+      },
+      required: ['conditions'],
+      additionalProperties: false,
+    },
+    RuleCondition: {
+      type: 'object',
+      properties: {
+        op: {
+          $ref: '#/definitions/RuleOperator',
+        },
+        type: {
+          $ref: '#/definitions/RuleType',
+        },
+        key: {
+          type: 'string',
+        },
+        value: {
+          anyOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'number',
+            },
+            {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+            },
+            {
+              type: 'array',
+              items: {
+                type: 'number',
+              },
+            },
+          ],
+        },
+      },
+      required: ['op', 'type'],
+      additionalProperties: false,
+      description: 'Rule Condition Types',
+    },
+    RuleOperator: {
+      type: 'string',
+      enum: ['re', 'eq', 'neq', 'ex', 'nex', 'inc', 'ninc', 'pre', 'suf', 'sub', 'gt', 'gte', 'lt', 'lte'],
     },
     RuleType: {
       type: 'string',
@@ -105,82 +154,55 @@ export const schema = {
         'rate_limit_api_id',
       ],
     },
-    VercelConditionGroup: {
-      type: 'object',
-      properties: {
-        conditions: {
-          type: 'array',
-          items: {
-            $ref: '#/definitions/VercelCondition',
-          },
-        },
-      },
-      required: ['conditions'],
-      additionalProperties: false,
-    },
-    VercelCondition: {
-      type: 'object',
-      properties: {
-        op: {
-          $ref: '#/definitions/RuleOperator',
-        },
-        type: {
-          $ref: '#/definitions/RuleType',
-        },
-        value: {
-          anyOf: [
-            {
-              type: 'string',
-            },
-            {
-              type: 'number',
-            },
-            {
-              type: 'array',
-              items: {
-                type: 'string',
-              },
-            },
-            {
-              type: 'array',
-              items: {
-                type: 'number',
-              },
-            },
-          ],
-        },
-      },
-      required: ['op', 'type', 'value'],
-      additionalProperties: false,
-    },
-    RuleOperator: {
-      type: 'string',
-      enum: ['re', 'eq', 'neq', 'ex', 'nex', 'inc', 'ninc', 'pre', 'suf', 'sub', 'gt', 'gte', 'lt', 'lte'],
-    },
     RuleAction: {
       type: 'object',
       properties: {
-        type: {
-          $ref: '#/definitions/RuleActionType',
-        },
-        rateLimit: {
-          $ref: '#/definitions/RuleRateLimit',
-        },
-        redirect: {
-          $ref: '#/definitions/RuleRedirect',
-        },
-        duration: {
-          type: 'string',
+        mitigate: {
+          $ref: '#/definitions/MitigationAction',
         },
       },
-      required: ['type'],
+      required: ['mitigate'],
       additionalProperties: false,
     },
-    RuleActionType: {
+    MitigationAction: {
+      type: 'object',
+      properties: {
+        action: {
+          $ref: '#/definitions/ActionType',
+        },
+        rateLimit: {
+          anyOf: [
+            {
+              $ref: '#/definitions/RateLimit',
+            },
+            {
+              type: 'null',
+            },
+          ],
+        },
+        redirect: {
+          anyOf: [
+            {
+              $ref: '#/definitions/Redirect',
+            },
+            {
+              type: 'null',
+            },
+          ],
+        },
+        actionDuration: {
+          type: ['string', 'null'],
+        },
+      },
+      required: ['action'],
+      additionalProperties: false,
+    },
+    ActionType: {
       type: 'string',
       enum: ['log', 'deny', 'challenge', 'bypass', 'rate_limit', 'redirect'],
+      description: 'Core Types',
     },
-    RuleRateLimit: {
+    RateLimit: {
       type: 'object',
       properties: {
         requests: {
@@ -192,8 +214,9 @@ export const schema = {
       },
       required: ['requests', 'window'],
       additionalProperties: false,
+      description: 'Action Types',
     },
-    RuleRedirect: {
+    Redirect: {
       type: 'object',
       properties: {
         location: {
