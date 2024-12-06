@@ -4,20 +4,14 @@
 export type ActionType = 'log' | 'deny' | 'challenge' | 'bypass' | 'rate_limit' | 'redirect'
 
 export type RuleOperator =
-  | 're' // Regular expression
-  | 'eq' // Equals
-  | 'neq' // Not equals
-  | 'ex' // Exists
-  | 'nex' // Not exists
-  | 'inc' // Includes
-  | 'ninc' // Not includes
-  | 'pre' // Prefix
-  | 'suf' // Suffix
-  | 'sub' // Substring
-  | 'gt' // Greater than
-  | 'gte' // Greater than or equal
-  | 'lt' // Less than
-  | 'lte' // Less than or equal
+  | 'eq' // 'Equals' (has negative 'neg' -> 'Does not equal')
+  | 'pre' // 'Starts with' Prefix (has negative 'neg' -> 'Does not start with')
+  | 'suf' // 'Ends with' Suffix (has negative 'neg' -> 'Does not end with')
+  | 'inc' // 'Is any of' Includes (has negative 'neg' -> 'Is not any of')
+  | 'sub' // 'Contains' substring (has negative 'neg' -> 'Does not contain')
+  | 're' // 'Matches expression' Regular expression (has negative 'neg' -> 'Does not match expression')
+  | 'ex' // 'Exists'
+  | 'nex' // 'Does not exist' Not exists
 
 export type RuleType =
   | 'host'
@@ -47,6 +41,7 @@ export type RuleType =
  */
 export interface RuleCondition {
   op: RuleOperator
+  neg?: boolean
   type: RuleType
   key?: string
   value?: string | number | string[] | number[]
