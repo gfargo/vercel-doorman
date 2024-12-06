@@ -1,12 +1,11 @@
 import type { ErrorObject } from 'ajv'
-import { ZodError } from 'zod'
 import chalk from 'chalk'
-import { readFileSync } from 'fs'
 import { Arguments } from 'yargs'
+import { ZodError } from 'zod'
 import { logger } from '../lib/logger'
 import { firewallConfigSchema } from '../lib/schemas/firewallSchemas'
 import { ValidationError, ValidationService } from '../lib/services/ValidationService'
-import { ConfigFinder } from '../lib/utils/configFinder'
+import { getConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
 interface ValidateOptions {
@@ -33,17 +32,8 @@ export const builder = {
 
 export const handler = async (argv: Arguments<ValidateOptions>) => {
   try {
-    let configPath = argv.config
-    if (!configPath) {
-      configPath = await ConfigFinder.findConfig()
-      if (!configPath) {
-        throw new Error(
-          `No config file found. Create ${ConfigFinder.getDefaultConfigPath()} or specify path with --config`,
-        )
-      }
-    }
-    const configContent = readFileSync(configPath, 'utf8')
-    const configJson = JSON.parse(configContent)
+    // Load config without validation since we'll do that ourselves
+    const configJson = await getConfig(argv.config, { validate: false })
     const validator: ValidationService = ValidationService.getInstance()
 
     if (argv.verbose) {
@@ -53,9 +43,9 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
     // Run Zod validation first
     const zodResult = firewallConfigSchema.safeParse(configJson)
     if (argv.verbose) {
-      logger.info(chalk.bold.underline('\nZod Schema Validation:'))
+      logger.log(chalk.bold.underline('Zod Schema Validation:'))
       if (zodResult.success) {
-        logger.info(chalk.green('✓ Schema validation passed'))
+        logger.log(chalk.green('✓ Schema validation passed'))
       } else {
         logger.error(chalk.red('✗ Schema validation failed:'))
         zodResult.error.errors.forEach((err) => {
@@ -71,15 +61,15 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
     try {
       validator.validateConfig(configJson)
       if (argv.verbose) {
-        logger.info(chalk.bold.underline('\nAJV Schema Validation:'))
-        logger.info(chalk.green('✓ JSON Schema validation passed'))
+        logger.log(chalk.bold.underline('\nAJV Schema Validation:'))
+        logger.log(chalk.green('✓ JSON Schema validation passed'))
       }
     } catch (error) {
       ajvValid = false
       if (error instanceof ValidationError) {
         ajvErrors = error.ajvErrors || []
         if (argv.verbose) {
-          logger.info(chalk.bold.underline('\nAJV Schema Validation:'))
+          logger.log(chalk.bold.underline('\nAJV Schema Validation:'))
           logger.error(chalk.red('✗ JSON Schema validation failed:'))
           ajvErrors.forEach((err) => {
             logger.error(chalk.red(`  - ${err.instancePath}: ${err.message}`))
@@ -93,7 +83,7 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
     // Run custom validations if both schema validations pass
     if (zodResult.success && ajvValid) {
       if (argv.verbose) {
-        logger.info(chalk.bold.underline('\nCustom Validations:'))
+        logger.log(chalk.bold.underline('\nCustom Validations:'))
         const config = zodResult.data
 
         // Rule name uniqueness
@@ -106,31 +96,12 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
           names.add(rule.name)
         }
 
-        logger.info(`${chalk.cyan('Rule Names:')}`)
+        logger.log(`${chalk.cyan.dim('\nRule Names:')}`)
         if (duplicates.size > 0) {
           logger.error(chalk.red('✗ Duplicate rule names found:'))
           duplicates.forEach((name) => logger.error(chalk.red(`  - "${name}"`)))
         } else {
-          logger.info(chalk.green('✓ All rule names are unique'))
-        }
-
-        // Rule structure
-        logger.info(`\n${chalk.cyan('Rule Structure:')}`)
-        const structureErrors: string[] = []
-        for (const rule of config.rules) {
-          if (!rule.conditionGroup && (!rule.type || !rule.values)) {
-            structureErrors.push(`Rule "${rule.name}" is missing required fields`)
-          }
-          if (rule.conditionGroup && (rule.type || rule.values)) {
-            structureErrors.push(`Rule "${rule.name}" has conflicting fields`)
-          }
-        }
-
-        if (structureErrors.length > 0) {
-          logger.error(chalk.red('✗ Structure validation failed:'))
-          structureErrors.forEach((err) => logger.error(chalk.red(`  - ${err}`)))
-        } else {
-          logger.info(chalk.green('✓ All rules have valid structure'))
+          logger.log(chalk.green('✓ All rule names are unique'))
         }
 
         logger.log('') // Empty line before final message

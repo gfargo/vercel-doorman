@@ -1,18 +1,16 @@
 import chalk from 'chalk'
 import { LogLevels } from 'consola'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import { dirname } from 'path'
 import { Arguments } from 'yargs'
 import { z } from 'zod'
 import { logger } from '../lib/logger'
-import { FirewallConfig, IPBlockingRule, configVersionSchema } from '../lib/schemas/firewallSchemas'
+import { configVersionSchema } from '../lib/schemas/firewallSchemas'
 import { VercelClient } from '../lib/services/VercelClient'
-import { RuleTransformer } from '../lib/transformers/RuleTransformer'
+import { FirewallConfig, IPBlockingRule } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
+import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
-import { ConfigFinder } from '../lib/utils/configFinder'
+import { getConfig, saveConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
-
 interface DownloadOptions {
   config?: string
   projectId?: string
@@ -64,8 +62,6 @@ export const builder = {
   },
 }
 
-import { promptForCredentials } from '../lib/ui/promptForCredentials'
-
 export const handler = async (argv: Arguments<DownloadOptions>) => {
   try {
     if (argv.debug) {
@@ -75,36 +71,26 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     logger.debug('Starting download command')
     logger.debug(`Command arguments: ${JSON.stringify(argv)}`)
 
-    // Find and read config file
-    let configPath = argv.config
-    if (!configPath) {
-      configPath = await ConfigFinder.findConfig()
-    }
-
+    // Try to load existing config, but don't fail if it doesn't exist or is invalid
     let existingConfig: Partial<FirewallConfig> = {}
-
-    if (!configPath) {
-      const createNewConfig = await prompt('No config file found. Would you like to create a new one?', {
-        type: 'confirm',
-      })
-      if (!createNewConfig) {
-        logger.info(chalk.yellow('Download cancelled. No config file created.'))
-        return
-      }
-      configPath = ConfigFinder.getDefaultConfigPath()
-      logger.info(`Creating new config file at ${configPath}`)
-    } else {
-      try {
-        const configContent = readFileSync(configPath, 'utf8')
-        existingConfig = JSON.parse(configContent)
-        logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
-      } catch (error) {
+    try {
+      existingConfig = await getConfig(argv.config, { validate: false, throwOnError: false })
+      logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
+    } catch (error) {
+      if (error.message.includes('No config file found')) {
+        const createNewConfig = await prompt('No config file found. Would you like to create a new one?', {
+          type: 'confirm',
+        })
+        if (!createNewConfig) {
+          logger.info(chalk.yellow('Download cancelled. No config file created.'))
+          return
+        }
+        logger.info(`Will create new config file`)
+      } else {
         logger.error(error)
         logger.info('Proceeding with empty configuration')
       }
     }
-
-    logger.debug(`Config file path: ${configPath}`)
 
     const { token, projectId, teamId } = await promptForCredentials({
       token: argv.token,
@@ -135,8 +121,8 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     const config = await client.fetchFirewallConfig(argv.configVersion)
     logger.debug(`Fetched Vercel config: ${JSON.stringify(config)}`)
 
-    const configRules = config.rules.map(RuleTransformer.fromVercelRule)
-    logger.debug(`Transformed custom rules: ${JSON.stringify(configRules)}`)
+    const configRules = config.rules
+    logger.debug(`Custom rules: ${JSON.stringify(configRules)}`)
 
     const ipBlockingRules = config.ips as IPBlockingRule[]
     logger.debug(`IP blocking rules: ${JSON.stringify(ipBlockingRules)}`)
@@ -180,16 +166,10 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
       ips: ipBlockingRules,
     }
     logger.debug(`New config to be written: ${JSON.stringify(newConfig)}`)
-    logger.info(`Saving configuration with version: ${newConfig.version}`)
+    logger.start(`Saving configuration with version: ${newConfig.version}`)
 
-    // Ensure the directory exists before writing the file
-    const configDir = dirname(configPath)
-    if (!existsSync(configDir)) {
-      mkdirSync(configDir, { recursive: true })
-    }
-
-    writeFileSync(configPath, JSON.stringify(newConfig, null, 2))
-    logger.success(`Successfully downloaded and updated ${configPath}`)
+    await saveConfig(newConfig, argv.config)
+    logger.success(chalk.green('Successfully downloaded and updated configuration'))
   } catch (error) {
     if (error instanceof SyntaxError) {
       logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))

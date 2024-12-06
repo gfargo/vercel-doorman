@@ -4,8 +4,8 @@ import fs from 'fs'
 import path from 'path'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { prompt } from '../lib/ui/prompt'
 import { FirewallConfig } from '../lib/schemas/firewallSchemas'
+import { prompt } from '../lib/ui/prompt'
 import { getConfig, saveConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
@@ -35,27 +35,6 @@ export const builder = {
     default: false,
   },
 }
-
-// const listTemplates = () => {
-//   const templatesDir = 'src/lib/templates'
-//   const templates = fs
-//     .readdirSync(templatesDir)
-//     .filter((file) => file.endsWith('.json'))
-//     .map((file) => ({
-//       name: path.basename(file, '.json'),
-//       path: path.join(templatesDir, file),
-//     }))
-//
-//   logger.log(chalk.bold('\nAvailable Templates:'))
-//   templates.forEach((template) => {
-//     const metadata = templatesMetadata[template.name]
-//     logger.log(`\n${chalk.cyan(template.name)}`)
-//     if (metadata) {
-//       logger.log(chalk.dim(`Description: ${metadata.title}`))
-//       logger.log(chalk.dim(`Reference: ${metadata.reference}`))
-//     }
-//   })
-// }
 
 const getAvailableTemplates = () => {
   const templatesDir = 'src/lib/templates'

@@ -16,7 +16,9 @@
         }
       ],
       "action": {
-        "type": "log"
+        "mitigate": {
+          "action": "log"
+        }
       },
       "active": true
     }

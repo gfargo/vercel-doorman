@@ -1,23 +1,19 @@
 import { z } from 'zod'
 import type {
-  CustomRule as CustomRuleType,
-  FirewallConfig as FirewallConfigType,
-  IPBlockingRule as IPBlockingRuleType,
-  ProjectConfig as ProjectConfigType,
-  RuleAction as RuleActionType,
-  RuleActionType as RuleActionTypeEnum,
-  RuleRateLimit as RuleRateLimitType,
-  RuleRedirect as RuleRedirectType,
-} from '../types/configTypes'
-import type {
-  RuleOperator as RuleOperatorType,
-  RuleType as RuleTypeEnum,
-  VercelAction as VercelActionType,
-  VercelConditionGroup as VercelConditionGroupType,
-  VercelCondition as VercelConditionType,
-  VercelIPBlockingRule as VercelIPBlockingRuleType,
-  VercelRule as VercelRuleType,
-} from '../types/vercelTypes'
+  ActionType,
+  ConditionGroup,
+  CustomRule,
+  FirewallConfig,
+  IPBlockingRule,
+  MitigationAction,
+  ProjectConfig,
+  RateLimit,
+  Redirect,
+  RuleAction,
+  RuleCondition,
+  RuleOperator,
+  RuleType,
+} from '../types'
 
 // Basic schemas
 export const configVersionSchema = z.number().int().positive().optional()
@@ -45,7 +41,7 @@ export const ruleOperatorSchema = z.enum([
   'gte',
   'lt',
   'lte',
-]) satisfies z.ZodType<RuleOperatorType>
+]) satisfies z.ZodType<RuleOperator>
 
 export const ruleTypeSchema = z.enum([
   'host',
@@ -69,59 +65,101 @@ export const ruleTypeSchema = z.enum([
   'ja4_digest',
   'ja3_digest',
   'rate_limit_api_id',
-]) satisfies z.ZodType<RuleTypeEnum>
+]) satisfies z.ZodType<RuleType>
 
 // Condition schemas
-export const vercelConditionSchema = z.object({
-  op: ruleOperatorSchema,
-  type: ruleTypeSchema,
-  value: z.union([z.string(), z.number(), z.array(z.string()), z.array(z.number())]),
-}) satisfies z.ZodType<VercelConditionType>
+export const ruleConditionSchema = z
+  .object({
+    op: ruleOperatorSchema,
+    type: ruleTypeSchema,
+    value: z.union([z.string(), z.array(z.string()), z.array(z.number())]).optional(),
+    key: z.string().optional(),
+  })
+  .refine((condition) => {
+    // Validate operator based on type
+    switch (condition.type) {
+      case 'ip_address':
+      case 'method':
+      case 'environment':
+      case 'protocol':
+        // equals, not equals, is any of, is not any of
+        return condition.op === 'eq' || condition.op === 'neq' || condition.op === 'inc' || condition.op === 'ninc'
+      default:
+        return true
+    }
+  }, 'Invalid operator for the given condition type')
+  .refine((condition) => {
+    // Cookie conditions require a key
+    if (condition.type === 'cookie' && !condition.key) {
+      return false
+    }
 
-export const vercelConditionGroupSchema = z.object({
-  conditions: z.array(vercelConditionSchema),
-}) satisfies z.ZodType<VercelConditionGroupType>
+    // Cookie conditions with exists or not exists operators should not have a value
+    if (condition.type === 'cookie' && condition.op !== 'ex' && condition.op !== 'nex' && !condition.value) {
+      return false
+    }
+
+    return true
+  }, 'Missing key from cookie condition') satisfies z.ZodType<RuleCondition>
+
+export const conditionGroupSchema = z.object({
+  conditions: z.array(ruleConditionSchema).min(1, 'Condition group must have at least one condition'),
+}) satisfies z.ZodType<ConditionGroup>
 
 // Action schemas
 export const ruleDurationSchema = z.string().regex(/^\d+[smhd]$|^permanent$/)
 
-export const ruleRateLimitSchema = z.object({
-  requests: z.number(),
-  window: z.string().regex(/^\d+[smhd]$/),
-}) satisfies z.ZodType<RuleRateLimitType>
+// Define schemas in order of dependency
+export const rateLimitSchema = z.object({
+  requests: z
+    .number()
+    .positive()
+    .int()
+    .refine((val) => val > 0, 'requests must be positive'),
+  window: z
+    .string()
+    .regex(/^\d+[smhd]$/)
+    .refine((val) => parseInt(val) > 0, 'window duration must be positive'),
+}) satisfies z.ZodType<RateLimit>
 
-export const ruleRedirectSchema = z.object({
+export const redirectSchema = z.object({
   location: z.string(),
   permanent: z.boolean().optional(),
-}) satisfies z.ZodType<RuleRedirectType>
+}) satisfies z.ZodType<Redirect>
 
-export const ruleActionTypeSchema = z.enum([
+export const actionTypeSchema = z.enum([
   'log',
   'deny',
   'challenge',
   'bypass',
   'rate_limit',
   'redirect',
-]) satisfies z.ZodType<RuleActionTypeEnum>
+]) satisfies z.ZodType<ActionType>
 
-export const ruleActionSchema = z.object({
-  type: ruleActionTypeSchema,
-  rateLimit: ruleRateLimitSchema.optional(),
-  redirect: ruleRedirectSchema.optional(),
-  duration: ruleDurationSchema.optional(),
-}) satisfies z.ZodType<RuleActionType>
+export const mitigationActionSchema = z.object({
+  action: actionTypeSchema,
+  rateLimit: rateLimitSchema.nullable().optional(),
+  redirect: redirectSchema.nullable().optional(),
+  actionDuration: ruleDurationSchema.nullable().optional(),
+}) satisfies z.ZodType<MitigationAction>
+
+// Define vercelActionSchema before using it
+const ruleActionSchema = z.object({
+  mitigate: mitigationActionSchema,
+}) satisfies z.ZodType<RuleAction>
 
 // Rule schemas
-export const customRuleSchema = z.object({
+export const firewallRuleSchema = z.object({
   id: idSchema,
   name: z.string(),
   description: z.string().optional(),
-  type: ruleTypeSchema.optional(),
-  values: z.array(z.string()).optional(),
-  conditionGroup: z.array(vercelConditionGroupSchema).optional(),
-  action: z.union([ruleActionTypeSchema, ruleActionSchema]),
+  conditionGroup: z.array(conditionGroupSchema),
+  action: ruleActionSchema,
   active: z.boolean(),
-}) satisfies z.ZodType<CustomRuleType>
+}) satisfies z.ZodType<CustomRule>
+
+// Export action schema
+export { ruleActionSchema }
 
 export const ipBlockingRuleSchema = z.object({
   id: idSchema,
@@ -129,56 +167,16 @@ export const ipBlockingRuleSchema = z.object({
   hostname: z.string(),
   notes: z.string().optional(),
   action: z.literal('deny'),
-}) satisfies z.ZodType<IPBlockingRuleType>
+}) satisfies z.ZodType<IPBlockingRule>
 
-// Project config schema
 export const projectConfigSchema = z.object({
   projectId: z.string().optional(),
   teamId: z.string().optional(),
-}) satisfies z.ZodType<ProjectConfigType>
+}) satisfies z.ZodType<ProjectConfig>
 
-// Main firewall config schema
 export const firewallConfigSchema = projectConfigSchema.extend({
-  rules: z.array(customRuleSchema),
+  rules: z.array(firewallRuleSchema),
   ips: z.array(ipBlockingRuleSchema).optional(),
   version: z.number().optional(),
   updatedAt: z.string().optional(),
-}) satisfies z.ZodType<FirewallConfigType>
-
-// Vercel specific schemas
-export const vercelActionSchema = z.object({
-  mitigate: z.object({
-    action: ruleActionTypeSchema,
-    rateLimit: ruleRateLimitSchema.nullable().optional(),
-    redirect: ruleRedirectSchema.nullable().optional(),
-    actionDuration: ruleDurationSchema.nullable().optional(),
-  }),
-}) satisfies z.ZodType<VercelActionType>
-
-export const vercelRuleSchema = z.object({
-  id: idSchema,
-  active: z.boolean(),
-  name: z.string(),
-  description: z.string().optional(),
-  conditionGroup: z.array(vercelConditionGroupSchema),
-  action: vercelActionSchema,
-}) satisfies z.ZodType<VercelRuleType>
-
-// Re-export types from the original type files for convenience
-export type {
-  CustomRuleType as CustomRule,
-  FirewallConfigType as FirewallConfig,
-  IPBlockingRuleType as IPBlockingRule,
-  ProjectConfigType as ProjectConfig,
-  RuleActionType as RuleAction,
-  RuleActionTypeEnum as RuleActionType,
-  RuleOperatorType as RuleOperator,
-  RuleRateLimitType as RuleRateLimit,
-  RuleRedirectType as RuleRedirect,
-  RuleTypeEnum as RuleType,
-  VercelActionType as VercelAction,
-  VercelConditionType as VercelCondition,
-  VercelConditionGroupType as VercelConditionGroup,
-  VercelIPBlockingRuleType as VercelIPBlockingRule,
-  VercelRuleType as VercelRule,
-}
+}) satisfies z.ZodType<FirewallConfig>

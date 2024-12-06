@@ -54,17 +54,43 @@ describe('isDeepEqual', () => {
   test('compares firewall rule examples', () => {
     const rule1 = {
       name: 'Test Rule',
-      type: 'ip_address',
-      values: ['1.1.1.1'],
-      action: 'deny',
+      conditionGroup: [
+        {
+          conditions: [
+            {
+              op: 'eq',
+              type: 'ip_address',
+              value: '1.1.1.1',
+            },
+          ],
+        },
+      ],
+      action: {
+        mitigate: {
+          action: 'deny',
+        },
+      },
       active: true,
     }
 
     const rule2 = {
       name: 'Test Rule',
-      type: 'ip_address',
-      values: ['1.1.1.1'],
-      action: 'deny',
+      conditionGroup: [
+        {
+          conditions: [
+            {
+              op: 'eq',
+              type: 'ip_address',
+              value: '1.1.1.1',
+            },
+          ],
+        },
+      ],
+      action: {
+        mitigate: {
+          action: 'deny',
+        },
+      },
       active: true,
     }
 
@@ -82,8 +108,10 @@ describe('isDeepEqual', () => {
         },
       ],
       action: {
-        type: 'deny',
-        duration: '1h',
+        mitigate: {
+          action: 'deny',
+          actionDuration: '1h',
+        },
       },
       active: true,
     }

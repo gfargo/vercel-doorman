@@ -15,7 +15,9 @@
         }
       ],
       "action": {
-        "type": "deny"
+        "mitigate": {
+          "action": "deny"
+        }
       },
       "active": true
     }
