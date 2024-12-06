@@ -14,10 +14,10 @@
             {
               "op": "nex",
               "type": "header",
-              "value": "x-api-key"
+              "key": "x-api-key"
             },
             {
-              "op": "ninc",
+              "op": "eq",
               "type": "ip_address",
               "value": "10.0.0.0/8"
             }
@@ -48,7 +48,8 @@
               "value": "/admin"
             },
             {
-              "op": "ninc",
+              "op": "inc",
+              "neg": true,
               "type": "geo_country",
               "value": ["US", "CA", "GB"]
             }
@@ -69,7 +70,7 @@
             {
               "op": "nex",
               "type": "header",
-              "value": "x-2fa-token"
+              "key": "x-2fa-token"
             }
           ]
         }
@@ -99,9 +100,9 @@
               "value": "(?i)(curl|wget|postman)"
             },
             {
-              "op": "gt",
+              "op": "eq",
               "type": "rate_limit_api_id",
-              "value": "10"
+              "value": "test"
             }
           ]
         }

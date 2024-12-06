@@ -27,20 +27,14 @@ export const idSchema = z.string().optional()
 
 // Rule Types and Operators (from vercelTypes.ts)
 export const ruleOperatorSchema = z.enum([
-  're',
   'eq',
-  'neq',
-  'ex',
-  'nex',
-  'inc',
-  'ninc',
   'pre',
   'suf',
+  'inc',
   'sub',
-  'gt',
-  'gte',
-  'lt',
-  'lte',
+  're',
+  'ex',
+  'nex',
 ]) satisfies z.ZodType<RuleOperator>
 
 export const ruleTypeSchema = z.enum([
@@ -71,6 +65,7 @@ export const ruleTypeSchema = z.enum([
 export const ruleConditionSchema = z
   .object({
     op: ruleOperatorSchema,
+    neg: z.boolean().optional(),
     type: ruleTypeSchema,
     value: z.union([z.string(), z.array(z.string()), z.array(z.number())]).optional(),
     key: z.string().optional(),
@@ -83,24 +78,37 @@ export const ruleConditionSchema = z
       case 'environment':
       case 'protocol':
         // equals, not equals, is any of, is not any of
-        return condition.op === 'eq' || condition.op === 'neq' || condition.op === 'inc' || condition.op === 'ninc'
+        return condition.op === 'eq' || condition.op === 'inc'
       default:
         return true
     }
   }, 'Invalid operator for the given condition type')
   .refine((condition) => {
-    // Cookie conditions require a key
-    if (condition.type === 'cookie' && !condition.key) {
+    const typesThatRequireKeyField = ['header', 'cookie'] as RuleType[]
+    if (typesThatRequireKeyField.includes(condition.type) && !condition.key) {
       return false
     }
 
-    // Cookie conditions with exists or not exists operators should not have a value
-    if (condition.type === 'cookie' && condition.op !== 'ex' && condition.op !== 'nex' && !condition.value) {
+    // 'exists' or 'not exists' operators don't include the 'value' field
+    if (
+      typesThatRequireKeyField.includes(condition.type) &&
+      condition.op !== 'ex' &&
+      condition.op !== 'nex' &&
+      !condition.value
+    ) {
       return false
     }
 
     return true
-  }, 'Missing key from cookie condition') satisfies z.ZodType<RuleCondition>
+  }, 'Missing key from condition')
+  .refine((condition) => {
+    const operatorsThatDontSupportNeg = ['ex', 'nex'] as RuleOperator[]
+    if (operatorsThatDontSupportNeg.includes(condition.op) && condition.neg) {
+      return false
+    }
+
+    return true
+  }, 'Negation is not supported for the given operator') satisfies z.ZodType<RuleCondition>
 
 export const conditionGroupSchema = z.object({
   conditions: z.array(ruleConditionSchema).min(1, 'Condition group must have at least one condition'),

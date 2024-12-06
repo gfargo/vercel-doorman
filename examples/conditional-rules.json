@@ -14,7 +14,7 @@
             {
               "op": "nex",
               "type": "header",
-              "value": "x-bot-verification"
+              "key": "x-bot-verification"
             }
           ]
         }
@@ -39,9 +39,10 @@
               "value": "/admin"
             },
             {
-              "op": "ninc",
+              "op": "inc",
+              "neg": true,
               "type": "ip_address",
-              "value": "10.0.0.0/8"
+              "value": ["10.0.0.0/8", "192.1.2.0/24"]
             }
           ]
         },

@@ -12,9 +12,10 @@
               "value": "/api/"
             },
             {
-              "op": "ex",
+              "op": "eq",
               "type": "header",
-              "value": "x-api-key"
+              "key": "x-api-key",
+              "value": "my-api-key"
             }
           ]
         }
@@ -45,7 +46,7 @@
             {
               "op": "nex",
               "type": "header",
-              "value": "x-api-key"
+              "key": "x-api-key"
             }
           ]
         }
@@ -71,7 +72,8 @@
             {
               "op": "eq",
               "type": "header",
-              "value": "x-client-type=mobile"
+              "key": "x-client-type",
+              "value": "mobile"
             }
           ]
         }

@@ -19,7 +19,7 @@
           "conditions": [
             {
               "type": "ip_address",
-              "op": "inc",
+              "op": "eq",
               "value": "10.0.0.0/24"
             }
           ]

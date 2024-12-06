@@ -14,7 +14,7 @@
             {
               "op": "nex",
               "type": "header",
-              "value": "x-api-version"
+              "key": "x-api-version"
             }
           ]
         }
@@ -42,9 +42,17 @@
               "value": "OPTIONS"
             },
             {
-              "op": "ninc",
+              "op": "eq",
               "type": "header",
-              "value": ["origin", "access-control-request-method"]
+              "key": "origin",
+              "value": "https://example.com"
+            },
+            {
+              "op": "inc",
+              "neg": true,
+              "type": "header",
+              "key": "access-control-request-method",
+              "value": ["POST", "PUT", "DELETE"]
             }
           ]
         }
@@ -73,8 +81,10 @@
               "value": "POST"
             },
             {
-              "op": "neq",
+              "op": "eq",
+              "neg": true,
               "type": "header",
+              "key": "content-type",
               "value": "application/json"
             }
           ]

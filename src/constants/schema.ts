@@ -91,6 +91,9 @@ export const schema = {
         op: {
           $ref: '#/definitions/RuleOperator',
         },
+        neg: {
+          type: 'boolean',
+        },
         type: {
           $ref: '#/definitions/RuleType',
         },
@@ -126,7 +129,7 @@ export const schema = {
     },
     RuleOperator: {
       type: 'string',
-      enum: ['re', 'eq', 'neq', 'ex', 'nex', 'inc', 'ninc', 'pre', 'suf', 'sub', 'gt', 'gte', 'lt', 'lte'],
+      enum: ['eq', 'pre', 'suf', 'inc', 'sub', 're', 'ex', 'nex'],
     },
     RuleType: {
       type: 'string',

@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals'
 import { readdirSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { ValidationService } from '../lib/services/ValidationService'
-import { ConditionGroup, CustomRule, FirewallConfig, RuleCondition } from '../lib/types'
+import { ConditionGroup, CustomRule, FirewallConfig, RuleCondition, RuleType } from '../lib/types'
 
 describe('Example Configurations', () => {
   const examplesDir = join(__dirname, '../../examples')
@@ -46,8 +46,9 @@ describe('Example Configurations', () => {
           expect(condition).toHaveProperty('op')
           expect(condition).toHaveProperty('type')
 
-          // Cookies require a key, but not all conditions require a value
-          if (condition.type === 'cookie') {
+          // headers & cookies require a key
+          const keyRequired = ['header', 'cookie'] as RuleType[]
+          if (keyRequired.includes(condition.type)) {
             expect(condition).toHaveProperty('key')
 
             if (condition.op !== 'ex' && condition.op !== 'nex') {
