@@ -13,7 +13,9 @@ import { ConditionGroup } from '../../types'
 export function formatConditionGroups(groups: ConditionGroup[] = []): string {
   return groups
     .map((group, groupIndex) => {
-      const conditions = group.conditions.map((c) => chalk.cyan(`${c.type}:${c.op}:${chalk.white(c.value)}`)).join('\n')
+      const conditions = group.conditions
+        .map((c) => chalk.cyan(`${c.type}:${c.neg ? chalk.red(`!${c.op}:`) : `${c.op}:`}${chalk.white(c.value)}`))
+        .join('\n')
       return groupIndex > 0 ? `${chalk.yellow('OR')}\n${conditions}` : conditions
     })
     .join('\n')
