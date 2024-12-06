@@ -20,10 +20,12 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "/405.html",
-          "permanent": false
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "/405.html",
+            "permanent": false
+          }
         }
       },
       "active": true
@@ -47,7 +49,11 @@
           ]
         }
       ],
-      "action": "deny",
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     },
     {
@@ -69,7 +75,11 @@
           ]
         }
       ],
-      "action": "deny",
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     }
   ]

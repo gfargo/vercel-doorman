@@ -15,10 +15,12 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "https://${host}${path}",
-          "permanent": true
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "https://${host}${path}",
+            "permanent": true
+          }
         }
       },
       "active": true
@@ -37,7 +39,11 @@
           ]
         }
       ],
-      "action": "deny",
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     },
     {
@@ -60,10 +66,12 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "/upgrade-client.html",
-          "permanent": false
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "/upgrade-client.html",
+            "permanent": false
+          }
         }
       },
       "active": true

@@ -3,9 +3,37 @@
     {
       "name": "Protect Sensitive Paths",
       "description": "Block access to sensitive paths",
-      "type": "path",
-      "values": ["/.env", "/.git/*", "/wp-admin/*", "/phpMyAdmin/*"],
-      "action": "deny",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "path",
+              "op": "pre",
+              "value": "/.env"
+            },
+            {
+              "type": "path",
+              "op": "pre",
+              "value": "/.git/*"
+            },
+            {
+              "type": "path",
+              "op": "pre",
+              "value": "/wp-admin/*"
+            },
+            {
+              "type": "path",
+              "op": "pre",
+              "value": "/phpMyAdmin/*"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     },
     {
@@ -28,10 +56,12 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "/docs/login",
-          "permanent": false
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "/docs/login",
+            "permanent": false
+          }
         }
       },
       "active": true
@@ -60,8 +90,10 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "duration": "15m"
+        "mitigate": {
+          "action": "challenge",
+          "actionDuration": "15m"
+        }
       },
       "active": true
     }

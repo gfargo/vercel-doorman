@@ -25,12 +25,14 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "rateLimit": {
-          "requests": 3,
-          "window": "1m"
-        },
-        "duration": "1h"
+        "mitigate": {
+          "action": "deny",
+          "rateLimit": {
+            "requests": 3,
+            "window": "1m"
+          },
+          "actionDuration": "1h"
+        }
       },
       "active": true
     },
@@ -60,9 +62,9 @@
               "value": "/admin"
             },
             {
-              "op": "nex",
+              "op": "ex",
               "type": "cookie",
-              "value": "admin_session"
+              "key": "admin_session"
             },
             {
               "op": "nex",
@@ -73,8 +75,10 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "duration": "30m"
+        "mitigate": {
+          "action": "challenge",
+          "actionDuration": "30m"
+        }
       },
       "active": true
     },
@@ -103,12 +107,14 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "rateLimit": {
-          "requests": 50,
-          "window": "5m"
-        },
-        "duration": "15m"
+        "mitigate": {
+          "action": "challenge",
+          "rateLimit": {
+            "requests": 50,
+            "window": "5m"
+          },
+          "actionDuration": "15m"
+        }
       },
       "active": true
     }

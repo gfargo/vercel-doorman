@@ -3,13 +3,24 @@
     {
       "name": "Legacy Path Redirect",
       "description": "Redirect old paths to new ones",
-      "type": "path",
-      "values": ["/old-blog/*"],
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "path",
+              "op": "pre",
+              "value": "/old-blog/*"
+            }
+          ]
+        }
+      ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "/blog/",
-          "permanent": true
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "/blog/",
+            "permanent": true
+          }
         }
       },
       "active": true
@@ -29,12 +40,14 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "/maintenance.html",
-          "permanent": false
-        },
-        "duration": "2h"
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "/maintenance.html",
+            "permanent": false
+          },
+          "actionDuration": "2h"
+        }
       },
       "active": true
     }
