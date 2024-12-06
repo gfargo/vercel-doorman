@@ -12,7 +12,8 @@
               "value": "/api/submit"
             },
             {
-              "op": "neq",
+              "op": "eq",
+              "neg": true,
               "type": "method",
               "value": "POST"
             }
@@ -68,7 +69,8 @@
               "value": "\\.(jpg|jpeg|png|gif|css|js|ico)$"
             },
             {
-              "op": "ninc",
+              "op": "inc",
+              "neg": true,
               "type": "method",
               "value": ["GET", "HEAD"]
             }

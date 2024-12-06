@@ -32,9 +32,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "rules"
-      ],
+      "required": ["rules"],
       "additionalProperties": false
     },
     "CustomRule": {
@@ -62,12 +60,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "name",
-        "conditionGroup",
-        "action",
-        "active"
-      ],
+      "required": ["name", "conditionGroup", "action", "active"],
       "additionalProperties": false,
       "description": "Rule Types"
     },
@@ -81,9 +74,7 @@
           }
         }
       },
-      "required": [
-        "conditions"
-      ],
+      "required": ["conditions"],
       "additionalProperties": false
     },
     "RuleCondition": {
@@ -124,25 +115,13 @@
           ]
         }
       },
-      "required": [
-        "op",
-        "type"
-      ],
+      "required": ["op", "type"],
       "additionalProperties": false,
       "description": "Rule Condition Types"
     },
     "RuleOperator": {
       "type": "string",
-      "enum": [
-        "eq",
-        "pre",
-        "suf",
-        "inc",
-        "sub",
-        "re",
-        "ex",
-        "nex"
-      ]
+      "enum": ["eq", "pre", "suf", "inc", "sub", "re", "ex", "nex"]
     },
     "RuleType": {
       "type": "string",
@@ -177,9 +156,7 @@
           "$ref": "#/definitions/MitigationAction"
         }
       },
-      "required": [
-        "mitigate"
-      ],
+      "required": ["mitigate"],
       "additionalProperties": false
     },
     "MitigationAction": {
@@ -209,27 +186,15 @@
           ]
         },
         "actionDuration": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "action"
-      ],
+      "required": ["action"],
       "additionalProperties": false
     },
     "ActionType": {
       "type": "string",
-      "enum": [
-        "log",
-        "deny",
-        "challenge",
-        "bypass",
-        "rate_limit",
-        "redirect"
-      ],
+      "enum": ["log", "deny", "challenge", "bypass", "rate_limit", "redirect"],
       "description": "Core Types"
     },
     "RateLimit": {
@@ -242,10 +207,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "requests",
-        "window"
-      ],
+      "required": ["requests", "window"],
       "additionalProperties": false,
       "description": "Action Types"
     },
@@ -259,9 +221,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "location"
-      ],
+      "required": ["location"],
       "additionalProperties": false
     },
     "IPBlockingRule": {
@@ -284,11 +244,7 @@
           "const": "deny"
         }
       },
-      "required": [
-        "ip",
-        "hostname",
-        "action"
-      ],
+      "required": ["ip", "hostname", "action"],
       "additionalProperties": false
     }
   }

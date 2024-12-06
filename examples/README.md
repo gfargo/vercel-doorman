@@ -1,10 +1,31 @@
-# Examples
+# Examples & Getting Started
 
-This directory contains example configurations demonstrating different firewall rule variations and settings.
+This directory contains example configurations and templates to help you get started with Vercel Doorman. Whether you're looking to use pre-built templates or create custom rules, you'll find everything you need here.
+
+## Quick Start with Templates
+
+The fastest way to get started is by using our built-in templates based on Vercel's official rule templates. Use the `template` command to add pre-configured rules to your configuration:
+
+```bash
+# List available templates
+vercel-doorman template
+
+# Add a specific template
+vercel-doorman template wordpress    # Block WordPress-related URLs
+vercel-doorman template ai-bots      # Block AI bot traffic
+vercel-doorman template bad-bots     # Block known malicious bots
+```
+
+### Available Templates
+
+- **Block Bad Bots** (`bad-bots`): Protect against common malicious bot traffic
+- **Block AI Bots** (`ai-bots`): Prevent AI crawlers and scrapers
+- **Block WordPress URLs** (`wordpress`): Deny access to common WordPress paths
+- **Block OFAC Countries** (`block-ofac-sanctioned-countries`): Comply with OFAC sanctions
 
 ## Rule Structure
 
-Each rule in Vercel Doorman follows the Vercel Firewall API structure:
+Each firewall rule in Vercel Doorman follows this structure:
 
 ```json
 {
@@ -35,31 +56,53 @@ Each rule in Vercel Doorman follows the Vercel Firewall API structure:
 }
 ```
 
-### Key Components:
+### Key Components
 
-1. **Condition Groups**: Arrays of condition sets that determine when the rule applies
-2. **Conditions**: Individual criteria like path, IP, or headers
-3. **Actions**: What happens when conditions are met (deny, challenge, rate limit, etc.)
-4. **Metadata**: Name, description, and active status
+1. **Condition Groups**: Define when rules should trigger
+   - Multiple conditions in a group use AND logic
+   - Multiple groups use OR logic
+2. **Conditions**: Specify matching criteria
+   - `path`: URL path matching
+   - `ip`: IP address filtering
+   - `country`: Geographic restrictions
+   - `method`: HTTP method filtering
+   - `header`: Custom header matching
+3. **Actions**: Define the response
+   - `deny`: Block the request
+   - `challenge`: Present a browser challenge
+   - `rateLimit`: Limit request frequency
+   - `rewrite`: Modify the request
+4. **Metadata**: Rule information
+   - `name`: Unique identifier
+   - `description`: Optional explanation
+   - `active`: Enable/disable the rule
 
-## Categories
+## Example Categories
 
-### Basic Rules
+### Basic Protection
 
-- `ip-block.json` - Basic IP address blocking
-- `path-protection.json` - Path-based access control
-- `geo-blocking.json` - Geographic location based rules
-- `method-restriction.json` - HTTP method restrictions
+- `ip-block.json` - Block specific IP addresses
+- `path-protection.json` - Secure specific URL paths
+- `geo-blocking.json` - Country-based access control
+- `method-restriction.json` - Limit HTTP methods
 
-### Advanced Rules
+### Advanced Security
 
-- `rate-limiting.json` - Rate limiting examples
-- `redirect-rules.json` - Redirection configurations
-- `challenge-rules.json` - Browser challenge examples
-- `conditional-rules.json` - Complex condition group examples
+- `rate-limiting.json` - Prevent abuse through rate limits
+- `redirect-rules.json` - Traffic redirection examples
+- `challenge-rules.json` - Bot prevention with challenges
+- `conditional-rules.json` - Complex rule combinations
 
-### Special Cases
+### Specialized Rules
 
-- `user-agent-filtering.json` - User agent based rules
-- `header-based-rules.json` - Custom header based rules
-- `mixed-rules.json` - Combining multiple rule types
+- `user-agent-filtering.json` - Filter by browser/client type
+- `header-based-rules.json` - Rules based on HTTP headers
+- `mixed-rules.json` - Multiple protection layers
+
+## Best Practices
+
+1. **Start Simple**: Begin with basic rules and expand as needed
+2. **Test First**: Use `--dry-run` when syncing new rules
+3. **Monitor Impact**: Review logs after implementing new rules
+4. **Layer Security**: Combine multiple rules for better protection
+5. **Version Control**: Keep your config file in source control

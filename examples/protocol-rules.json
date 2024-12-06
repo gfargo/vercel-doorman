@@ -32,7 +32,8 @@
         {
           "conditions": [
             {
-              "op": "ninc",
+              "op": "inc",
+              "neg": true,
               "type": "protocol",
               "value": ["http/1.1", "http/2", "h2", "https"]
             }
@@ -58,7 +59,8 @@
               "value": "/api/v2/"
             },
             {
-              "op": "ninc",
+              "op": "inc",
+              "neg": true,
               "type": "protocol",
               "value": ["http/2", "h2"]
             }
