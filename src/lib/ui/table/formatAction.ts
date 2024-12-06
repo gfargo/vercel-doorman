@@ -1,41 +1,89 @@
 import chalk from 'chalk'
-import { RuleAction, RuleActionType, VercelAction } from '../../schemas/firewallSchemas'
+import { RuleAction } from '../../types'
+
+const formatDuration = (duration: string): string => {
+  if (duration === 'permanent') return 'permanent'
+
+  // Convert "24h", "30m", etc. to more readable format
+  const value = duration.slice(0, -1)
+  const unit = duration.slice(-1)
+  const units: Record<string, string> = {
+    s: 'sec',
+    m: 'min',
+    h: 'hr',
+    d: 'day',
+  }
+  return `${value}${units[unit] || unit}`
+}
+
+const formatRateLimit = (requests: number, window: string): string => {
+  // Convert window to readable format (e.g., "60s" to "min")
+  if (window === '60s') return `${requests}/min`
+  if (window === '3600s') return `${requests}/hr`
+  if (window === '86400s') return `${requests}/day`
+  return `${requests}/${formatDuration(window)}`
+}
 
 /**
- * Formats a `RuleAction` or `RuleActionType` into a string representation.
+ * Formats a `VercelAction` into a clear string representation.
  *
- * @param action - The action to format. It can be either a `RuleAction` object or a `RuleActionType` string.
- * @returns A formatted string representation of the action.
- *
- * The formatted string includes:
- * - The action type in cyan color.
- * - The rate limit in yellow color, if present.
- * - The redirect location in magenta color, with an indication of whether it is permanent or temporary in gray color, if present.
- * - The duration in gray color, if present.
+ * Examples:
+ * - Rate limit: "rate-limit 100/min"
+ * - Redirect: "redirect → /path (301)"
+ * - Block with duration: "deny for 24hr"
+ * - Challenge: "challenge"
  */
-export function formatAction(action: RuleAction | RuleActionType | VercelAction): string {
-  if (typeof action === 'string') {
-    return action
+export function formatAction(action: RuleAction): string {
+  if (!action.mitigate) {
+    return 'unknown'
   }
 
-  if ('mitigate' in action) {
-    return chalk.cyan((action as VercelAction).mitigate.action)
+  const { mitigate } = action
+  const parts: string[] = []
+
+  // Add base action type
+  switch (mitigate.action) {
+    case 'log':
+      parts.push(chalk.blue('log'))
+      break
+    case 'deny':
+      parts.push(chalk.red('deny'))
+      break
+    case 'challenge':
+      parts.push(chalk.yellow('challenge'))
+      break
+    case 'bypass':
+      parts.push(chalk.green('bypass'))
+      break
+    case 'rate_limit':
+      parts.push(chalk.yellow('rate-limit'))
+      break
+    case 'redirect':
+      parts.push(chalk.magenta('redirect'))
+      break
+    default:
+      parts.push(mitigate.action)
   }
 
-  const parts = [chalk.cyan(action.type)]
-
-  if (action.rateLimit) {
-    parts.push(chalk.yellow(`${action.rateLimit.requests}/${action.rateLimit.window}`))
+  // Add rate limit info
+  if (mitigate.rateLimit) {
+    parts[0] = chalk.yellow('rate-limit') // Override action type
+    parts.push(chalk.yellow(formatRateLimit(mitigate.rateLimit.requests, mitigate.rateLimit.window)))
   }
-  if (action.redirect) {
-    parts.push(chalk.magenta(`→ ${action.redirect.location}`))
-    if (action.redirect.permanent) {
-      parts[parts.length - 1] += chalk.gray(` (${action.redirect.permanent ? 'permanent' : 'temporary'})`)
+
+  // Add redirect info
+  if (mitigate.redirect) {
+    parts[0] = chalk.magenta('redirect') // Override action type
+    parts.push(chalk.magenta(`→ ${mitigate.redirect.location}`))
+    if (mitigate.redirect.permanent !== undefined) {
+      parts.push(chalk.gray(`(${mitigate.redirect.permanent ? '301' : '302'})`))
     }
   }
-  if (action.duration) {
-    parts.push(chalk.gray(`for ${action.duration}`))
+
+  // Add duration
+  if (mitigate.actionDuration) {
+    parts.push(chalk.gray(`for ${formatDuration(mitigate.actionDuration)}`))
   }
 
-  return parts.join('\n')
+  return parts.join(' ')
 }

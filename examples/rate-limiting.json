@@ -3,13 +3,24 @@
     {
       "name": "API Rate Limit",
       "description": "Rate limit API endpoints",
-      "type": "path",
-      "values": ["/api/*"],
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "path",
+              "op": "pre",
+              "value": "/api/*"
+            }
+          ]
+        }
+      ],
       "action": {
-        "type": "deny",
-        "rateLimit": {
-          "requests": 100,
-          "window": "1m"
+        "mitigate": {
+          "action": "deny",
+          "rateLimit": {
+            "requests": 100,
+            "window": "1m"
+          }
         }
       },
       "active": true
@@ -34,12 +45,14 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "rateLimit": {
-          "requests": 5,
-          "window": "5m"
-        },
-        "duration": "30m"
+        "mitigate": {
+          "action": "challenge",
+          "rateLimit": {
+            "requests": 5,
+            "window": "5m"
+          },
+          "actionDuration": "30m"
+        }
       },
       "active": true
     }

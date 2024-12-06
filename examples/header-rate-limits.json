@@ -20,12 +20,14 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "rateLimit": {
-          "requests": 1000,
-          "window": "1h"
-        },
-        "duration": "1h"
+        "mitigate": {
+          "action": "deny",
+          "rateLimit": {
+            "requests": 1000,
+            "window": "1h"
+          },
+          "actionDuration": "1h"
+        }
       },
       "active": true
     },
@@ -49,12 +51,14 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "rateLimit": {
-          "requests": 50,
-          "window": "1h"
-        },
-        "duration": "2h"
+        "mitigate": {
+          "action": "deny",
+          "rateLimit": {
+            "requests": 50,
+            "window": "1h"
+          },
+          "actionDuration": "2h"
+        }
       },
       "active": true
     },
@@ -73,10 +77,12 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "rateLimit": {
-          "requests": 200,
-          "window": "5m"
+        "mitigate": {
+          "action": "deny",
+          "rateLimit": {
+            "requests": 200,
+            "window": "5m"
+          }
         }
       },
       "active": true

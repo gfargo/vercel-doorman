@@ -3,17 +3,48 @@
     {
       "name": "Block Country",
       "description": "Block access from specific countries",
-      "type": "geo_country",
-      "values": ["CN", "RU"],
-      "action": "deny",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "geo_country",
+              "op": "eq",
+              "value": "CN"
+            },
+            {
+              "type": "geo_country",
+              "op": "eq",
+              "value": "RU"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     },
     {
       "name": "Allow Continent",
       "description": "Allow access from specific continent",
-      "type": "geo_continent",
-      "values": ["EU"],
-      "action": "allow",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "geo_continent",
+              "op": "eq",
+              "value": "EU"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "bypass"
+        }
+      },
       "active": true
     },
     {
@@ -31,8 +62,10 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "duration": "1h"
+        "mitigate": {
+          "action": "challenge",
+          "actionDuration": "1h"
+        }
       },
       "active": true
     }

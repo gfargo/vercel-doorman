@@ -14,16 +14,18 @@
             {
               "op": "nex",
               "type": "cookie",
-              "value": "preview_token"
+              "key": "preview_token"
             }
           ]
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "/preview-auth",
-          "permanent": false
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "/preview-auth",
+            "permanent": false
+          }
         }
       },
       "active": true
@@ -48,10 +50,12 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "http://mock-api.local${path}",
-          "permanent": false
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "http://mock-api.local${path}",
+            "permanent": false
+          }
         }
       },
       "active": true
@@ -76,8 +80,10 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "duration": "1h"
+        "mitigate": {
+          "action": "challenge",
+          "actionDuration": "1h"
+        }
       },
       "active": true
     }

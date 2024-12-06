@@ -39,40 +39,84 @@ Create a `vercel-firewall.config.json` file in your project root:
   "rules": [
     {
       "name": "block-country",
-      "type": "country",
-      "action": "deny",
-      "values": ["CN", "RU"],
-      "active": true,
-      "description": "Block traffic from specific countries"
+      "description": "Block traffic from specific countries",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "geo_country",
+              "op": "eq",
+              "value": "CN"
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "type": "geo_country",
+              "op": "eq",
+              "value": "RU"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
+      "active": true
     },
     {
       "name": "rate-limit-api",
-      "type": "path",
-      "values": ["/api"],
-      "active": true,
       "description": "Rate limit API endpoints",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "path",
+              "op": "pre",
+              "value": "/api"
+            }
+          ]
+        }
+      ],
       "action": {
-        "type": "log",
-        "rateLimit": {
-          "requests": 100,
-          "window": "60s"
-        },
-        "duration": "1h"
-      }
+        "mitigate": {
+          "action": "rate_limit",
+          "rateLimit": {
+            "requests": 100,
+            "window": "60s"
+          },
+          "actionDuration": "1h"
+        }
+      },
+      "active": true
     },
     {
       "name": "redirect-legacy",
-      "type": "path",
-      "values": ["/old-path"],
-      "active": true,
       "description": "Redirect legacy paths",
-      "action": {
-        "type": "allow",
-        "redirect": {
-          "location": "/new-path",
-          "permanent": false // or true
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "path",
+              "op": "eq",
+              "value": "/old-path"
+            }
+          ]
         }
-      }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "redirect",
+          "redirect": {
+            "location": "/new-path",
+            "permanent": false
+          }
+        }
+      },
+      "active": true
     }
   ]
 }

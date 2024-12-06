@@ -1,0 +1,25 @@
+{
+  "rules": [
+    {
+      "name": "Deny WordPress URLs",
+      "description": "",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "path",
+              "op": "re",
+              "value": "/(wp-admin|wp-login\\.php|xmlrpc\\.php|wp-content|wp-includes|wp-signup\\.php|wp-activate\\.php|register\\.php|wp-register\\.php)"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
+      "active": true
+    }
+  ]
+}

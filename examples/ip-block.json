@@ -3,19 +3,43 @@
     {
       "name": "Block Single IP",
       "description": "Block a specific IP address",
-      "type": "ip_address",
-      "values": ["192.168.1.1"],
-      "action": "deny",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "ip_address",
+              "op": "eq",
+              "value": "192.168.1.1"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     },
     {
       "name": "Block IP Range",
       "description": "Block an IP range using CIDR notation",
-      "type": "ip_address",
-      "values": ["10.0.0.0/24"],
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "ip_address",
+              "op": "inc",
+              "value": "10.0.0.0/24"
+            }
+          ]
+        }
+      ],
       "action": {
-        "type": "deny",
-        "duration": "24h"
+        "mitigate": {
+          "action": "deny",
+          "actionDuration": "24h"
+        }
       },
       "active": true
     },
@@ -33,7 +57,11 @@
           ]
         }
       ],
-      "action": "allow",
+      "action": {
+        "mitigate": {
+          "action": "bypass"
+        }
+      },
       "active": true
     }
   ]

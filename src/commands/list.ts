@@ -3,11 +3,13 @@ import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { z } from 'zod'
 import { logger } from '../lib/logger'
-import { IPBlockingRule, configVersionSchema } from '../lib/schemas/firewallSchemas'
+import { configVersionSchema } from '../lib/schemas/firewallSchemas'
 import { VercelClient } from '../lib/services/VercelClient'
-import { RuleTransformer } from '../lib/transformers/RuleTransformer'
+
+import { FirewallConfig, IPBlockingRule } from '../lib/types'
+import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
-import { promptForCredentials } from '../lib/utils/promptForCredentials'
+import { getConfig } from '../lib/utils/config'
 
 interface ListOptions {
   projectId: string
@@ -60,10 +62,18 @@ export const handler = async (argv: Arguments<ListOptions>) => {
       logger.level = LogLevels.debug
     }
 
+    // Try to load config for project/team IDs
+    let config = {} as Partial<FirewallConfig>
+    try {
+      config = await getConfig(undefined, { validate: false, throwOnError: false })
+    } catch (error) {
+      logger.debug('No config file found or invalid config, proceeding with CLI arguments only')
+    }
+
     const { token, projectId, teamId } = await promptForCredentials({
       token: argv.token,
-      projectId: argv.projectId,
-      teamId: argv.teamId,
+      projectId: argv.projectId || config?.projectId || undefined,
+      teamId: argv.teamId || config?.teamId || undefined,
     })
 
     // Validate version if provided
@@ -84,13 +94,12 @@ export const handler = async (argv: Arguments<ListOptions>) => {
     logger.start(`Fetching firewall configuration${argv.configVersion ? ` version ${argv.configVersion}` : ''} ...`)
     logger.verbose(`Token: ${token}\t projectId: ${projectId}\t teamId: ${teamId}`)
 
-    const config = await client.fetchFirewallConfig(argv.configVersion)
+    const liveConfig = await client.fetchFirewallConfig(argv.configVersion)
 
-    // Convert custom rules to config format for cleaner output
-    const configRules = config.rules.map(RuleTransformer.fromVercelRule)
-    const ipBlockingRules = config.ips as IPBlockingRule[]
+    const configRules = liveConfig.rules
+    const ipBlockingRules = liveConfig.ips as IPBlockingRule[]
 
-    const lastUpdated = new Date(config.updatedAt)
+    const lastUpdated = new Date(liveConfig.updatedAt)
     const formattedDate = new Intl.DateTimeFormat('en-US', {
       dateStyle: 'medium',
       timeStyle: 'medium',
@@ -98,15 +107,15 @@ export const handler = async (argv: Arguments<ListOptions>) => {
 
     logger.info(
       `Found ${chalk.cyan(configRules.length)} custom rules and ${chalk.cyan(ipBlockingRules.length)} IP blocking rules\n` +
-        chalk.dim(`Version: ${chalk.yellow(config.version)} • Last Updated: ${chalk.yellow(formattedDate)}`),
+        chalk.dim(`Version: ${chalk.yellow(liveConfig.version)} • Last Updated: ${chalk.yellow(formattedDate)}`),
     )
 
     if (argv.format === 'json') {
       logger.info(
         JSON.stringify(
           {
-            version: config.version,
-            updatedAt: config.updatedAt,
+            version: liveConfig.version,
+            updatedAt: liveConfig.updatedAt,
             lastUpdated: formattedDate,
             rules: configRules,
             ips: ipBlockingRules,

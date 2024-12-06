@@ -2,8 +2,8 @@ import type { ErrorObject } from 'ajv'
 import Ajv, { Ajv as AjvType } from 'ajv'
 import { z } from 'zod'
 import { schema } from '../../constants/schema'
-import { firewallConfigSchema } from '../schemas/firewallSchemas'
-import { FirewallConfig } from '../types/configTypes'
+import { conditionGroupSchema, firewallConfigSchema, rateLimitSchema } from '../schemas/firewallSchemas'
+import { FirewallConfig } from '../types'
 import { ErrorFormatter } from '../utils/errorFormatter'
 
 export class ValidationError extends Error {
@@ -67,6 +67,7 @@ export class ValidationService {
     if (!ValidationService.instance) {
       ValidationService.instance = new ValidationService()
     }
+
     return ValidationService.instance
   }
 
@@ -89,13 +90,34 @@ export class ValidationService {
     if (ajvValid && zodResult.success) {
       try {
         this.validateRuleNames(config as FirewallConfig)
-        this.validateRuleStructure(config as FirewallConfig)
-        this.validateRuleValues(config as FirewallConfig)
+        this.validateRuleConditionGroup(config as FirewallConfig)
+        this.validateRuleAction(config as FirewallConfig)
       } catch (error) {
         if (error instanceof ValidationError) {
           customErrors.push(...(error.customErrors || []))
         } else {
           throw error
+        }
+      }
+
+      // Additional Zod validations for each rule
+      for (const rule of (config as FirewallConfig).rules) {
+        // Validate rate limit if present
+        if (rule.action.mitigate?.rateLimit) {
+          const rateLimitResult = rateLimitSchema.safeParse(rule.action.mitigate.rateLimit)
+          if (!rateLimitResult.success) {
+            customErrors.push(...rateLimitResult.error.errors.map((err) => err.message))
+          }
+        }
+
+        // Validate condition groups if present
+        if (rule.conditionGroup) {
+          for (const group of rule.conditionGroup) {
+            const groupResult = conditionGroupSchema.safeParse(group)
+            if (!groupResult.success) {
+              customErrors.push(...groupResult.error.errors.map((err) => err.message))
+            }
+          }
         }
       }
     }
@@ -122,48 +144,10 @@ export class ValidationService {
     }
   }
 
-  private validateRuleStructure(config: FirewallConfig): void {
+  private validateRuleConditionGroup(config: FirewallConfig): void {
     for (const rule of config.rules) {
-      if (!rule.conditionGroup && (!rule.type || !rule.values)) {
-        throw new ValidationError(
-          `Rule "${rule.name}" is missing required fields. Either conditionGroup or type+values must be provided`,
-          null,
-        )
-      }
-      if (rule.conditionGroup && (rule.type || rule.values)) {
-        throw new ValidationError(
-          `Rule "${rule.name}" has conflicting fields. Use either conditionGroup or type+values, not both`,
-          null,
-        )
-      }
-    }
-  }
-
-  private validateRuleValues(config: FirewallConfig): void {
-    for (const rule of config.rules) {
-      if (rule.type && rule.values) {
-        // Validate values based on rule type
-        for (const value of rule.values) {
-          switch (rule.type) {
-            case 'ip_address':
-              if (!this.isValidIP(value)) {
-                throw new ValidationError(`Invalid IP address in rule "${rule.name}": "${value}"`, null)
-              }
-              break
-            case 'geo_as_number':
-              if (!this.isValidASN(value)) {
-                throw new ValidationError(`Invalid ASN in rule "${rule.name}": "${value}"`, null)
-              }
-              break
-            case 'path':
-              if (!this.isValidPath(value)) {
-                throw new ValidationError(`Invalid path in rule "${rule.name}": "${value}"`, null)
-              }
-              break
-          }
-        }
-      } else if (rule.conditionGroup) {
-        // Validate conditionGroup structure
+      // Validate conditionGroup structure
+      if (rule.conditionGroup) {
         for (const group of rule.conditionGroup) {
           if (!group.conditions || group.conditions.length === 0) {
             throw new ValidationError(`Rule "${rule.name}" has an empty condition group`, null)
@@ -172,6 +156,56 @@ export class ValidationService {
             if (!condition.type || !condition.op || !condition.value) {
               throw new ValidationError(`Rule "${rule.name}" has an invalid condition`, null)
             }
+
+            if (typeof condition.value !== 'string') {
+              throw new ValidationError(`Rule "${rule.name}" has an invalid value in condition`, null)
+            }
+
+            if (condition.type === 'ip_address' && !this.isValidIP(condition.value)) {
+              throw new ValidationError(`Rule "${rule.name}" has an invalid IP address in condition`, null)
+            }
+
+            if (condition.type === 'geo_as_number' && !this.isValidASN(condition.value)) {
+              throw new ValidationError(`Rule "${rule.name}" has an invalid ASN in condition`, null)
+            }
+
+            if (condition.type === 'path' && !this.isValidPath(condition.value)) {
+              throw new ValidationError(`Rule "${rule.name}" has an invalid path in condition`, null)
+            }
+          }
+        }
+      } else {
+        throw new ValidationError('Either conditionGroup or type+values must be provided', null)
+      }
+    }
+  }
+
+  private validateRuleAction(config: FirewallConfig): void {
+    for (const rule of config.rules) {
+      // Validate action
+      if (typeof rule.action === 'object') {
+        if ('mitigate' in rule.action) {
+          const action = rule.action.mitigate
+
+          if (action?.rateLimit) {
+            if (action.rateLimit.requests <= 0) {
+              throw new ValidationError('Invalid rate limit configuration: requests must be positive', null)
+            }
+            if (!action.rateLimit.window.match(/^\d+[smhd]$/)) {
+              throw new ValidationError('Invalid rate limit configuration: invalid window format', null)
+            }
+            const windowValue = parseInt(action.rateLimit.window)
+            if (windowValue <= 0) {
+              throw new ValidationError('Invalid rate limit configuration: window duration must be positive', null)
+            }
+          }
+
+          if (action?.actionDuration && !action.actionDuration.match(/^\d+[smhd]$|^permanent$/)) {
+            throw new ValidationError('Invalid action duration format: ' + action.actionDuration, null)
+          }
+
+          if (action?.redirect && !action.redirect.location) {
+            throw new ValidationError('Invalid redirect configuration: location is required', null)
           }
         }
       }

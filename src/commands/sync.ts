@@ -1,17 +1,15 @@
 import chalk from 'chalk'
 import { LogLevels } from 'consola'
-import { readFileSync, writeFileSync } from 'fs'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { FirewallConfig } from '../lib/schemas/firewallSchemas'
 import { FirewallService } from '../lib/services/FirewallService'
-import { ValidationService } from '../lib/services/ValidationService'
 import { VercelClient } from '../lib/services/VercelClient'
+import { CustomRule, FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
+import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
-import { ConfigFinder } from '../lib/utils/configFinder'
+import { getConfig, saveConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
-import { promptForCredentials } from '../lib/utils/promptForCredentials'
 
 interface SyncOptions {
   config?: string
@@ -57,24 +55,8 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       logger.level = LogLevels.debug
     }
 
-    // Find and read config file
-    let configPath = argv.config
-    if (!configPath) {
-      configPath = await ConfigFinder.findConfig()
-      if (!configPath) {
-        throw new Error(
-          `No config file found. Create ${ConfigFinder.getDefaultConfigPath()} or specify path with --config`,
-        )
-      }
-    }
-
-    // Read, parse, and validate config file
-    const configContent = readFileSync(configPath, 'utf8')
-    const configJson = JSON.parse(configContent)
-
-    const validator: ValidationService = ValidationService.getInstance()
-    validator.validateConfig(configJson)
-    let config: FirewallConfig = configJson
+    // Load and validate config
+    let config = await getConfig(argv.config)
 
     const { token, projectId, teamId } = await promptForCredentials({
       token: argv.token,
@@ -143,7 +125,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       debug: argv.debug,
     })
     const { rulesToUpdateLocally } = syncResult
-    logger.success('Firewall rules sync completed successfully')
+    logger.success(chalk.green('Firewall rules sync completed successfully'))
 
     // Validate and update config metadata
     try {
@@ -154,7 +136,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       logger.error(error instanceof Error ? error.message : String(error))
 
       // Write backup to config file
-      writeFileSync(configPath, JSON.stringify(backupConfig, null, 2))
+      await saveConfig(backupConfig, argv.config)
 
       logger.info(chalk.yellow('Restored original config due to validation failure'))
       throw new Error('Sync validation failed - original config restored')
@@ -177,7 +159,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
         // Update config with new IDs and preserve metadata
         const updatedConfig: FirewallConfig = {
           ...config,
-          rules: config.rules.map((rule) => {
+          rules: config.rules.map((rule: CustomRule) => {
             const ruleToUpdate = rulesToUpdateLocally.find(
               (r) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name),
             )
@@ -187,14 +169,22 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
           ips: config.ips || [],
         }
 
-        writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2))
-        logger.success('Local config updated with new rule IDs')
+        await saveConfig(updatedConfig, argv.config)
+        logger.success(chalk.green('Updated local config with new rule IDs'))
       } else {
-        logger.info(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
+        logger.warn(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
+        logger.log('Changes:')
+        rulesToUpdateLocally.forEach((rule) => {
+          logger.log(
+            `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
+          )
+        })
       }
     } else if (backupConfig.version !== config.version) {
-      writeFileSync(configPath, JSON.stringify(config, null, 2))
-      logger.success('Local config updated with new version and metadata')
+      await saveConfig(config, argv.config)
+      logger.success(
+        chalk.green(`Updated version ${chalk.dim(`(v${config.version})`)} and metadata in local config file`),
+      )
     }
   } catch (error) {
     if (error instanceof SyntaxError) {

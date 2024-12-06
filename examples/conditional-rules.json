@@ -20,8 +20,10 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "duration": "1h"
+        "mitigate": {
+          "action": "challenge",
+          "actionDuration": "1h"
+        }
       },
       "active": true
     },
@@ -53,12 +55,16 @@
             {
               "op": "nex",
               "type": "cookie",
-              "value": "admin_session"
+              "key": "admin_session"
             }
           ]
         }
       ],
-      "action": "deny",
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     }
   ]

@@ -28,11 +28,11 @@ interface ColumnConfig {
  * Configuration for table column widths
  */
 const RuleTableConfig: ColumnConfig = {
-  // Minimum widths for each column [id, name, description, status, time, details]
-  minWidths: [10, 28, 24, 5, 8, 35],
+  // Minimum widths for each column [id, name, conditions, active, action, description]
+  minWidths: [10, 28, 20, 5, 12, 35],
   // Maximum widths (null means unlimited)
-  maxWidths: [15, 36, 26, 8, 12, null],
-  flexColumns: [0, 1, 2, 5],
+  maxWidths: [15, 32, 36, 8, 24, null],
+  flexColumns: [0, 1, 2, 4, 5],
 }
 
 const IPTableConfig: ColumnConfig = {
@@ -84,7 +84,7 @@ export function displayRulesTable(
     chalk.bold.gray('Action'),
     chalk.bold.gray('Description'),
   ]
-  const tableColAligns = ['left', 'left', 'left', 'center', 'center', 'left'] as HorizontalAlignment[]
+  const tableColAligns = ['left', 'left', 'left', 'center', 'left', 'left'] as HorizontalAlignment[]
 
   const currentTerminalWidth = process.stdout.columns || 400
   const colWidths = getTableColWidths('rules', currentTerminalWidth)

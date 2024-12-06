@@ -15,12 +15,14 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "rateLimit": {
-          "requests": 30,
-          "window": "1m"
-        },
-        "duration": "10m"
+        "mitigate": {
+          "action": "challenge",
+          "rateLimit": {
+            "requests": 30,
+            "window": "1m"
+          },
+          "actionDuration": "10m"
+        }
       },
       "active": true
     },
@@ -48,8 +50,10 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "duration": "5m"
+        "mitigate": {
+          "action": "challenge",
+          "actionDuration": "5m"
+        }
       },
       "active": true
     },
@@ -73,8 +77,10 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "duration": "15m"
+        "mitigate": {
+          "action": "challenge",
+          "actionDuration": "15m"
+        }
       },
       "active": true
     }

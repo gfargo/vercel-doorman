@@ -3,9 +3,32 @@
     {
       "name": "Block Bad Bots",
       "description": "Block known bad bot user agents",
-      "type": "user_agent",
-      "values": ["PetalBot", "Scrapy", "zgrab"],
-      "action": "deny",
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "user_agent",
+              "op": "eq",
+              "value": "PetalBot"
+            },
+            {
+              "type": "user_agent",
+              "op": "eq",
+              "value": "Scrapy"
+            },
+            {
+              "type": "user_agent",
+              "op": "eq",
+              "value": "zgrab"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      },
       "active": true
     },
     {
@@ -32,10 +55,12 @@
         }
       ],
       "action": {
-        "type": "challenge",
-        "redirect": {
-          "location": "/upgrade-browser.html",
-          "permanent": false
+        "mitigate": {
+          "action": "challenge",
+          "redirect": {
+            "location": "/upgrade-browser.html",
+            "permanent": false
+          }
         }
       },
       "active": true
@@ -55,10 +80,12 @@
         }
       ],
       "action": {
-        "type": "deny",
-        "redirect": {
-          "location": "/update-app.html",
-          "permanent": false
+        "mitigate": {
+          "action": "deny",
+          "redirect": {
+            "location": "/update-app.html",
+            "permanent": false
+          }
         }
       },
       "active": true

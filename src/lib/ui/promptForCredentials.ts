@@ -1,4 +1,4 @@
-import { prompt } from '../ui/prompt'
+import { prompt } from './prompt'
 
 export async function promptForCredentials(args: {
   token?: string
