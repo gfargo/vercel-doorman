@@ -140,3 +140,6 @@ node_modules
 TODO
 # eslintignore specific
 .yarn
+
+# Changelog is auto generated
+CHANGELOG.md
