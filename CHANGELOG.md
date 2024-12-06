@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/gfargo/vercel-doorman/compare/v1.5.0...v1.5.1) (2024-12-06)
+
+
+### Bug Fixes
+
+* remove auto-generated comment ([6f1622c](https://github.com/gfargo/vercel-doorman/commit/6f1622cfeb2dc817519f47eccd2614cea0ce79aa))
+
 # [1.5.0](https://github.com/gfargo/vercel-doorman/compare/v1.4.0...v1.5.0) (2024-12-06)
 
 
