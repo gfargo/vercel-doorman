@@ -108,7 +108,15 @@ export const ruleConditionSchema = z
     }
 
     return true
-  }, 'Negation is not supported for the given operator') satisfies z.ZodType<RuleCondition>
+  }, 'Negation is not supported for the given operator')
+  .refine((condition) => {
+    // anything with `inc` operator should have an array of values
+    if (condition.op === 'inc' && !Array.isArray(condition.value)) {
+      return false
+    }
+
+    return true
+  }, 'When using `inc` operator, value must be an array') satisfies z.ZodType<RuleCondition>
 
 export const conditionGroupSchema = z.object({
   conditions: z.array(ruleConditionSchema).min(1, 'Condition group must have at least one condition'),
