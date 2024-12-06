@@ -137,7 +137,9 @@ vercel-doorman download 1
 vercel-doorman template [templateName]
 ```
 
-Adds a predefined rule template to your configuration file. Available templates are listed [here](https://vercel.com/templates/vercel-firewall).  If not template name is provided, a list of available templates will be displayed.
+Adds a predefined rule template to your configuration file. If no `templateName` argument is provided, a list of available templates will be displayed instead.
+
+Learn more about Vercel's Firewall templates [here](https://vercel.com/templates/vercel-firewall).
 
 Options:
 
