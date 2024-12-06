@@ -1,3 +1,11 @@
+# [1.5.0](https://github.com/gfargo/vercel-doorman/compare/v1.4.0...v1.5.0) (2024-12-06)
+
+
+### Features
+
+* add new templates for bot detection and OFAC rules ([f720a76](https://github.com/gfargo/vercel-doorman/commit/f720a76412211c9960d6538378093dd90d7ed30c))
+* add template command and config utils ([9685b99](https://github.com/gfargo/vercel-doorman/commit/9685b9999f4ae33bebfff1ddf36ef38a17f5ec60))
+
 # [1.4.0](https://github.com/gfargo/vercel-doorman/compare/v1.3.3...v1.4.0) (2024-11-30)
 
 
