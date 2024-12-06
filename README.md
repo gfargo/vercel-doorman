@@ -36,91 +36,17 @@ Create a `vercel-firewall.config.json` file in your project root:
 {
   "projectId": "your-project-id",
   "teamId": "your-team-id",
-  "rules": [
-    {
-      "name": "block-country",
-      "description": "Block traffic from specific countries",
-      "conditionGroup": [
-        {
-          "conditions": [
-            {
-              "type": "geo_country",
-              "op": "eq",
-              "value": "CN"
-            }
-          ]
-        },
-        {
-          "conditions": [
-            {
-              "type": "geo_country",
-              "op": "eq",
-              "value": "RU"
-            }
-          ]
-        }
-      ],
-      "action": {
-        "mitigate": {
-          "action": "deny"
-        }
-      },
-      "active": true
-    },
-    {
-      "name": "rate-limit-api",
-      "description": "Rate limit API endpoints",
-      "conditionGroup": [
-        {
-          "conditions": [
-            {
-              "type": "path",
-              "op": "pre",
-              "value": "/api"
-            }
-          ]
-        }
-      ],
-      "action": {
-        "mitigate": {
-          "action": "rate_limit",
-          "rateLimit": {
-            "requests": 100,
-            "window": "60s"
-          },
-          "actionDuration": "1h"
-        }
-      },
-      "active": true
-    },
-    {
-      "name": "redirect-legacy",
-      "description": "Redirect legacy paths",
-      "conditionGroup": [
-        {
-          "conditions": [
-            {
-              "type": "path",
-              "op": "eq",
-              "value": "/old-path"
-            }
-          ]
-        }
-      ],
-      "action": {
-        "mitigate": {
-          "action": "redirect",
-          "redirect": {
-            "location": "/new-path",
-            "permanent": false
-          }
-        }
-      },
-      "active": true
-    }
-  ]
+  "rules": [],
+  "ips": []
 }
 ```
+
+### Adding new rules
+
+To get started with adding new rules to your configuration file
+
+- Use the `template` command to add one of [vercel's predefined rule templates](https://vercel.com/templates/vercel-firewall) to your configuration file.
+- Refer to the [/examples](https://github.com/gfargo/vercel-doorman/tree/main/examples) directory for examples of custom rules.
 
 ## Usage
 
@@ -203,6 +129,31 @@ vercel-doorman download 1 --dry-run
 
 # Then download version 1 and update the config
 vercel-doorman download 1
+```
+
+#### Add Template Rule
+
+```bash
+vercel-doorman template [templateName]
+```
+
+Adds a predefined rule template to your configuration file. Available templates are listed [here](https://vercel.com/templates/vercel-firewall).  If not template name is provided, a list of available templates will be displayed.
+
+Options:
+
+- `templateName`: Name of the template to add
+
+Example:
+
+```bash
+# Select a template to add
+vercel-doorman template
+
+# Block traffic to Wordpress URLs
+vercel-doorman template wordpress
+
+# Block traffic from AI Bots
+vercel-doorman template ai-bots
 ```
 
 #### Validate Configuration
