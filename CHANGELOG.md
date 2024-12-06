@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/gfargo/vercel-doorman/compare/v1.5.2...v1.5.3) (2024-12-06)
+
+
+### Bug Fixes
+
+* enforce array for `inc` operator values ([8b7f09d](https://github.com/gfargo/vercel-doorman/commit/8b7f09dbeb82bff38de3a4f177345c5c98637f3f))
+
 ## [1.5.2](https://github.com/gfargo/vercel-doorman/compare/v1.5.1...v1.5.2) (2024-12-06)
 
 
