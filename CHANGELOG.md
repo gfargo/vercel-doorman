@@ -1,3 +1,11 @@
+## [1.5.2](https://github.com/gfargo/vercel-doorman/compare/v1.5.1...v1.5.2) (2024-12-06)
+
+
+### Bug Fixes
+
+* enhance condition formatting ([bb07348](https://github.com/gfargo/vercel-doorman/commit/bb07348f8e52357db6b00d29a69a04b7c023f9de))
+* update schema and examples for consistency ([3b9c55e](https://github.com/gfargo/vercel-doorman/commit/3b9c55eda396d4371403db18a7a1a9408c9be8bc))
+
 ## [1.5.1](https://github.com/gfargo/vercel-doorman/compare/v1.5.0...v1.5.1) (2024-12-06)
 
 
