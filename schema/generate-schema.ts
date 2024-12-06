@@ -37,11 +37,8 @@ export const schema = ${JSON.stringify(schemaWithMeta, null, 2)}
 `
 writeFileSync(schemaAsVariableOutputPath, schemaAsVariable)
 
-// Write the JSON schema with a comment header
-const jsonWithComment = `${headerComment}
-${JSON.stringify(schemaWithMeta, null, 2)}
-`
-writeFileSync(schemaOutputPath, jsonWithComment)
+// Write the JSON schema without the comment header, as a standalone file
+writeFileSync(schemaOutputPath, JSON.stringify(schemaWithMeta, null, 2))
 
 // eslint-disable-next-line no-console
 console.log(`\x1b[32m✨ Schema generated at \x1b[1m${schemaOutputPath}\x1b[0m\x1b[32m\x1b[0m`)
