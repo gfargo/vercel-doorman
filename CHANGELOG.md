@@ -1,3 +1,11 @@
+## [1.5.4](https://github.com/gfargo/vercel-doorman/compare/v1.5.3...v1.5.4) (2024-12-09)
+
+
+### Bug Fixes
+
+* migrate templates to TypeScript ([7a6c7ff](https://github.com/gfargo/vercel-doorman/commit/7a6c7ff059ae63a16a2048ffdc35513237c047e8))
+* remove newline in success message ([22c74e5](https://github.com/gfargo/vercel-doorman/commit/22c74e516604ea206959337aecbe5578e82cc9e1))
+
 ## [1.5.3](https://github.com/gfargo/vercel-doorman/compare/v1.5.2...v1.5.3) (2024-12-06)
 
 
