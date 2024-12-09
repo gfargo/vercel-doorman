@@ -1,3 +1,10 @@
+## [1.5.5](https://github.com/gfargo/vercel-doorman/compare/v1.5.4...v1.5.5) (2024-12-09)
+
+
+### Bug Fixes
+
+* add config creation prompt ([14afdd7](https://github.com/gfargo/vercel-doorman/commit/14afdd76d94dad8b44e815a2eb9f3fcfffeb53a9))
+
 ## [1.5.4](https://github.com/gfargo/vercel-doorman/compare/v1.5.3...v1.5.4) (2024-12-09)
 
 
