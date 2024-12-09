@@ -87,7 +87,7 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
       // Save config with validation enabled and throwing on error
       logger.start('Saving updated configuration...')
       await saveConfig(updatedConfig, undefined, { validate: true, throwOnError: true })
-      logger.success(chalk.green(`\n✓ Successfully added template '${templateName}' to configuration`))
+      logger.success(chalk.green(`Successfully added template '${templateName}' to configuration`))
     } catch (error) {
       if (error instanceof SyntaxError) {
         logger.error(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in template file:', `  ${error.message}`]))
