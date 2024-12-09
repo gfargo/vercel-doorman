@@ -30,10 +30,11 @@ pnpm add vercel-doorman
 
 ## Configuration
 
-Create a `vercel-firewall.config.json` file in your project root:
+Create a `vercel-firewall.config.json` file in your project root. The configuration file supports JSON Schema for enhanced IDE features like autocompletion and validation:
 
 ```json
 {
+  "$schema": "https://doorman.griffen.codes/schema.json",
   "projectId": "your-project-id",
   "teamId": "your-team-id",
   "rules": [],

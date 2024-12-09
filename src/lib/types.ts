@@ -103,7 +103,16 @@ export interface ProjectConfig {
   teamId?: string
 }
 
+/**
+ * The main configuration type for Vercel Doorman
+ * @property $schema - The URI of the JSON Schema to validate against
+ * @property version - Configuration version number
+ * @property rules - List of firewall rules
+ * @property ips - Optional list of IP blocking rules
+ * @property updatedAt - Last update timestamp
+ */
 export interface FirewallConfig extends ProjectConfig {
+  $schema?: string
   version?: number
   rules: CustomRule[]
   ips?: IPBlockingRule[]
