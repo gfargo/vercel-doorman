@@ -1,9 +1,8 @@
 import chalk from 'chalk'
 import { LogLevels } from 'consola'
-import fs from 'fs'
-import path from 'path'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
+import { TemplateName, getTemplateConfig, templates } from '../lib/templates'
 import { FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
 import { getConfig, saveConfig } from '../lib/utils/config'
@@ -36,12 +35,8 @@ export const builder = {
   },
 }
 
-const getAvailableTemplates = () => {
-  const templatesDir = 'src/lib/templates'
-  return fs
-    .readdirSync(templatesDir)
-    .filter((file) => file.endsWith('.json'))
-    .map((file) => path.basename(file, '.json'))
+const getAvailableTemplates = (): TemplateName[] => {
+  return Object.keys(templates) as TemplateName[]
 }
 
 export const handler = async (argv: Arguments<TemplateOptions>) => {
@@ -64,17 +59,14 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
       templateName = selected as string
     }
 
-    const templatesDir = 'src/lib/templates'
-    const templatePath = path.join(templatesDir, `${templateName}.json`)
-
-    if (!fs.existsSync(templatePath)) {
+    const templateConfig = getTemplateConfig(templateName as TemplateName)
+    if (!templateConfig) {
       logger.error(ErrorFormatter.wrapErrorBlock(['Template not found:', `  ${templateName}`]))
       process.exit(1)
     }
 
     try {
-      const templateContent = JSON.parse(fs.readFileSync(templatePath, 'utf-8'))
-      logger.debug('Template content:', templateContent)
+      logger.debug('Template content:', templateConfig)
 
       // Load config, allowing invalid configs to be loaded
       logger.start('Loading current configuration...')
@@ -82,14 +74,14 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
 
       if (argv.dryRun) {
         logger.info(chalk.cyan('\nDry run - The following rules would be added:'))
-        logger.log(JSON.stringify(templateContent.rules, null, 2))
+        logger.log(JSON.stringify(templateConfig.rules, null, 2))
         return
       }
 
       // Append the new rules to the existing configuration
       const updatedConfig: FirewallConfig = {
         ...config,
-        rules: [...config.rules, ...templateContent.rules],
+        rules: [...config.rules, ...templateConfig.rules],
       }
 
       // Save config with validation enabled and throwing on error
