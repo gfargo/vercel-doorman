@@ -21,6 +21,9 @@ export const schema = {
         teamId: {
           type: 'string',
         },
+        $schema: {
+          type: 'string',
+        },
         version: {
           type: 'number',
         },
@@ -42,6 +45,7 @@ export const schema = {
       },
       required: ['rules'],
       additionalProperties: false,
+      description: 'The main configuration type for Vercel Doorman',
     },
     CustomRule: {
       type: 'object',

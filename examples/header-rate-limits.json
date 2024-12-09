@@ -1,4 +1,5 @@
 {
+  "$schema": "https://doorman.griffen.codes/schema.json",
   "rules": [
     {
       "name": "API Key Rate Limit",

@@ -11,7 +11,10 @@ interface ConfigOptions {
   throwOnError?: boolean // Whether to throw on validation errors (if validate is true)
 }
 
+const SCHEMA_URL = 'https://doorman.griffen.codes/schema.json'
+
 const createEmptyConfig = (): FirewallConfig => ({
+  $schema: SCHEMA_URL,
   rules: [],
 })
 

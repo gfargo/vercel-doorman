@@ -29,6 +29,7 @@ Each firewall rule in Vercel Doorman follows this structure:
 
 ```json
 {
+  "$schema": "https://doorman.griffen.codes/schema.json",
   "name": "Example Rule",
   "description": "Optional description of the rule",
   "conditionGroup": [

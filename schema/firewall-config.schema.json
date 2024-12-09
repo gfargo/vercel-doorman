@@ -13,6 +13,9 @@
         "teamId": {
           "type": "string"
         },
+        "$schema": {
+          "type": "string"
+        },
         "version": {
           "type": "number"
         },
@@ -33,7 +36,8 @@
         }
       },
       "required": ["rules"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "The main configuration type for Vercel Doorman"
     },
     "CustomRule": {
       "type": "object",
