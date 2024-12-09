@@ -1,14 +1,19 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
 import { logger } from '../logger'
-import { FirewallConfig } from '../schemas/firewallSchemas'
 import { ValidationService } from '../services/ValidationService'
+import { FirewallConfig } from '../types'
+import { prompt } from '../ui/prompt'
 import { ConfigFinder } from './configFinder'
 
 interface ConfigOptions {
   validate?: boolean // Whether to validate the config
   throwOnError?: boolean // Whether to throw on validation errors (if validate is true)
 }
+
+const createEmptyConfig = (): FirewallConfig => ({
+  rules: [],
+})
 
 export async function getConfig(
   configPath?: string,
@@ -17,7 +22,21 @@ export async function getConfig(
   // Find config file
   const filePath = configPath || (await ConfigFinder.findConfig())
   if (!filePath) {
-    throw new Error(`No config file found. Create ${ConfigFinder.getDefaultConfigPath()} or specify path with --config`)
+    const defaultPath = ConfigFinder.getDefaultConfigPath()
+    const createNew = await prompt(`No config file found. Would you like to create one at ${defaultPath}?`, {
+      type: 'confirm',
+    })
+
+    if (createNew) {
+      logger.info(`Creating new config file at ${defaultPath}`)
+      const emptyConfig = createEmptyConfig()
+      await saveConfig(emptyConfig, defaultPath, { validate: false })
+      return emptyConfig
+    } else {
+      throw new Error(
+        `Config file is required to continue. Use --config to specify a custom path or manually create a config file at ${defaultPath}`,
+      )
+    }
   }
 
   // Read and parse config
