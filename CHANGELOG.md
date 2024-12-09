@@ -1,3 +1,10 @@
+## [1.5.6](https://github.com/gfargo/vercel-doorman/compare/v1.5.5...v1.5.6) (2024-12-09)
+
+
+### Performance Improvements
+
+* add JSON Schema support ([06c2a47](https://github.com/gfargo/vercel-doorman/commit/06c2a473f78f94b80e9eb84a01db6dea9541dd19))
+
 ## [1.5.5](https://github.com/gfargo/vercel-doorman/compare/v1.5.4...v1.5.5) (2024-12-09)
 
 
