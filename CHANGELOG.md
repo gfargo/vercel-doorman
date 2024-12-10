@@ -1,3 +1,10 @@
+## [1.5.7](https://github.com/gfargo/vercel-doorman/compare/v1.5.6...v1.5.7) (2024-12-10)
+
+
+### Bug Fixes
+
+* update Vercel client and error handling ([f7df377](https://github.com/gfargo/vercel-doorman/commit/f7df377e4f541fd6ebf68f2e29810189cd0dec3e))
+
 ## [1.5.6](https://github.com/gfargo/vercel-doorman/compare/v1.5.5...v1.5.6) (2024-12-09)
 
 
