@@ -20,7 +20,7 @@
   "scripts": {
     "prebuild": "pnpm clean",
     "build": "tsup-node",
-    "build:schema": "ts-node ./schema/generate-schema.ts ",
+    "build:schema": "ts-node ./schema/generate-schema.ts; pnpm lint:fix; pnpm format:fix",
     "build:watch": "tsup-node --watch",
     "clean": "rimraf dist",
     "commit": "cz",

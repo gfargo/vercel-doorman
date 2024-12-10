@@ -19,6 +19,9 @@
         "version": {
           "type": "number"
         },
+        "firewallEnabled": {
+          "type": "boolean"
+        },
         "rules": {
           "type": "array",
           "items": {

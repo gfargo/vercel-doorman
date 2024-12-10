@@ -29,6 +29,8 @@ const headerComment = `/**
  * Run 'pnpm build:schema' to regenerate this file
  * Source: schema/generate-schema.ts
  */
+
+export const SCHEMA_URL = '${process.env.SCHEMA_URL || 'https://doorman.griffen.codes/schema.json'}'
 `
 
 // Write the schema to a file as a variable so it can be used for validation

@@ -114,6 +114,7 @@ export interface ProjectConfig {
 export interface FirewallConfig extends ProjectConfig {
   $schema?: string
   version?: number
+  firewallEnabled?: boolean
   rules: CustomRule[]
   ips?: IPBlockingRule[]
   updatedAt?: string

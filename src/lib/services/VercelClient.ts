@@ -1,5 +1,8 @@
+import chalk from 'chalk'
 import { logger } from '../logger'
-import { VercelIPBlockingRule, VercelRule } from '../schemas/firewallSchemas'
+import { CustomRule, FirewallConfig, IPBlockingRule } from '../types'
+import { prompt } from '../ui/prompt'
+import { createEmptyConfig } from '../utils/createEmptyConfig'
 
 export type ApiResponse = LatestConfigResponse | TargetVersionConfig
 
@@ -8,16 +11,16 @@ export type TargetVersionConfig = VercelConfig
 export type LatestConfigResponse = {
   active: VercelConfig
 }
-interface VercelConfig {
+export interface VercelConfig {
   version: number
+  id: string
   firewallEnabled: boolean
-  crs: unknown
-  rules: VercelRule[]
-  ips: VercelIPBlockingRule[]
+  crs: unknown // TODO: Add type for CRS, this is an enterprise feature and less clear how to interact with :(
+  rules: CustomRule[]
+  ips: IPBlockingRule[]
+  projectKey: string
   ownerId: string
   updatedAt: string
-  id: string
-  projectKey: string
 }
 
 export const VERCEL_API_BASE_URL = 'https://api.vercel.com/v1/security/firewall/config'
@@ -63,16 +66,16 @@ export class VercelClient {
    * Handles the response from the Vercel API.
    * @param response - The response object from the fetch request.
    * @param isNewRule - A boolean indicating if the rule is new.
-   * @returns A promise that resolves to a VercelRule object.
+   * @returns A promise that resolves to a CustomRule object.
    * @throws An error if the response is not ok.
    */
-  private async handleResponse(response: Response, isNewRule: boolean): Promise<VercelRule> {
+  private async handleResponse(response: Response, isNewRule: boolean): Promise<CustomRule> {
     if (!response.ok) {
       const error = await response.text()
       throw new Error(`Error ${isNewRule ? 'creating' : 'updating'} firewall rule: ${response.statusText}\n${error}`)
     }
 
-    return (await response.json()) as VercelRule
+    return (await response.json()) as CustomRule
   }
 
   /**
@@ -89,37 +92,77 @@ export class VercelClient {
 
     if (!response.ok) {
       const error = await response.text()
+      logger.debug('Error fetching firewall rules:', response.statusText, error)
       throw new Error(`Error fetching firewall rules: ${response.statusText}\n${error}`)
     }
 
     const data = (await response.json()) as ApiResponse
 
     logger.debug('Config Version:', configVersion ?? 'latest')
+    logger.debug('Fetched Config:', configVersion ? data : (data as LatestConfigResponse).active)
 
     if (configVersion) {
       return data as TargetVersionConfig
     }
 
+    if (!data || ('active' in data && data.active === null)) {
+      logger.warn(chalk.bold('No firewall configuration found.'))
+      const createEmptyFirstVersion = await prompt('Would you like to create one?', {
+        type: 'confirm',
+      })
+
+      if (createEmptyFirstVersion) {
+        logger.debug('Creating new empty firewall configuration...')
+        const initialVersion = await this.putEmptyConfig()
+        logger.debug('Empty firewall configuration created successfully')
+        logger.debug(`New configuration version: ${chalk.yellow(initialVersion.version)}`)
+
+        return initialVersion
+      } else {
+        return (data as LatestConfigResponse).active
+      }
+    }
+
     return (data as LatestConfigResponse).active
+  }
+
+  async putEmptyConfig(): Promise<VercelConfig> {
+    const { $schema, ...emptyConfig } = createEmptyConfig()
+    logger.debug('Empty Config:', emptyConfig)
+    return this.putConfig(emptyConfig)
+  }
+
+  async putConfig(config: FirewallConfig): Promise<VercelConfig> {
+    const response = await fetch(this.getUrl(), {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(config),
+    })
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Error putting config: ${response.statusText}\n${error}`)
+    }
+
+    return ((await response.json()) as LatestConfigResponse).active
   }
 
   /**
    * Fetches the active firewall rules for the Vercel project.
-   * @returns A promise that resolves to an array of VercelRule objects.
+   * @returns A promise that resolves to an array of CustomRule objects.
    * @throws An error if the fetch request fails.
    */
-  async fetchActiveFirewallRules(): Promise<VercelRule[]> {
+  async fetchActiveFirewallRules(): Promise<CustomRule[]> {
     const data = await this.fetchFirewallConfig()
-    return data.rules
+    return data?.rules
   }
 
   /**
    * Updates an existing firewall rule or creates a new one if the rule ID is not provided.
-   * @param rule - The VercelRule object to update or create.
-   * @returns A promise that resolves to the updated or created VercelRule object.
+   * @param rule - The CustomRule object to update or create.
+   * @returns A promise that resolves to the updated or created CustomRule object.
    * @throws An error if the update or create request fails.
    */
-  async updateFirewallRule(rule: VercelRule): Promise<VercelRule> {
+  async updateFirewallRule(rule: CustomRule): Promise<CustomRule> {
     const isNewRule = !rule.id || rule.id === '-'
     const body = {
       action: isNewRule ? 'rules.insert' : 'rules.update',
@@ -149,21 +192,21 @@ export class VercelClient {
 
   /**
    * Creates a new firewall rule.
-   * @param rule - The VercelRule object to create, without the ID.
-   * @returns A promise that resolves to the created VercelRule object.
+   * @param rule - The CustomRule object to create, without the ID.
+   * @returns A promise that resolves to the created CustomRule object.
    * @throws An error if the create request fails.
    */
-  async createFirewallRule(rule: Omit<VercelRule, 'id'>): Promise<VercelRule> {
-    return this.updateFirewallRule({ ...rule, id: '-' } as VercelRule)
+  async createFirewallRule(rule: Omit<CustomRule, 'id'>): Promise<CustomRule> {
+    return this.updateFirewallRule({ ...rule, id: '-' } as CustomRule)
   }
 
   /**
    * Deletes an existing firewall rule.
-   * @param rule - The VercelRule object to delete.
+   * @param rule - The CustomRule object to delete.
    * @returns A promise that resolves when the rule is deleted.
    * @throws An error if the delete request fails.
    */
-  async deleteFirewallRule(rule: VercelRule): Promise<void> {
+  async deleteFirewallRule(rule: CustomRule): Promise<void> {
     const body = JSON.stringify({
       action: 'rules.remove',
       id: rule.id,
@@ -185,7 +228,7 @@ export class VercelClient {
   /**
    * Updates an existing IP blocking rule or creates a new one if the rule ID is not provided.
    */
-  async updateIPBlockingRule(rule: VercelIPBlockingRule): Promise<VercelIPBlockingRule> {
+  async updateIPBlockingRule(rule: IPBlockingRule): Promise<IPBlockingRule> {
     const isNewRule = !rule.id || rule.id === '-'
     const body = {
       action: isNewRule ? 'ip.insert' : 'ip.update',
@@ -208,20 +251,20 @@ export class VercelClient {
       const error = await response.text()
       throw new Error(`Error ${isNewRule ? 'creating' : 'updating'} IP blocking rule: ${response.statusText}\n${error}`)
     }
-    return (await response.json()) as VercelIPBlockingRule
+    return (await response.json()) as IPBlockingRule
   }
 
   /**
    * Creates a new IP blocking rule.
    */
-  async createIPBlockingRule(rule: Omit<VercelIPBlockingRule, 'id'>): Promise<VercelIPBlockingRule> {
+  async createIPBlockingRule(rule: Omit<IPBlockingRule, 'id'>): Promise<IPBlockingRule> {
     return this.updateIPBlockingRule({ ...rule, id: '-' })
   }
 
   /**
    * Deletes an existing IP blocking rule.
    */
-  async deleteIPBlockingRule(rule: VercelIPBlockingRule): Promise<void> {
+  async deleteIPBlockingRule(rule: IPBlockingRule): Promise<void> {
     const body = JSON.stringify({
       action: 'ip.remove',
       id: rule.id,
