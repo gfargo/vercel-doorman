@@ -6,6 +6,8 @@
  * Source: schema/generate-schema.ts
  */
 
+export const SCHEMA_URL = 'https://doorman.griffen.codes/schema.json'
+
 export const schema = {
   $schema: 'http://json-schema.org/draft-07/schema#',
   title: 'Doorman Config',
@@ -26,6 +28,9 @@ export const schema = {
         },
         version: {
           type: 'number',
+        },
+        firewallEnabled: {
+          type: 'boolean',
         },
         rules: {
           type: 'array',

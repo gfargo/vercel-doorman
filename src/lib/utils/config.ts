@@ -5,18 +5,12 @@ import { ValidationService } from '../services/ValidationService'
 import { FirewallConfig } from '../types'
 import { prompt } from '../ui/prompt'
 import { ConfigFinder } from './configFinder'
+import { createEmptyConfig } from './createEmptyConfig'
 
 interface ConfigOptions {
   validate?: boolean // Whether to validate the config
   throwOnError?: boolean // Whether to throw on validation errors (if validate is true)
 }
-
-const SCHEMA_URL = 'https://doorman.griffen.codes/schema.json'
-
-const createEmptyConfig = (): FirewallConfig => ({
-  $schema: SCHEMA_URL,
-  rules: [],
-})
 
 export async function getConfig(
   configPath?: string,
