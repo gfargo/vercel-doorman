@@ -77,7 +77,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
       existingConfig = await getConfig(argv.config, { validate: false, throwOnError: false })
       logger.debug(`Existing config: ${JSON.stringify(existingConfig)}`)
     } catch (error) {
-      if (error.message.includes('No config file found')) {
+      if (error instanceof Error && error.message.includes('No config file found')) {
         const createNewConfig = await prompt('No config file found. Would you like to create a new one?', {
           type: 'confirm',
         })
