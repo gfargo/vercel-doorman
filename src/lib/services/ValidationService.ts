@@ -94,7 +94,8 @@ export class ValidationService {
         this.validateRuleAction(config as FirewallConfig)
       } catch (error) {
         if (error instanceof ValidationError) {
-          customErrors.push(...(error.customErrors || []))
+          // Ensure the primary error message is captured in aggregation
+          customErrors.push(error.message, ...(error.customErrors || []))
         } else {
           throw error
         }
@@ -153,24 +154,69 @@ export class ValidationService {
             throw new ValidationError(`Rule "${rule.name}" has an empty condition group`, null)
           }
           for (const condition of group.conditions) {
-            if (!condition.type || !condition.op || !condition.value) {
+            if (!condition.type || !condition.op) {
               throw new ValidationError(`Rule "${rule.name}" has an invalid condition`, null)
             }
 
-            if (typeof condition.value !== 'string') {
+            // Header/Cookie key + value rules
+            const requiresKey = condition.type === 'header' || condition.type === 'cookie'
+            const isExistsOp = condition.op === 'ex' || condition.op === 'nex'
+
+            if (requiresKey) {
+              if (!condition.key || typeof condition.key !== 'string') {
+                throw new ValidationError(`Rule "${rule.name}" has an invalid condition`, null)
+              }
+              // For exists/not-exists, value may be omitted
+              if (!isExistsOp && (condition.value === undefined || condition.value === null)) {
+                throw new ValidationError(`Rule "${rule.name}" has an invalid condition`, null)
+              }
+            } else {
+              // For non header/cookie, value is always required
+              if (condition.value === undefined || condition.value === null) {
+                throw new ValidationError(`Rule "${rule.name}" has an invalid condition`, null)
+              }
+            }
+
+            // Normalize value(s) for further checks
+            const values: (string | number)[] = Array.isArray(condition.value)
+              ? (condition.value as (string | number)[])
+              : condition.value !== undefined
+                ? [condition.value as string | number]
+                : []
+
+            // If provided, ensure non-empty arrays
+            if (Array.isArray(condition.value) && values.length === 0) {
               throw new ValidationError(`Rule "${rule.name}" has an invalid value in condition`, null)
             }
 
-            if (condition.type === 'ip_address' && !this.isValidIP(condition.value)) {
-              throw new ValidationError(`Rule "${rule.name}" has an invalid IP address in condition`, null)
+            // Validate specific types
+            if (condition.type === 'ip_address') {
+              for (const v of values) {
+                if (typeof v !== 'string' || !this.isValidIP(v)) {
+                  throw new ValidationError(`Rule "${rule.name}" has an invalid IP address in condition`, null)
+                }
+              }
             }
 
-            if (condition.type === 'geo_as_number' && !this.isValidASN(condition.value)) {
-              throw new ValidationError(`Rule "${rule.name}" has an invalid ASN in condition`, null)
+            if (condition.type === 'geo_as_number') {
+              for (const v of values) {
+                const asnVal = typeof v === 'number' ? v : parseInt(String(v), 10)
+                if (!this.isValidASN(String(asnVal))) {
+                  throw new ValidationError(`Rule "${rule.name}" has an invalid ASN in condition`, null)
+                }
+              }
             }
 
-            if (condition.type === 'path' && !this.isValidPath(condition.value)) {
-              throw new ValidationError(`Rule "${rule.name}" has an invalid path in condition`, null)
+            if (condition.type === 'path') {
+              // Only validate literal path shape for eq/pre where a leading slash is expected
+              if (condition.op === 'eq' || condition.op === 'pre') {
+                for (const v of values) {
+                  if (typeof v !== 'string' || !this.isValidPath(v)) {
+                    throw new ValidationError(`Rule "${rule.name}" has an invalid path in condition`, null)
+                  }
+                }
+              }
+              // For regex (re) or other operators, skip strict path shape checks
             }
           }
         }
@@ -213,21 +259,38 @@ export class ValidationService {
   }
 
   private isValidIP(value: string): boolean {
-    // Basic IP validation including CIDR notation
-    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/
-    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(\/\d{1,3})?$/
+    // Validate IPv4/IPv6 (optionally with CIDR) with stricter IPv4 octet checks
+    const parts = value.split('/')
+    const ipPart = parts[0] ?? ''
+    const cidrPart = parts[1]
 
-    if (!ipv4Regex.test(value) && !ipv6Regex.test(value)) {
-      return false
+    const isValidIPv4 = (ip: string): boolean => {
+      const octets = ip.split('.')
+      if (octets.length !== 4) return false
+      return octets.every((octet) => {
+        if (!/^\d{1,3}$/.test(octet)) return false
+        const n = parseInt(octet, 10)
+        return n >= 0 && n <= 255
+      })
     }
 
-    if (value.includes('/')) {
-      const [ip, cidr] = value.split('/')
-      const cidrNum = cidr ? parseInt(cidr, 10) : NaN
-      if (ip && ipv4Regex.test(ip) && (cidrNum < 0 || cidrNum > 32)) return false
-      if (ip && ipv6Regex.test(ip) && (cidrNum < 0 || cidrNum > 128)) return false
+    const isValidIPv6 = (ip: string): boolean => {
+      // Simple IPv6 validation for 8 groups; extended forms are out of scope here
+      const hextets = ip.split(':')
+      if (hextets.length !== 8) return false
+      return hextets.every((h) => /^[0-9a-fA-F]{1,4}$/.test(h))
     }
 
+    const isV4 = isValidIPv4(ipPart)
+    const isV6 = isValidIPv6(ipPart)
+    if (!isV4 && !isV6) return false
+
+    if (cidrPart !== undefined) {
+      const cidrNum = parseInt(cidrPart, 10)
+      if (Number.isNaN(cidrNum)) return false
+      if (isV4 && (cidrNum < 0 || cidrNum > 32)) return false
+      if (isV6 && (cidrNum < 0 || cidrNum > 128)) return false
+    }
     return true
   }
 

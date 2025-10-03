@@ -72,3 +72,9 @@ bundle
 
 prompts/
 dist
+
+# AI Agent Files
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.kiro
