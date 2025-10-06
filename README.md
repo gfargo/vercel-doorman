@@ -15,11 +15,13 @@ Doorman enables Infrastructure as Code (IaC) for Vercel's security layer, bringi
 
 ### Core Functionality
 
-- � **SComplete Rule Management** - Create, update, delete custom rules and IP blocking
+- 🔒 **Complete Rule Management** - Create, update, delete custom rules and IP blocking
 - 🔄 **Bidirectional Sync** - Keep local configs and Vercel in perfect sync
 - 📊 **Smart Status Checking** - Know exactly what needs syncing before you deploy
-- � **Destailed Diff Analysis** - See exactly what will change with color-coded output
+- 🔍 **Detailed Diff Analysis** - See exactly what will change with color-coded output
 - ✅ **Advanced Validation** - Syntax checking plus configuration health scoring
+
+> 🚧 **Coming Soon:** Cloudflare Firewall support is in active development! Manage both Vercel and Cloudflare firewall rules from a single tool.
 
 ### Developer Experience
 
