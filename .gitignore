@@ -78,3 +78,7 @@ CLAUDE.md
 GEMINI.md
 AGENTS.md
 .kiro
+
+# Test scripts
+test-sync-fix.js
+test-sync-fix.config.json

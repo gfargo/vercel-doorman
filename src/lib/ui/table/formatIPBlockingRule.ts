@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { IPBlockingRule } from '../../schemas/firewallSchemas'
+import { IPBlockingRule } from '../../types'
 
 /**
  * Formats an IP blocking rule object for display in a table.

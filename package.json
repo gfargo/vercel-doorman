@@ -34,8 +34,15 @@
     "start:node": "node ./bin/run",
     "test": "jest",
     "test:watch": "jest --watchAll",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "dev": "pnpm start",
+    "doorman": "pnpm start",
     "prepare": "husky",
-    "release": "semantic-release"
+    "release": "semantic-release",
+    "docs:dev": "echo 'Documentation server would start here'",
+    "validate:examples": "find examples -name '*.json' -exec pnpm start validate --config {} \\;",
+    "benchmark": "echo 'Performance benchmarks would run here'"
   },
   "keywords": [
     "vercel",

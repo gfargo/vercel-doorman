@@ -1,4 +1,3 @@
-import { findUp } from 'find-up'
 import { existsSync } from 'fs'
 import { dirname, resolve } from 'path'
 
@@ -9,6 +8,8 @@ export class ConfigFinder {
    * the directory tree until we find it or hit the root
    */
   static async findConfig(startPath?: string): Promise<string | undefined> {
+    // Use dynamic import for ESM module
+    const { findUp } = await import('find-up')
     const configPath = await findUp(CONFIG_FILE_NAME, {
       cwd: startPath || process.cwd(),
     })
