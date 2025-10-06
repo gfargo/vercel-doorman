@@ -1,3 +1,10 @@
+## [1.5.8](https://github.com/gfargo/vercel-doorman/compare/v1.5.7...v1.5.8) (2025-10-06)
+
+
+### Bug Fixes
+
+* resolve security vulnerabilities and improve test coverage ([9d1fd0b](https://github.com/gfargo/vercel-doorman/commit/9d1fd0b1bad6e1930762a0d0bf5b05f068518c24))
+
 ## [1.5.7](https://github.com/gfargo/vercel-doorman/compare/v1.5.6...v1.5.7) (2024-12-10)
 
 
