@@ -180,7 +180,10 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
           )
         })
       }
-    } else if (backupConfig.version !== config.version) {
+    }
+
+    // Always save config if version or metadata changed
+    if (backupConfig.version !== config.version || backupConfig.updatedAt !== config.updatedAt) {
       await saveConfig(config, argv.config)
       logger.success(
         chalk.green(`Updated version ${chalk.dim(`(v${config.version})`)} and metadata in local config file`),

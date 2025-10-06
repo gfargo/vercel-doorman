@@ -72,3 +72,13 @@ bundle
 
 prompts/
 dist
+
+# AI Agent Files
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.kiro
+
+# Test scripts
+test-sync-fix.js
+test-sync-fix.config.json

@@ -62,6 +62,10 @@ export class FirewallService {
       }
     } catch (error) {
       logger.error('Error fetching existing firewall configuration:', error)
+      // Re-throw validation errors as-is
+      if (error instanceof Error && error.message.includes('Invalid firewall configuration')) {
+        throw error
+      }
       throw new Error(
         'Failed to fetch existing firewall configuration. Please check your network connection and try again.',
       )
@@ -149,11 +153,11 @@ export class FirewallService {
       // Add new IP blocking rules
       for (const rule of ipsToAdd) {
         logger.debug(`Adding new IP blocking rule: ${rule.ip}`)
-        await retry(() => this.client.createIPBlockingRule(rule), {
+        const newIPRule = await retry(() => this.client.createIPBlockingRule(rule), {
           maxAttempts: retryAttempts,
         })
-        addedIPRules.push(rule)
-        logger.debug(`New IP blocking rule added:  (hostname): ${rule.hostname} (ip): ${rule.ip}`)
+        addedIPRules.push(newIPRule)
+        logger.debug(`New IP blocking rule added:  (hostname): ${newIPRule.hostname} (ip): ${newIPRule.ip}`)
       }
 
       // Update existing custom rules
@@ -276,12 +280,12 @@ export class FirewallService {
     }
 
     // Add delay to allow changes to propagate
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    // Fetch latest config with retries
+    // Fetch latest config with retries and longer delays
     const activeConfig = await retry(() => this.client.fetchFirewallConfig(), {
-      maxAttempts: 3,
-      delayMs: 1000,
+      maxAttempts: 5,
+      delayMs: 1500,
       backoff: true,
     })
 
@@ -294,7 +298,9 @@ export class FirewallService {
     const deletedIds = new Set(syncResult.deletedRules.map((r) => r.id))
 
     // Validate IP rules match expected state
-    const deletedIPIds = new Set(syncResult.deletedIPRules.map((r) => r.id))
+    const addedIPIds = new Set(syncResult.addedIPRules.map((r) => r.id).filter(Boolean))
+    const updatedIPIds = new Set(syncResult.updatedIPRules.map((r) => r.id).filter(Boolean))
+    const deletedIPIds = new Set(syncResult.deletedIPRules.map((r) => r.id).filter(Boolean))
 
     // Check if all remote custom rules match our expectations
     const unexpectedRules = remoteRules.filter((remoteRule) => {
@@ -317,6 +323,10 @@ export class FirewallService {
 
     // Check if all remote IP rules match our expectations
     const unexpectedIPRules = remoteIPRules.filter((remoteRule) => {
+      // Skip rules we just added or updated
+      if (addedIPIds.has(remoteRule.id) || updatedIPIds.has(remoteRule.id)) {
+        return false
+      }
       // Rule should not exist if we deleted it
       if (deletedIPIds.has(remoteRule.id)) {
         return true

@@ -6,4 +6,5 @@ module.exports = {
   moduleNameMapper: {
     '^chalk$': '<rootDir>/src/tests/__mocks__/chalk.ts',
   },
+  transformIgnorePatterns: ['node_modules/(?!(find-up)/)'],
 }

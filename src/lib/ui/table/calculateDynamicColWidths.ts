@@ -45,10 +45,8 @@ export const calculateDynamicColWidths = (
     // Keep track of which columns can still grow
     let availableFlexColumns = flexColumns.filter((colIndex) => {
       const maxWidth = maxWidths[colIndex]
-      return (
-        maxWidth !== undefined &&
-        (maxWidth === null || (colWidths[colIndex] !== undefined && colWidths[colIndex] < maxWidth))
-      )
+      const colWidth = colWidths[colIndex]
+      return maxWidth !== undefined && colWidth !== undefined && (maxWidth === null || colWidth < maxWidth)
     })
 
     while (remainingWidth > 0 && availableFlexColumns.length > 0) {
