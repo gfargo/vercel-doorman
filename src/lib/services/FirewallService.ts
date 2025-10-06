@@ -153,11 +153,11 @@ export class FirewallService {
       // Add new IP blocking rules
       for (const rule of ipsToAdd) {
         logger.debug(`Adding new IP blocking rule: ${rule.ip}`)
-        await retry(() => this.client.createIPBlockingRule(rule), {
+        const newIPRule = await retry(() => this.client.createIPBlockingRule(rule), {
           maxAttempts: retryAttempts,
         })
-        addedIPRules.push(rule)
-        logger.debug(`New IP blocking rule added:  (hostname): ${rule.hostname} (ip): ${rule.ip}`)
+        addedIPRules.push(newIPRule)
+        logger.debug(`New IP blocking rule added:  (hostname): ${newIPRule.hostname} (ip): ${newIPRule.ip}`)
       }
 
       // Update existing custom rules
