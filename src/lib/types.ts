@@ -1,121 +1,31 @@
 /**
- * Core Types
+ * Legacy type exports for backward compatibility
+ * All types have been moved to src/lib/types/* for better organization
+ * This file re-exports them to maintain backward compatibility
  */
-export type ActionType = 'log' | 'deny' | 'challenge' | 'bypass' | 'rate_limit' | 'redirect'
 
-export type RuleOperator =
-  | 'eq' // 'Equals' (has negative 'neg' -> 'Does not equal')
-  | 'pre' // 'Starts with' Prefix (has negative 'neg' -> 'Does not start with')
-  | 'suf' // 'Ends with' Suffix (has negative 'neg' -> 'Does not end with')
-  | 'inc' // 'Is any of' Includes (has negative 'neg' -> 'Is not any of')
-  | 'sub' // 'Contains' substring (has negative 'neg' -> 'Does not contain')
-  | 're' // 'Matches expression' Regular expression (has negative 'neg' -> 'Does not match expression')
-  | 'ex' // 'Exists'
-  | 'nex' // 'Does not exist' Not exists
+// Re-export all Vercel types for backward compatibility
+export type {
+  ActionType,
+  RuleOperator,
+  RuleType,
+  RuleCondition,
+  ConditionGroup,
+  RateLimit,
+  Redirect,
+  MitigationAction,
+  RuleAction,
+  CustomRule,
+  IPBlockingRule,
+  ProjectConfig,
+  FirewallConfig,
+} from './types/vercel'
 
-export type RuleType =
-  | 'host'
-  | 'path'
-  | 'method'
-  | 'header'
-  | 'query'
-  | 'cookie'
-  | 'target_path'
-  | 'ip_address'
-  | 'region'
-  | 'protocol'
-  | 'scheme'
-  | 'environment'
-  | 'user_agent'
-  | 'geo_continent'
-  | 'geo_country'
-  | 'geo_country_region'
-  | 'geo_city'
-  | 'geo_as_number'
-  | 'ja4_digest'
-  | 'ja3_digest'
-  | 'rate_limit_api_id'
+// Re-export common types
+export type { Operator, FieldType, ConfigMetadata, Credentials } from './types/common'
 
-/**
- * Rule Condition Types
- */
-export interface RuleCondition {
-  op: RuleOperator
-  neg?: boolean
-  type: RuleType
-  key?: string
-  value?: string | number | string[] | number[]
-}
+// Re-export unified types for new features
+export type { UnifiedConfig, UnifiedRule, UnifiedCondition, UnifiedAction, UnifiedIPRule } from './types/unified'
 
-export interface ConditionGroup {
-  conditions: RuleCondition[]
-}
-
-/**
- * Action Types
- */
-export interface RateLimit {
-  requests: number
-  window: string // e.g., "60s", "1h", "1d"
-}
-
-export interface Redirect {
-  location: string
-  permanent?: boolean
-}
-
-export interface MitigationAction {
-  action: ActionType
-  rateLimit?: RateLimit | null
-  redirect?: Redirect | null
-  actionDuration?: string | null // e.g., "1h", "1d", "permanent"
-}
-
-export interface RuleAction {
-  mitigate: MitigationAction
-}
-
-/**
- * Rule Types
- */
-export interface CustomRule {
-  id?: string
-  name: string
-  description?: string
-  conditionGroup: ConditionGroup[]
-  action: RuleAction
-  active: boolean
-}
-
-export interface IPBlockingRule {
-  id?: string
-  ip: string
-  hostname: string
-  notes?: string
-  action: 'deny' // Currently only 'deny' is supported for IP blocking
-}
-
-/**
- * Configuration Types
- */
-export interface ProjectConfig {
-  projectId?: string
-  teamId?: string
-}
-
-/**
- * The main configuration type for Vercel Doorman
- * @property $schema - The URI of the JSON Schema to validate against
- * @property version - Configuration version number
- * @property rules - List of firewall rules
- * @property ips - Optional list of IP blocking rules
- * @property updatedAt - Last update timestamp
- */
-export interface FirewallConfig extends ProjectConfig {
-  $schema?: string
-  version?: number
-  firewallEnabled?: boolean
-  rules: CustomRule[]
-  ips?: IPBlockingRule[]
-  updatedAt?: string
-}
+// Re-export Cloudflare types
+export type { CloudflareFirewallConfig, CloudflareRule, CloudflareRuleset, CloudflareAction } from './types/cloudflare'

@@ -13,6 +13,7 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': 'off',
     'unused-imports/no-unused-imports': 'error',
   },
+  overrides: [],
   env: {
     node: true,
     'jest/globals': true,
