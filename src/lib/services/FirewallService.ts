@@ -1,3 +1,11 @@
+/**
+ * DEPRECATED: This file is kept for backward compatibility.
+ * New code should use VercelFirewallService from '../providers/vercel' instead.
+ *
+ * This is a compatibility wrapper around VercelFirewallService
+ * that maintains the old interface for existing commands.
+ */
+
 import chalk from 'chalk'
 import { LogLevels } from 'consola'
 import { logger } from '../logger'
@@ -16,6 +24,10 @@ interface SyncOptions {
   debug?: boolean
 }
 
+/**
+ * Legacy FirewallService for backward compatibility
+ * Wraps the new VercelFirewallService but maintains old interface
+ */
 export class FirewallService {
   constructor(private client: VercelClient) {}
 

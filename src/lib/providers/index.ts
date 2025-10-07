@@ -32,3 +32,11 @@ export type { ProviderFactory } from './ProviderRegistry'
 
 export { ProviderDetector } from './ProviderDetector'
 export type { DetectionResult } from './ProviderDetector'
+
+export { initProviders, getProvider } from './initProviders'
+
+// Vercel provider
+export { VercelProvider, VercelFirewallService, VercelClient } from './vercel'
+
+// Cloudflare provider
+export { CloudflareProvider, CloudflareFirewallService, CloudflareClient } from './cloudflare'
