@@ -348,7 +348,9 @@ export class RuleTranslator {
     return mapping[action] || 'block'
   }
 
-  private static translateCloudflareActionToVercel(action: CloudflareRule['action']): import('../types/common').ActionType {
+  private static translateCloudflareActionToVercel(
+    action: CloudflareRule['action'],
+  ): import('../types/common').ActionType {
     const mapping: Record<CloudflareRule['action'], import('../types/common').ActionType> = {
       block: 'deny',
       challenge: 'challenge',

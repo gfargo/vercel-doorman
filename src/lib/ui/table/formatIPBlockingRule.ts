@@ -12,7 +12,9 @@ import { IPBlockingRule, UnifiedIPRule } from '../../types'
  * - `notes`: Any notes associated with the rule or '-' if not provided.
  * - `status`: The change status formatted in yellow if provided, otherwise 'deny' in red.
  */
-export function formatIPBlockingRule(rule: (IPBlockingRule | UnifiedIPRule) & { changeStatus?: string; hostname?: string }) {
+export function formatIPBlockingRule(
+  rule: (IPBlockingRule | UnifiedIPRule) & { changeStatus?: string; hostname?: string },
+) {
   return {
     id: rule.id || '-',
     ip: rule.ip,

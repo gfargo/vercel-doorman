@@ -171,23 +171,20 @@ export const handler = async (argv: Arguments<StatusOptions>) => {
 
     // If unified Vercel config but credentials missing in CI mode, prompt for credentials (tests mock this)
     const { isUnifiedConfig } = await import('../lib/types')
-    if (
-      isUnifiedConfig(config) &&
-      (config as any).provider === 'vercel' &&
-      !argv.token &&
-      !process.env.VERCEL_TOKEN
-    ) {
-      const { promptForCredentials } = await import('../lib/ui/promptForCredentials')
-      const providersCfg = (config as any).providers || {}
-      const vercelCfg = providersCfg.vercel || {}
-      const creds = await promptForCredentials({
-        token: argv.token,
-        projectId: argv.projectId || vercelCfg.projectId,
-        teamId: argv.teamId || vercelCfg.teamId,
-      })
-      argv.token = creds.token
-      argv.projectId = creds.projectId
-      argv.teamId = creds.teamId
+    if (isUnifiedConfig(config)) {
+      const unified = config as import('../lib/types').UnifiedConfig
+      if (unified.provider === 'vercel' && !argv.token && !process.env.VERCEL_TOKEN) {
+        const { promptForCredentials } = await import('../lib/ui/promptForCredentials')
+        const vercelCfg = unified.providers?.vercel || {}
+        const creds = await promptForCredentials({
+          token: argv.token,
+          projectId: argv.projectId || vercelCfg.projectId,
+          teamId: argv.teamId || vercelCfg.teamId,
+        })
+        argv.token = creds.token
+        argv.projectId = creds.projectId
+        argv.teamId = creds.teamId
+      }
     }
 
     // Get provider instance (auto-detect or explicit)
@@ -235,8 +232,7 @@ export const handler = async (argv: Arguments<StatusOptions>) => {
     // Compatibility: if unified Vercel config, also exercise legacy Vercel client (tests mock this path)
     if (provider.name === 'vercel' && isUnifiedConfig(config)) {
       try {
-        const providersCfg = (config as any).providers || {}
-        const vercelCfg = providersCfg.vercel || {}
+        const vercelCfg = (config as import('../lib/types').UnifiedConfig).providers?.vercel || {}
         const token = argv.token || process.env.VERCEL_TOKEN || ''
         const projectId = argv.projectId || vercelCfg.projectId || process.env.VERCEL_PROJECT_ID || ''
         const teamId = argv.teamId || vercelCfg.teamId || process.env.VERCEL_TEAM_ID || ''

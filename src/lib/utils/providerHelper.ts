@@ -80,7 +80,8 @@ async function getVercelProvider(options: ProviderOptions): Promise<IFirewallPro
   const token = options.token || process.env.VERCEL_TOKEN
 
   // Type guard for accessing Vercel-specific properties
-  const vercelConfig = options.config && !isUnifiedConfig(options.config) ? (options.config as Partial<FirewallConfig>) : undefined
+  const vercelConfig =
+    options.config && !isUnifiedConfig(options.config) ? (options.config as Partial<FirewallConfig>) : undefined
   const configProjectId = vercelConfig?.projectId
   const configTeamId = vercelConfig?.teamId
 

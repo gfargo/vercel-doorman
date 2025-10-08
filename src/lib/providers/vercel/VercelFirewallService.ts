@@ -82,7 +82,9 @@ export class VercelFirewallService extends BaseFirewallService implements IFirew
 
       if (dryRun) {
         logger.info('Dry run mode. The following changes would be made:')
-        logger.info(`Custom Rules - Add: ${rulesToAdd.length}, Update: ${rulesToUpdate.length}, Delete: ${rulesToDelete.length}`)
+        logger.info(
+          `Custom Rules - Add: ${rulesToAdd.length}, Update: ${rulesToUpdate.length}, Delete: ${rulesToDelete.length}`,
+        )
         logger.info(`IP Rules - Add: ${ipsToAdd.length}, Update: ${ipsToUpdate.length}, Delete: ${ipsToDelete.length}`)
         return {
           success: true,
@@ -246,12 +248,12 @@ export class VercelFirewallService extends BaseFirewallService implements IFirew
       const { ipsToAdd, ipsToUpdate, ipsToDelete } = this.diffIPRules(configIPs, activeConfig.ips)
 
       // Convert to unified format for ChangeSet compatibility
-      const unifiedRulesToAdd = toAdd.map(r => RuleTranslator.vercelToUnified(r).result)
-      const unifiedRulesToUpdate = toUpdate.map(r => RuleTranslator.vercelToUnified(r).result)
-      const unifiedRulesToDelete = toDelete.map(r => RuleTranslator.vercelToUnified(r).result)
-      const unifiedIPsToAdd = ipsToAdd.map(ip => RuleTranslator.vercelIPToUnified(ip))
-      const unifiedIPsToUpdate = ipsToUpdate.map(ip => RuleTranslator.vercelIPToUnified(ip))
-      const unifiedIPsToDelete = ipsToDelete.map(ip => RuleTranslator.vercelIPToUnified(ip))
+      const unifiedRulesToAdd = toAdd.map((r) => RuleTranslator.vercelToUnified(r).result)
+      const unifiedRulesToUpdate = toUpdate.map((r) => RuleTranslator.vercelToUnified(r).result)
+      const unifiedRulesToDelete = toDelete.map((r) => RuleTranslator.vercelToUnified(r).result)
+      const unifiedIPsToAdd = ipsToAdd.map((ip) => RuleTranslator.vercelIPToUnified(ip))
+      const unifiedIPsToUpdate = ipsToUpdate.map((ip) => RuleTranslator.vercelIPToUnified(ip))
+      const unifiedIPsToDelete = ipsToDelete.map((ip) => RuleTranslator.vercelIPToUnified(ip))
 
       return {
         version: activeConfig.version,
@@ -261,8 +263,13 @@ export class VercelFirewallService extends BaseFirewallService implements IFirew
         ipsToAdd: unifiedIPsToAdd,
         ipsToUpdate: unifiedIPsToUpdate,
         ipsToDelete: unifiedIPsToDelete,
-        hasChanges: toAdd.length > 0 || toUpdate.length > 0 || toDelete.length > 0 ||
-                    ipsToAdd.length > 0 || ipsToUpdate.length > 0 || ipsToDelete.length > 0,
+        hasChanges:
+          toAdd.length > 0 ||
+          toUpdate.length > 0 ||
+          toDelete.length > 0 ||
+          ipsToAdd.length > 0 ||
+          ipsToUpdate.length > 0 ||
+          ipsToDelete.length > 0,
       }
     } catch (error) {
       logger.error('Error fetching existing firewall configuration:', error)

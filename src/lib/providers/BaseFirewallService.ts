@@ -34,7 +34,10 @@ export abstract class BaseFirewallService implements IFirewallProvider {
 
   // Abstract methods that must be implemented by provider-specific services
   abstract fetchConfig(version?: number): Promise<UnifiedConfig>
-  abstract syncRules(config: UnifiedConfig, options?: import('./IFirewallProvider').SyncOptions): Promise<import('./IFirewallProvider').SyncResult>
+  abstract syncRules(
+    config: UnifiedConfig,
+    options?: import('./IFirewallProvider').SyncOptions,
+  ): Promise<import('./IFirewallProvider').SyncResult>
   abstract getChanges(config: UnifiedConfig): Promise<import('./IFirewallProvider').ChangeSet>
   abstract getSupportedFeatures(): import('./IFirewallProvider').FeatureSet
   abstract verifyCredentials(): Promise<boolean>
@@ -162,7 +165,7 @@ export abstract class BaseFirewallService implements IFirewallProvider {
    * @param compareFn - Function to determine if two items are equal
    * @param idKey - Key to use for identifying items (default: 'id')
    */
-  protected diffItems<T extends Record<string, any>>(
+  protected diffItems<T extends object>(
     local: T[],
     remote: T[],
     compareFn: CompareFn<T>,
