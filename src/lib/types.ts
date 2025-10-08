@@ -6,7 +6,6 @@
 
 // Re-export all Vercel types for backward compatibility
 export type {
-  ActionType,
   RuleOperator,
   RuleType,
   RuleCondition,
@@ -22,10 +21,13 @@ export type {
 } from './types/vercel'
 
 // Re-export common types
-export type { Operator, FieldType, ConfigMetadata, Credentials } from './types/common'
+export type { ActionType, Operator, FieldType, ConfigMetadata, Credentials } from './types/common'
 
 // Re-export unified types for new features
 export type { UnifiedConfig, UnifiedRule, UnifiedCondition, UnifiedAction, UnifiedIPRule } from './types/unified'
+
+// Re-export unified type guards and helpers
+export { isUnifiedConfig, isUnifiedRule, isUnifiedIPRule } from './types/unified'
 
 // Re-export Cloudflare types
 export type { CloudflareFirewallConfig, CloudflareRule, CloudflareRuleset, CloudflareAction } from './types/cloudflare'

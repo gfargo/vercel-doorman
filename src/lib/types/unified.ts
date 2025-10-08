@@ -28,6 +28,8 @@ export interface UnifiedAction {
     requests: number
     window: string
     characteristics?: string[]
+    mitigationTimeout?: number // How long to block after rate limit exceeded (seconds)
+    countingExpression?: string // Custom expression for counting requests
   }
   redirect?: {
     location: string

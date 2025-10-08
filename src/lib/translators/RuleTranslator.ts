@@ -51,10 +51,24 @@ export class RuleTranslator {
 
       // Add rate limit if present
       if (rule.action.mitigate.action === 'rate_limit' && rule.action.mitigate.rateLimit) {
+        const rateLimitConfig = rule.action.mitigate.rateLimit
         cloudflareRule.ratelimit = {
-          characteristics: ['ip.src'],
-          period: this.parseWindowToSeconds(rule.action.mitigate.rateLimit.window),
-          requests_per_period: rule.action.mitigate.rateLimit.requests,
+          characteristics: rateLimitConfig.characteristics || ['ip.src'],
+          period: this.parseWindowToSeconds(rateLimitConfig.window),
+          requests_per_period: rateLimitConfig.requests,
+        }
+
+        // Add mitigation timeout if specified (in seconds)
+        if (rateLimitConfig.mitigationTimeout) {
+          cloudflareRule.ratelimit.mitigation_timeout = rateLimitConfig.mitigationTimeout
+        } else {
+          // Default to 1 hour (3600 seconds) for rate limit blocks
+          cloudflareRule.ratelimit.mitigation_timeout = 3600
+        }
+
+        // Add counting expression if specified
+        if (rateLimitConfig.countingExpression) {
+          cloudflareRule.ratelimit.counting_expression = rateLimitConfig.countingExpression
         }
       }
 
@@ -139,6 +153,9 @@ export class RuleTranslator {
         ? {
             requests: rule.action.mitigate.rateLimit.requests,
             window: rule.action.mitigate.rateLimit.window,
+            characteristics: rule.action.mitigate.rateLimit.characteristics,
+            mitigationTimeout: rule.action.mitigate.rateLimit.mitigationTimeout,
+            countingExpression: rule.action.mitigate.rateLimit.countingExpression,
           }
         : undefined,
       redirect: rule.action.mitigate.redirect
@@ -182,6 +199,8 @@ export class RuleTranslator {
             requests: rule.ratelimit.requests_per_period,
             window: `${rule.ratelimit.period}s`,
             characteristics: rule.ratelimit.characteristics,
+            mitigationTimeout: rule.ratelimit.mitigation_timeout,
+            countingExpression: rule.ratelimit.counting_expression,
           }
         : undefined,
     }
@@ -220,6 +239,19 @@ export class RuleTranslator {
         period: this.parseWindowToSeconds(rule.action.rateLimit.window),
         requests_per_period: rule.action.rateLimit.requests,
       }
+
+      // Add mitigation timeout if specified (in seconds)
+      if (rule.action.rateLimit.mitigationTimeout) {
+        cloudflareRule.ratelimit.mitigation_timeout = rule.action.rateLimit.mitigationTimeout
+      } else {
+        // Default to 1 hour (3600 seconds) for rate limit blocks
+        cloudflareRule.ratelimit.mitigation_timeout = 3600
+      }
+
+      // Add counting expression if specified
+      if (rule.action.rateLimit.countingExpression) {
+        cloudflareRule.ratelimit.counting_expression = rule.action.rateLimit.countingExpression
+      }
     }
 
     return { result: cloudflareRule, warnings }
@@ -251,8 +283,21 @@ export class RuleTranslator {
       action: {
         mitigate: {
           action: rule.action.type,
-          rateLimit: rule.action.rateLimit || null,
-          redirect: rule.action.redirect || null,
+          rateLimit: rule.action.rateLimit
+            ? {
+                requests: rule.action.rateLimit.requests,
+                window: rule.action.rateLimit.window,
+                characteristics: rule.action.rateLimit.characteristics,
+                mitigationTimeout: rule.action.rateLimit.mitigationTimeout,
+                countingExpression: rule.action.rateLimit.countingExpression,
+              }
+            : null,
+          redirect: rule.action.redirect
+            ? {
+                location: rule.action.redirect.location,
+                permanent: rule.action.redirect.permanent,
+              }
+            : null,
           actionDuration: rule.action.duration || null,
         },
       },
@@ -303,8 +348,8 @@ export class RuleTranslator {
     return mapping[action] || 'block'
   }
 
-  private static translateCloudflareActionToVercel(action: CloudflareRule['action']): string {
-    const mapping: Record<CloudflareRule['action'], string> = {
+  private static translateCloudflareActionToVercel(action: CloudflareRule['action']): import('../types/common').ActionType {
+    const mapping: Record<CloudflareRule['action'], import('../types/common').ActionType> = {
       block: 'deny',
       challenge: 'challenge',
       managed_challenge: 'challenge',
@@ -334,8 +379,8 @@ export class RuleTranslator {
     return mapping[op] || 'eq'
   }
 
-  private static mapUnifiedOperatorToVercel(op: string): string {
-    const mapping: Record<string, string> = {
+  private static mapUnifiedOperatorToVercel(op: string): import('../types/vercel').VercelRuleOperator {
+    const mapping: Record<string, import('../types/vercel').VercelRuleOperator> = {
       eq: 'eq',
       starts_with: 'pre',
       ends_with: 'suf',
@@ -387,8 +432,8 @@ export class RuleTranslator {
     return mapping[type] || 'path'
   }
 
-  private static mapCloudflareActionToUnified(action: CloudflareRule['action']): string {
-    const mapping: Record<CloudflareRule['action'], string> = {
+  private static mapCloudflareActionToUnified(action: CloudflareRule['action']): import('../types/common').ActionType {
+    const mapping: Record<CloudflareRule['action'], import('../types/common').ActionType> = {
       block: 'deny',
       challenge: 'challenge',
       managed_challenge: 'challenge',
@@ -420,7 +465,7 @@ export class RuleTranslator {
 
   private static parseWindowToSeconds(window: string): number {
     const match = window.match(/^(\d+)([smhd])$/)
-    if (!match) {
+    if (!match || !match[1] || !match[2]) {
       throw new Error(`Invalid window format: ${window}`)
     }
 
@@ -434,6 +479,11 @@ export class RuleTranslator {
       d: 86400,
     }
 
-    return value * multipliers[unit]
+    const multiplier = multipliers[unit]
+    if (multiplier === undefined) {
+      throw new Error(`Invalid time unit: ${unit}`)
+    }
+
+    return value * multiplier
   }
 }

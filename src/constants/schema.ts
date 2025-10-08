@@ -15,6 +15,9 @@ export const schema = {
   $ref: '#/definitions/FirewallConfig',
   definitions: {
     FirewallConfig: {
+      $ref: '#/definitions/VercelFirewallConfig',
+    },
+    VercelFirewallConfig: {
       type: 'object',
       properties: {
         projectId: {
@@ -35,13 +38,13 @@ export const schema = {
         rules: {
           type: 'array',
           items: {
-            $ref: '#/definitions/CustomRule',
+            $ref: '#/definitions/VercelCustomRule',
           },
         },
         ips: {
           type: 'array',
           items: {
-            $ref: '#/definitions/IPBlockingRule',
+            $ref: '#/definitions/VercelIPBlockingRule',
           },
         },
         updatedAt: {
@@ -50,9 +53,9 @@ export const schema = {
       },
       required: ['rules'],
       additionalProperties: false,
-      description: 'The main configuration type for Vercel Doorman',
+      description: 'Vercel firewall configuration',
     },
-    CustomRule: {
+    VercelCustomRule: {
       type: 'object',
       properties: {
         id: {
@@ -67,11 +70,11 @@ export const schema = {
         conditionGroup: {
           type: 'array',
           items: {
-            $ref: '#/definitions/ConditionGroup',
+            $ref: '#/definitions/VercelConditionGroup',
           },
         },
         action: {
-          $ref: '#/definitions/RuleAction',
+          $ref: '#/definitions/VercelRuleAction',
         },
         active: {
           type: 'boolean',
@@ -79,32 +82,33 @@ export const schema = {
       },
       required: ['name', 'conditionGroup', 'action', 'active'],
       additionalProperties: false,
-      description: 'Rule Types',
+      description: 'Vercel custom rule',
     },
-    ConditionGroup: {
+    VercelConditionGroup: {
       type: 'object',
       properties: {
         conditions: {
           type: 'array',
           items: {
-            $ref: '#/definitions/RuleCondition',
+            $ref: '#/definitions/VercelRuleCondition',
           },
         },
       },
       required: ['conditions'],
       additionalProperties: false,
+      description: 'Vercel condition group (AND conditions)',
     },
-    RuleCondition: {
+    VercelRuleCondition: {
       type: 'object',
       properties: {
         op: {
-          $ref: '#/definitions/RuleOperator',
+          $ref: '#/definitions/VercelRuleOperator',
         },
         neg: {
           type: 'boolean',
         },
         type: {
-          $ref: '#/definitions/RuleType',
+          $ref: '#/definitions/VercelRuleType',
         },
         key: {
           type: 'string',
@@ -134,13 +138,14 @@ export const schema = {
       },
       required: ['op', 'type'],
       additionalProperties: false,
-      description: 'Rule Condition Types',
+      description: 'Vercel rule condition',
     },
-    RuleOperator: {
+    VercelRuleOperator: {
       type: 'string',
       enum: ['eq', 'pre', 'suf', 'inc', 'sub', 're', 'ex', 'nex'],
+      description: 'Vercel rule operators',
     },
-    RuleType: {
+    VercelRuleType: {
       type: 'string',
       enum: [
         'host',
@@ -165,18 +170,20 @@ export const schema = {
         'ja3_digest',
         'rate_limit_api_id',
       ],
+      description: 'Vercel condition types',
     },
-    RuleAction: {
+    VercelRuleAction: {
       type: 'object',
       properties: {
         mitigate: {
-          $ref: '#/definitions/MitigationAction',
+          $ref: '#/definitions/VercelMitigationAction',
         },
       },
       required: ['mitigate'],
       additionalProperties: false,
+      description: 'Vercel rule action',
     },
-    MitigationAction: {
+    VercelMitigationAction: {
       type: 'object',
       properties: {
         action: {
@@ -185,7 +192,7 @@ export const schema = {
         rateLimit: {
           anyOf: [
             {
-              $ref: '#/definitions/RateLimit',
+              $ref: '#/definitions/VercelRateLimit',
             },
             {
               type: 'null',
@@ -195,7 +202,7 @@ export const schema = {
         redirect: {
           anyOf: [
             {
-              $ref: '#/definitions/Redirect',
+              $ref: '#/definitions/VercelRedirect',
             },
             {
               type: 'null',
@@ -208,13 +215,14 @@ export const schema = {
       },
       required: ['action'],
       additionalProperties: false,
+      description: 'Vercel mitigation action',
     },
     ActionType: {
       type: 'string',
-      enum: ['log', 'deny', 'challenge', 'bypass', 'rate_limit', 'redirect'],
-      description: 'Core Types',
+      enum: ['log', 'deny', 'challenge', 'bypass', 'rate_limit', 'redirect', 'allow', 'block'],
+      description: 'Action types supported across providers',
     },
-    RateLimit: {
+    VercelRateLimit: {
       type: 'object',
       properties: {
         requests: {
@@ -223,12 +231,24 @@ export const schema = {
         window: {
           type: 'string',
         },
+        characteristics: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+        mitigationTimeout: {
+          type: 'number',
+        },
+        countingExpression: {
+          type: 'string',
+        },
       },
       required: ['requests', 'window'],
       additionalProperties: false,
-      description: 'Action Types',
+      description: 'Vercel rate limit configuration',
     },
-    Redirect: {
+    VercelRedirect: {
       type: 'object',
       properties: {
         location: {
@@ -240,8 +260,9 @@ export const schema = {
       },
       required: ['location'],
       additionalProperties: false,
+      description: 'Vercel redirect configuration',
     },
-    IPBlockingRule: {
+    VercelIPBlockingRule: {
       type: 'object',
       properties: {
         id: {
@@ -263,6 +284,7 @@ export const schema = {
       },
       required: ['ip', 'hostname', 'action'],
       additionalProperties: false,
+      description: 'Vercel IP blocking rule',
     },
   },
 }

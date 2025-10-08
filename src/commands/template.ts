@@ -7,9 +7,12 @@ import { FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
 import { getConfig, saveConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { getProviderDisplayName } from '../lib/utils/providerHelper'
+import type { ProviderType } from '../lib/providers/IFirewallProvider'
 
 interface TemplateOptions {
   name?: string
+  provider?: 'vercel' | 'cloudflare'
   dryRun?: boolean
   debug?: boolean
 }
@@ -21,6 +24,11 @@ export const builder = {
   name: {
     type: 'string',
     description: 'Name of the template to add',
+  },
+  provider: {
+    type: 'string',
+    description: 'Firewall provider (vercel or cloudflare) - auto-detected if not specified',
+    choices: ['vercel', 'cloudflare'],
   },
   dryRun: {
     alias: 'd',
@@ -47,6 +55,16 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
 
     logger.debug('Template command arguments:', argv)
 
+    // Load config to detect provider
+    logger.start('Loading current configuration...')
+    const config = await getConfig(undefined, { validate: true, throwOnError: false })
+
+    // Detect provider from config or argv
+    const providerType = (argv.provider || config.provider) as ProviderType | undefined
+    const providerName = providerType ? getProviderDisplayName(providerType) : 'firewall'
+
+    logger.debug(`Detected provider: ${providerName}`)
+
     // Get template name from argument or prompt
     let templateName = argv.name
     if (!templateName) {
@@ -68,12 +86,8 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
     try {
       logger.debug('Template content:', templateConfig)
 
-      // Load config, allowing invalid configs to be loaded
-      logger.start('Loading current configuration...')
-      const config = await getConfig(undefined, { validate: true, throwOnError: false })
-
       if (argv.dryRun) {
-        logger.info(chalk.cyan('\nDry run - The following rules would be added:'))
+        logger.info(chalk.cyan(`\nDry run - The following rules would be added to ${providerName} configuration:`))
         logger.log(JSON.stringify(templateConfig.rules, null, 2))
         return
       }
@@ -87,7 +101,7 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
       // Save config with validation enabled and throwing on error
       logger.start('Saving updated configuration...')
       await saveConfig(updatedConfig, undefined, { validate: true, throwOnError: true })
-      logger.success(chalk.green(`Successfully added template '${templateName}' to configuration`))
+      logger.success(chalk.green(`Successfully added template '${templateName}' to ${providerName} configuration`))
     } catch (error) {
       if (error instanceof SyntaxError) {
         logger.error(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in template file:', `  ${error.message}`]))

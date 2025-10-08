@@ -227,4 +227,90 @@ export type CloudflareFieldType =
   | 'cf.threat_score'
   | 'cf.tls_version'
   | 'cf.tls_cipher'
-  | 'ssl'
+
+/**
+ * Cloudflare List types
+ * Lists are used for bulk IP management in Cloudflare WAF
+ */
+
+/**
+ * Cloudflare List kind
+ */
+export type CloudflareListKind = 'ip'
+
+/**
+ * Cloudflare List item (IP address)
+ */
+export interface CloudflareListItem {
+  id?: string
+  ip?: string // IPv4 or IPv6 address
+  comment?: string
+  created_on?: string
+  modified_on?: string
+}
+
+/**
+ * Cloudflare List
+ */
+export interface CloudflareList {
+  id: string
+  name: string
+  description?: string
+  kind: CloudflareListKind
+  num_items: number
+  num_referencing_filters: number
+  created_on: string
+  modified_on: string
+}
+
+/**
+ * Create Cloudflare List request
+ */
+export interface CloudflareCreateListRequest {
+  name: string
+  description?: string
+  kind: CloudflareListKind
+}
+
+/**
+ * Update Cloudflare List request
+ */
+export interface CloudflareUpdateListRequest {
+  description?: string
+}
+
+/**
+ * Add items to List request
+ */
+export interface CloudflareAddListItemsRequest {
+  items: Array<{
+    ip: string
+    comment?: string
+  }>
+}
+
+/**
+ * Remove items from List request
+ */
+export interface CloudflareRemoveListItemsRequest {
+  items: Array<{
+    id: string
+  }>
+}
+
+/**
+ * List items response
+ */
+export interface CloudflareListItemsResponse {
+  result: CloudflareListItem[]
+  success: boolean
+  errors: Array<{ code: number; message: string }>
+  messages: Array<{ code: number; message: string }>
+  result_info?: {
+    count: number
+    page: number
+    per_page: number
+    total_count: number
+    total_pages: number
+  }
+}

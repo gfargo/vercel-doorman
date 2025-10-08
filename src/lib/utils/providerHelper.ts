@@ -5,12 +5,13 @@ import { ProviderDetector } from '../providers/ProviderDetector'
 import { VercelProvider } from '../providers/vercel'
 import { CloudflareProvider } from '../providers/cloudflare'
 import type { IFirewallProvider, ProviderType } from '../providers/IFirewallProvider'
-import type { FirewallConfig } from '../types'
+import type { FirewallConfig, UnifiedConfig } from '../types'
+import { isUnifiedConfig } from '../types'
 
 export interface ProviderOptions {
   // Common options
   provider?: ProviderType
-  config?: FirewallConfig
+  config?: FirewallConfig | UnifiedConfig | Partial<FirewallConfig> | Partial<UnifiedConfig>
   interactive?: boolean
 
   // Vercel-specific
@@ -39,7 +40,7 @@ export async function getProviderInstance(options: ProviderOptions): Promise<IFi
     logger.debug(`Using explicitly specified provider: ${providerType}`)
   } else {
     // Auto-detect from config or environment
-    const detection = ProviderDetector.detect(options.config)
+    const detection = ProviderDetector.detect(options.config as Record<string, unknown> | undefined)
 
     if (detection.provider) {
       providerType = detection.provider
@@ -77,8 +78,14 @@ export async function getProviderInstance(options: ProviderOptions): Promise<IFi
  */
 async function getVercelProvider(options: ProviderOptions): Promise<IFirewallProvider> {
   const token = options.token || process.env.VERCEL_TOKEN
-  const projectId = options.projectId || options.config?.projectId || process.env.VERCEL_PROJECT_ID
-  const teamId = options.teamId || options.config?.teamId || process.env.VERCEL_TEAM_ID
+
+  // Type guard for accessing Vercel-specific properties
+  const vercelConfig = options.config && !isUnifiedConfig(options.config) ? (options.config as Partial<FirewallConfig>) : undefined
+  const configProjectId = vercelConfig?.projectId
+  const configTeamId = vercelConfig?.teamId
+
+  const projectId = options.projectId || configProjectId || process.env.VERCEL_PROJECT_ID
+  const teamId = options.teamId || configTeamId || process.env.VERCEL_TEAM_ID
 
   if (!token || !projectId || !teamId) {
     if (options.interactive === false) {
@@ -129,19 +136,19 @@ async function getCloudflareProvider(options: ProviderOptions): Promise<IFirewal
     const apiTokenInput =
       apiToken ||
       (await prompt('Cloudflare API Token:', {
-        type: 'password',
+        type: 'text',
       }))
 
     const zoneIdInput =
       zoneId ||
       (await prompt('Cloudflare Zone ID:', {
-        type: 'input',
+        type: 'text',
       }))
 
     const accountIdInput =
       accountId ||
       (await prompt('Cloudflare Account ID (optional):', {
-        type: 'input',
+        type: 'text',
       }))
 
     return CloudflareProvider.fromConfig({
@@ -168,12 +175,13 @@ async function promptForProvider(): Promise<ProviderType> {
   logger.info('  2. Cloudflare WAF\n')
 
   const choice = await prompt('Select provider (1 or 2):', {
-    type: 'input',
+    type: 'text',
   })
 
-  if (choice === '1' || (choice as string).toLowerCase() === 'vercel') {
+  const choiceStr = String(choice).toLowerCase()
+  if (choiceStr === '1' || choiceStr === 'vercel') {
     return 'vercel'
-  } else if (choice === '2' || (choice as string).toLowerCase() === 'cloudflare') {
+  } else if (choiceStr === '2' || choiceStr === 'cloudflare') {
     return 'cloudflare'
   } else {
     logger.warn(`Invalid choice: ${choice}, defaulting to Vercel`)

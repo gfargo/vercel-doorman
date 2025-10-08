@@ -8,16 +8,26 @@ import { CustomRule, FirewallConfig, IPBlockingRule } from '../lib/types'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { getConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { getProviderInstance, getProviderDisplayName } from '../lib/utils/providerHelper'
+import type { ProviderType } from '../lib/providers/IFirewallProvider'
 
 interface ExportOptions {
   config?: string
+  provider?: 'vercel' | 'cloudflare'
+  // Vercel options
   projectId?: string
   teamId?: string
   token?: string
+  // Cloudflare options
+  apiToken?: string
+  zoneId?: string
+  accountId?: string
+  // Common options
   format?: 'json' | 'yaml' | 'terraform' | 'markdown'
   output?: string
   source?: 'local' | 'remote'
   debug?: boolean
+  ci?: boolean
 }
 
 export const command = 'export'
@@ -27,22 +37,42 @@ export const builder = {
   config: {
     alias: 'c',
     type: 'string',
-    description: 'Path to firewall config file (defaults to vercel-firewall.config.json)',
+    description: 'Path to firewall config file',
   },
+  provider: {
+    type: 'string',
+    description: 'Firewall provider (vercel or cloudflare) - auto-detected if not specified',
+    choices: ['vercel', 'cloudflare'],
+  },
+  // Vercel options
   projectId: {
     alias: 'p',
     type: 'string',
-    description: 'Vercel Project ID (can be set in config file)',
+    description: 'Vercel Project ID',
   },
   teamId: {
     alias: 't',
     type: 'string',
-    description: 'Vercel Team ID (can be set in config file)',
+    description: 'Vercel Team ID',
   },
   token: {
     type: 'string',
     description: 'Vercel API token (defaults to VERCEL_TOKEN env var)',
   },
+  // Cloudflare options
+  apiToken: {
+    type: 'string',
+    description: 'Cloudflare API token (defaults to CLOUDFLARE_API_TOKEN env var)',
+  },
+  zoneId: {
+    type: 'string',
+    description: 'Cloudflare Zone ID (defaults to CLOUDFLARE_ZONE_ID env var)',
+  },
+  accountId: {
+    type: 'string',
+    description: 'Cloudflare Account ID (optional, defaults to CLOUDFLARE_ACCOUNT_ID env var)',
+  },
+  // Common options
   format: {
     alias: 'f',
     type: 'string',
@@ -59,7 +89,7 @@ export const builder = {
     alias: 's',
     type: 'string',
     choices: ['local', 'remote'],
-    description: 'Export from local config or remote Vercel',
+    description: 'Export from local config or remote provider',
     default: 'local',
   },
   debug: {
@@ -67,13 +97,21 @@ export const builder = {
     description: 'Enable debug logging',
     default: false,
   },
+  ci: {
+    type: 'boolean',
+    description: 'Run in CI mode (non-interactive)',
+    default: false,
+  },
 }
 
-const generateMarkdownReport = (config: FirewallConfig): string => {
+const generateMarkdownReport = (config: FirewallConfig, providerName?: string): string => {
   const { rules, ips, version, updatedAt } = config
 
-  let markdown = `# Vercel Firewall Configuration Report\n\n`
-  markdown += `**Version:** ${version}\n`
+  let markdown = `# Firewall Configuration Report\n\n`
+  if (providerName) {
+    markdown += `**Provider:** ${providerName}\n`
+  }
+  markdown += `**Version:** ${version || 'N/A'}\n`
   markdown += `**Last Updated:** ${updatedAt ? new Date(updatedAt).toLocaleString() : 'Unknown'}\n`
   markdown += `**Generated:** ${new Date().toLocaleString()}\n\n`
 
@@ -164,22 +202,74 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
     }
 
     let config: FirewallConfig
+    let providerName: string | undefined
 
     if (argv.source === 'remote') {
-      // Export from remote Vercel
-      const localConfig = await getConfig(argv.config)
-      const { token, projectId, teamId } = await promptForCredentials({
-        token: argv.token,
-        projectId: argv.projectId || localConfig.projectId,
-        teamId: argv.teamId || localConfig.teamId,
-      })
+      // Export from remote provider
+      const localConfig = await getConfig(argv.config, { validate: false, throwOnError: false })
 
-      const client = new VercelClient(projectId, teamId, token)
-      logger.start('Fetching remote configuration...')
-      config = await client.fetchFirewallConfig()
+      // Check if this is a legacy Vercel-only usage
+      const isLegacyVercelUsage =
+        !argv.provider &&
+        !localConfig.provider &&
+        (argv.projectId || argv.teamId || argv.token || localConfig.projectId)
+
+      if (isLegacyVercelUsage) {
+        // Legacy Vercel path
+        logger.debug('Using legacy Vercel code path')
+        const { token, projectId, teamId } = await promptForCredentials({
+          token: argv.token,
+          projectId: argv.projectId || localConfig.projectId,
+          teamId: argv.teamId || localConfig.teamId,
+        })
+
+        const client = new VercelClient(projectId, teamId, token)
+        logger.start('Fetching remote configuration from Vercel...')
+        config = await client.fetchFirewallConfig()
+        providerName = 'Vercel Firewall'
+      } else {
+        // Multi-provider path
+        logger.debug('Using multi-provider code path')
+        const provider = await getProviderInstance({
+          provider: argv.provider as ProviderType | undefined,
+          config: localConfig,
+          interactive: !argv.ci,
+          // Vercel credentials
+          token: argv.token,
+          projectId: argv.projectId,
+          teamId: argv.teamId,
+          // Cloudflare credentials
+          apiToken: argv.apiToken,
+          zoneId: argv.zoneId,
+          accountId: argv.accountId,
+        })
+
+        providerName = getProviderDisplayName(provider.name)
+        logger.start(`Fetching remote configuration from ${providerName}...`)
+
+        const unifiedConfig = await provider.fetchConfig()
+
+        // Convert unified format to Vercel format for export compatibility
+        const { RuleTranslator } = await import('../lib/translators/RuleTranslator')
+        const rules = unifiedConfig.rules.map((rule) => RuleTranslator.unifiedToVercel(rule).result)
+        const ips = (unifiedConfig.ips || []).map((ip) => ({
+          ...ip,
+          hostname: ip.hostname || '',
+        }))
+
+        config = {
+          projectId: localConfig.projectId || '',
+          teamId: localConfig.teamId || '',
+          version: unifiedConfig.metadata?.version,
+          updatedAt: unifiedConfig.metadata?.updatedAt,
+          rules,
+          ips,
+        }
+      }
     } else {
       // Export from local config
       config = await getConfig(argv.config)
+      providerName = config.provider ? getProviderDisplayName(config.provider as ProviderType) : undefined
     }
 
     logger.start(`Exporting configuration in ${argv.format} format...`)
@@ -195,9 +285,12 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
 
       case 'yaml':
         // Simple YAML-like output (would need yaml library for proper YAML)
-        output = `# Vercel Firewall Configuration\n`
-        output += `version: ${config.version}\n`
-        output += `updatedAt: "${config.updatedAt}"\n`
+        output = `# Firewall Configuration\n`
+        if (providerName) {
+          output += `provider: "${providerName}"\n`
+        }
+        output += `version: ${config.version || 'N/A'}\n`
+        output += `updatedAt: "${config.updatedAt || ''}"\n`
         output += `rules:\n`
         config.rules.forEach((rule: CustomRule) => {
           output += `  - name: "${rule.name}"\n`
@@ -214,7 +307,7 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
         break
 
       case 'markdown':
-        output = generateMarkdownReport(config)
+        output = generateMarkdownReport(config, providerName)
         defaultExtension = 'md'
         break
 
@@ -237,6 +330,9 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
       logger.log(chalk.bold('Export Summary:'))
       logger.log(`${chalk.dim('Format:')} ${argv.format}`)
       logger.log(`${chalk.dim('Source:')} ${argv.source}`)
+      if (providerName) {
+        logger.log(`${chalk.dim('Provider:')} ${providerName}`)
+      }
       logger.log(`${chalk.dim('Rules:')} ${config.rules.length} custom, ${config.ips.length} IP blocking`)
       logger.log(`${chalk.dim('Size:')} ${(output.length / 1024).toFixed(1)} KB`)
     }

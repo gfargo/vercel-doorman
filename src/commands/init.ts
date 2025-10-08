@@ -6,14 +6,20 @@ import { prompt } from '../lib/ui/prompt'
 import { createEmptyConfig } from '../lib/utils/createEmptyConfig'
 import { saveConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { getProviderDisplayName } from '../lib/utils/providerHelper'
 
 interface InitOptions {
   config?: string
   force?: boolean
   template?: string
   interactive?: boolean
+  provider?: 'vercel' | 'cloudflare'
+  // Vercel options
   projectId?: string
   teamId?: string
+  // Cloudflare options
+  zoneId?: string
+  accountId?: string
 }
 
 export const command = 'init [template]'
@@ -44,6 +50,12 @@ export const builder = {
     description: 'Interactive setup with guided prompts',
     default: true,
   },
+  provider: {
+    type: 'string',
+    description: 'Firewall provider (vercel or cloudflare)',
+    choices: ['vercel', 'cloudflare'],
+  },
+  // Vercel options
   projectId: {
     alias: 'p',
     type: 'string',
@@ -54,112 +66,218 @@ export const builder = {
     type: 'string',
     description: 'Vercel Team ID',
   },
+  // Cloudflare options
+  zoneId: {
+    type: 'string',
+    description: 'Cloudflare Zone ID',
+  },
+  accountId: {
+    type: 'string',
+    description: 'Cloudflare Account ID (optional)',
+  },
 }
 
-const showWelcomeMessage = () => {
+const showWelcomeMessage = (providerName: string) => {
   logger.log('')
   logger.log(chalk.bold.cyan('🚪 Welcome to Vercel Doorman!'))
-  logger.log(chalk.dim("Let's set up your firewall configuration.\n"))
+  logger.log(chalk.dim(`Let's set up your ${providerName} firewall configuration.\n`))
 }
 
-const showHelpLinks = () => {
+const showHelpLinks = (provider: 'vercel' | 'cloudflare') => {
   logger.log(chalk.bold('\n📚 Helpful Resources:'))
   logger.log('')
-  logger.log(chalk.cyan('🔗 Find your Project ID:'))
-  logger.log(chalk.dim('   https://vercel.com/dashboard → Select your project → Settings → General'))
-  logger.log('')
-  logger.log(chalk.cyan('🔗 Find your Team ID:'))
-  logger.log(chalk.dim('   https://vercel.com/dashboard → Team Settings → General'))
-  logger.log(chalk.dim('   (Leave empty if using personal account)'))
-  logger.log('')
-  logger.log(chalk.cyan('🔗 Create API Token:'))
-  logger.log(chalk.dim('   https://vercel.com/account/tokens → Create Token'))
-  logger.log(chalk.dim('   Scopes needed: Read & Write for your project'))
+
+  if (provider === 'vercel') {
+    logger.log(chalk.cyan('🔗 Find your Project ID:'))
+    logger.log(chalk.dim('   https://vercel.com/dashboard → Select your project → Settings → General'))
+    logger.log('')
+    logger.log(chalk.cyan('🔗 Find your Team ID:'))
+    logger.log(chalk.dim('   https://vercel.com/dashboard → Team Settings → General'))
+    logger.log(chalk.dim('   (Leave empty if using personal account)'))
+    logger.log('')
+    logger.log(chalk.cyan('🔗 Create API Token:'))
+    logger.log(chalk.dim('   https://vercel.com/account/tokens → Create Token'))
+    logger.log(chalk.dim('   Scopes needed: Read & Write for your project'))
+  } else {
+    logger.log(chalk.cyan('🔗 Find your Zone ID:'))
+    logger.log(chalk.dim('   https://dash.cloudflare.com → Select domain → Overview (right sidebar)'))
+    logger.log('')
+    logger.log(chalk.cyan('🔗 Find your Account ID:'))
+    logger.log(chalk.dim('   https://dash.cloudflare.com → Select domain → Overview (right sidebar)'))
+    logger.log('')
+    logger.log(chalk.cyan('🔗 Create API Token:'))
+    logger.log(chalk.dim('   https://dash.cloudflare.com/profile/api-tokens → Create Token'))
+    logger.log(chalk.dim('   Template: Edit zone DNS + Account Firewall'))
+  }
+
   logger.log('')
   logger.log(chalk.cyan('🔗 Documentation:'))
   logger.log(chalk.dim('   https://doorman.griffen.codes/getting-started'))
   logger.log('')
 }
 
-const promptForProjectDetails = async (argv: Arguments<InitOptions>) => {
-  let projectId = argv.projectId
-  let teamId = argv.teamId
+const promptForProviderDetails = async (argv: Arguments<InitOptions>, provider: 'vercel' | 'cloudflare') => {
+  const providerName = getProviderDisplayName(provider)
 
   if (argv.interactive) {
-    logger.log(chalk.bold('📋 Project Configuration'))
-    logger.log(chalk.dim('We need your Vercel project details to configure the firewall.\n'))
+    logger.log(chalk.bold('📋 Provider Configuration'))
+    logger.log(chalk.dim(`We need your ${providerName} details to configure the firewall.\n`))
+  }
 
-    if (!projectId) {
-      projectId = await prompt('Enter your Vercel Project ID:', {
-        type: 'input',
-        validate: (input: string) => {
-          if (!input || input.trim().length === 0) {
-            return 'Project ID is required'
-          }
-          if (input.length < 10) {
-            return 'Project ID seems too short. Please double-check.'
-          }
-          return true
-        },
-      })
-    }
+  if (provider === 'vercel') {
+    let projectId = argv.projectId
+    let teamId = argv.teamId
 
-    if (!teamId) {
-      const hasTeam = await prompt('Are you using a Vercel team account?', {
-        type: 'confirm',
-      })
-
-      if (hasTeam) {
-        teamId = await prompt('Enter your Vercel Team ID:', {
+    if (argv.interactive) {
+      if (!projectId) {
+        projectId = await prompt('Enter your Vercel Project ID:', {
           type: 'input',
           validate: (input: string) => {
             if (!input || input.trim().length === 0) {
-              return 'Team ID is required when using team account'
+              return 'Project ID is required'
+            }
+            if (input.length < 10) {
+              return 'Project ID seems too short. Please double-check.'
             }
             return true
           },
         })
       }
-    }
 
-    // Validate environment variable setup
-    const hasToken = process.env.VERCEL_TOKEN
-    if (!hasToken) {
-      logger.log('')
-      logger.log(chalk.yellow('⚠️  VERCEL_TOKEN environment variable not found'))
-      logger.log(chalk.dim("You'll need to set this before running sync commands."))
+      if (!teamId) {
+        const hasTeam = await prompt('Are you using a Vercel team account?', {
+          type: 'confirm',
+        })
 
-      const showTokenHelp = await prompt('Would you like to see how to create an API token?', {
-        type: 'confirm',
-      })
-
-      if (showTokenHelp) {
-        logger.log('')
-        logger.log(chalk.bold('🔑 Creating a Vercel API Token:'))
-        logger.log('1. Go to https://vercel.com/account/tokens')
-        logger.log('2. Click "Create Token"')
-        logger.log('3. Give it a descriptive name (e.g., "Doorman Firewall")')
-        logger.log('4. Set expiration as needed')
-        logger.log('5. Copy the token and set it as an environment variable:')
-        logger.log('')
-        logger.log(chalk.cyan('   export VERCEL_TOKEN="your-token-here"'))
-        logger.log(chalk.dim('   # Add this to your ~/.bashrc, ~/.zshrc, or .env file'))
-        logger.log('')
+        if (hasTeam) {
+          teamId = await prompt('Enter your Vercel Team ID:', {
+            type: 'input',
+            validate: (input: string) => {
+              if (!input || input.trim().length === 0) {
+                return 'Team ID is required when using team account'
+              }
+              return true
+            },
+          })
+        }
       }
-    } else {
-      logger.log(chalk.green('✅ VERCEL_TOKEN environment variable found'))
-    }
-  }
 
-  return { projectId, teamId }
+      // Validate environment variable setup
+      const hasToken = process.env.VERCEL_TOKEN
+      if (!hasToken) {
+        logger.log('')
+        logger.log(chalk.yellow('⚠️  VERCEL_TOKEN environment variable not found'))
+        logger.log(chalk.dim("You'll need to set this before running sync commands."))
+
+        const showTokenHelp = await prompt('Would you like to see how to create an API token?', {
+          type: 'confirm',
+        })
+
+        if (showTokenHelp) {
+          logger.log('')
+          logger.log(chalk.bold('🔑 Creating a Vercel API Token:'))
+          logger.log('1. Go to https://vercel.com/account/tokens')
+          logger.log('2. Click "Create Token"')
+          logger.log('3. Give it a descriptive name (e.g., "Doorman Firewall")')
+          logger.log('4. Set expiration as needed')
+          logger.log('5. Copy the token and set it as an environment variable:')
+          logger.log('')
+          logger.log(chalk.cyan('   export VERCEL_TOKEN="your-token-here"'))
+          logger.log(chalk.dim('   # Add this to your ~/.bashrc, ~/.zshrc, or .env file'))
+          logger.log('')
+        }
+      } else {
+        logger.log(chalk.green('✅ VERCEL_TOKEN environment variable found'))
+      }
+    }
+
+    return { projectId, teamId, zoneId: undefined, accountId: undefined }
+  } else {
+    // Cloudflare
+    let zoneId = argv.zoneId
+    let accountId = argv.accountId
+
+    if (argv.interactive) {
+      if (!zoneId) {
+        zoneId = await prompt('Enter your Cloudflare Zone ID:', {
+          type: 'input',
+          validate: (input: string) => {
+            if (!input || input.trim().length === 0) {
+              return 'Zone ID is required'
+            }
+            if (input.length < 10) {
+              return 'Zone ID seems too short. Please double-check.'
+            }
+            return true
+          },
+        })
+      }
+
+      if (!accountId) {
+        const needsAccount = await prompt('Do you have a Cloudflare Account ID?', {
+          type: 'confirm',
+        })
+
+        if (needsAccount) {
+          accountId = await prompt('Enter your Cloudflare Account ID:', {
+            type: 'input',
+          })
+        }
+      }
+
+      // Validate environment variable setup
+      const hasToken = process.env.CLOUDFLARE_API_TOKEN
+      if (!hasToken) {
+        logger.log('')
+        logger.log(chalk.yellow('⚠️  CLOUDFLARE_API_TOKEN environment variable not found'))
+        logger.log(chalk.dim("You'll need to set this before running sync commands."))
+
+        const showTokenHelp = await prompt('Would you like to see how to create an API token?', {
+          type: 'confirm',
+        })
+
+        if (showTokenHelp) {
+          logger.log('')
+          logger.log(chalk.bold('🔑 Creating a Cloudflare API Token:'))
+          logger.log('1. Go to https://dash.cloudflare.com/profile/api-tokens')
+          logger.log('2. Click "Create Token"')
+          logger.log('3. Use "Edit zone DNS" + "Account Firewall" template')
+          logger.log('4. Select your zone and account')
+          logger.log('5. Copy the token and set it as an environment variable:')
+          logger.log('')
+          logger.log(chalk.cyan('   export CLOUDFLARE_API_TOKEN="your-token-here"'))
+          logger.log(chalk.dim('   # Add this to your ~/.bashrc, ~/.zshrc, or .env file'))
+          logger.log('')
+        }
+      } else {
+        logger.log(chalk.green('✅ CLOUDFLARE_API_TOKEN environment variable found'))
+      }
+    }
+
+    return { projectId: undefined, teamId: undefined, zoneId, accountId }
+  }
 }
 
 export const handler = async (argv: Arguments<InitOptions>) => {
   try {
     const configPath = argv.config || 'vercel-firewall.config.json'
 
+    // Select provider
+    let provider: 'vercel' | 'cloudflare' = argv.provider || 'vercel'
+    if (argv.interactive && !argv.provider) {
+      provider = await prompt('Select your firewall provider:', {
+        type: 'select',
+        choices: [
+          { title: 'Vercel Firewall', value: 'vercel' },
+          { title: 'Cloudflare WAF', value: 'cloudflare' },
+        ],
+      })
+    }
+
+    const providerName = getProviderDisplayName(provider)
+
     if (argv.interactive) {
-      showWelcomeMessage()
+      showWelcomeMessage(providerName)
     }
 
     // Check if config already exists
@@ -174,8 +292,8 @@ export const handler = async (argv: Arguments<InitOptions>) => {
       }
     }
 
-    // Get project details
-    const { projectId, teamId } = await promptForProjectDetails(argv)
+    // Get provider details
+    const { projectId, teamId, zoneId, accountId } = await promptForProviderDetails(argv, provider)
 
     if (argv.interactive) {
       logger.log('')
@@ -201,16 +319,28 @@ export const handler = async (argv: Arguments<InitOptions>) => {
       })
     }
 
-    logger.start(`Creating ${template} configuration...`)
+    logger.start(`Creating ${template} configuration for ${providerName}...`)
 
     let config = createEmptyConfig()
 
-    // Set project details
-    if (projectId) {
-      config.projectId = projectId
-    }
-    if (teamId) {
-      config.teamId = teamId
+    // Set provider
+    config.provider = provider
+
+    // Set provider-specific details
+    if (provider === 'vercel') {
+      if (projectId) {
+        config.projectId = projectId
+      }
+      if (teamId) {
+        config.teamId = teamId
+      }
+    } else {
+      if (zoneId) {
+        config.zoneId = zoneId
+      }
+      if (accountId) {
+        config.accountId = accountId
+      }
     }
 
     // Add template-specific content
@@ -362,23 +492,36 @@ export const handler = async (argv: Arguments<InitOptions>) => {
     logger.log('')
     logger.log(chalk.bold('📋 Configuration Summary:'))
     logger.log(`${chalk.dim('File:')} ${configPath}`)
+    logger.log(`${chalk.dim('Provider:')} ${providerName}`)
     logger.log(`${chalk.dim('Template:')} ${template}`)
-    logger.log(`${chalk.dim('Project ID:')} ${projectId || chalk.yellow('Not set - add manually')}`)
-    logger.log(`${chalk.dim('Team ID:')} ${teamId || chalk.dim('None (personal account)')}`)
+
+    if (provider === 'vercel') {
+      logger.log(`${chalk.dim('Project ID:')} ${projectId || chalk.yellow('Not set - add manually')}`)
+      logger.log(`${chalk.dim('Team ID:')} ${teamId || chalk.dim('None (personal account)')}`)
+    } else {
+      logger.log(`${chalk.dim('Zone ID:')} ${zoneId || chalk.yellow('Not set - add manually')}`)
+      logger.log(`${chalk.dim('Account ID:')} ${accountId || chalk.dim('None (optional)')}`)
+    }
+
     logger.log(`${chalk.dim('Rules:')} ${config.rules.length} (all disabled for safety)`)
 
     logger.log('')
     logger.log(chalk.bold('🚀 Next Steps:'))
 
-    if (!projectId) {
-      logger.log(`1. ${chalk.yellow('Add your projectId')} to ${configPath}`)
+    const envVar = provider === 'vercel' ? 'VERCEL_TOKEN' : 'CLOUDFLARE_API_TOKEN'
+    const missingId = provider === 'vercel' ? !projectId : !zoneId
+    const hasEnvVar = provider === 'vercel' ? process.env.VERCEL_TOKEN : process.env.CLOUDFLARE_API_TOKEN
+
+    if (missingId) {
+      const idField = provider === 'vercel' ? 'projectId' : 'zoneId'
+      logger.log(`1. ${chalk.yellow(`Add your ${idField}`)} to ${configPath}`)
     }
 
-    if (!process.env.VERCEL_TOKEN) {
-      logger.log(`${!projectId ? '2' : '1'}. ${chalk.yellow('Set VERCEL_TOKEN')} environment variable`)
+    if (!hasEnvVar) {
+      logger.log(`${missingId ? '2' : '1'}. ${chalk.yellow(`Set ${envVar}`)} environment variable`)
     }
 
-    const nextStep = !projectId ? 3 : !process.env.VERCEL_TOKEN ? 2 : 1
+    const nextStep = missingId ? 3 : !hasEnvVar ? 2 : 1
     logger.log(`${nextStep}. ${chalk.dim('Review and enable rules in')} ${configPath}`)
     logger.log(
       `${nextStep + 1}. ${chalk.dim('Run')} ${chalk.cyan('vercel-doorman validate')} ${chalk.dim('to check your config')}`,
@@ -397,8 +540,8 @@ export const handler = async (argv: Arguments<InitOptions>) => {
     }
 
     // Show help links if interactive
-    if (argv.interactive && (!projectId || !process.env.VERCEL_TOKEN)) {
-      showHelpLinks()
+    if (argv.interactive && (missingId || !hasEnvVar)) {
+      showHelpLinks(provider)
     }
   } catch (error) {
     logger.error(

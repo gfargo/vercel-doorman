@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import Table, { HorizontalAlignment } from 'cli-table3'
 import { logger } from '../../logger'
-import { FirewallConfig } from '../../types'
+import { FirewallConfig, UnifiedIPRule } from '../../types'
 import { calculateDynamicColWidths } from './calculateDynamicColWidths'
 import { formatAction } from './formatAction'
 import { formatChangeStatus } from './formatChangeStatus'
@@ -126,7 +126,10 @@ export function displayRulesTable(
   logger.log(table.toString())
 }
 
-export type IPBlockingRuleWithStatus = NonNullable<FirewallConfig['ips']>[number] & { changeStatus?: RuleChangeStatus }
+export type IPBlockingRuleWithStatus = (NonNullable<FirewallConfig['ips']>[number] | UnifiedIPRule) & {
+  changeStatus?: RuleChangeStatus
+  hostname?: string // Make hostname optional for compatibility
+}
 
 export function displayIPBlockingTable(
   rules: IPBlockingRuleWithStatus[],

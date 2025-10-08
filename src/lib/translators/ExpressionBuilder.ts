@@ -18,11 +18,14 @@ export class ExpressionBuilder {
     // Build expression for each group (conditions are AND'd)
     const groupExpressions = conditionGroups.map((group) => {
       const conditions = group.conditions.map((condition) => this.fromVercelCondition(condition))
-      return conditions.length > 1 ? `(${conditions.join(' and ')})` : conditions[0]
+      if (conditions.length === 0) {
+        throw new Error('Condition group must have at least one condition')
+      }
+      return conditions.length > 1 ? `(${conditions.join(' and ')})` : conditions[0]!
     })
 
     // OR between groups
-    return groupExpressions.length > 1 ? groupExpressions.join(' or ') : groupExpressions[0]
+    return groupExpressions.length > 1 ? groupExpressions.join(' or ') : groupExpressions[0]!
   }
 
   /**
@@ -54,7 +57,7 @@ export class ExpressionBuilder {
     const expressions = conditions.map((condition) => this.fromUnifiedCondition(condition))
 
     const connector = logic === 'AND' ? ' and ' : ' or '
-    return expressions.length > 1 ? `(${expressions.join(connector)})` : expressions[0]
+    return expressions.length > 1 ? `(${expressions.join(connector)})` : expressions[0]!
   }
 
   /**
@@ -148,7 +151,7 @@ export class ExpressionBuilder {
   /**
    * Format value for wirefilter expression
    */
-  private static formatValue(value: unknown, operator?: string): string {
+  private static formatValue(value: unknown, _operator?: string): string {
     // Handle arrays (for 'in' operator)
     if (Array.isArray(value)) {
       const formattedValues = value.map((v) => this.formatSingleValue(v)).join(' ')
@@ -208,7 +211,7 @@ export class ExpressionBuilder {
     }
 
     if (expressions.length === 1) {
-      return expressions[0]
+      return expressions[0]!
     }
 
     return `(${expressions.join(' and ')})`
@@ -223,7 +226,7 @@ export class ExpressionBuilder {
     }
 
     if (expressions.length === 1) {
-      return expressions[0]
+      return expressions[0]!
     }
 
     return `(${expressions.join(' or ')})`

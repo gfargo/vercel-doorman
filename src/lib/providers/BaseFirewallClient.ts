@@ -191,16 +191,17 @@ export abstract class BaseFirewallClient {
    * Handle error response from API
    */
   private async handleErrorResponse(response: Response): Promise<Error> {
-    let errorMessage = `${this.providerName} API error: ${response.status} ${response.statusText}`
+    const base = `${this.providerName} API error: ${response.status} ${response.statusText}`
+    let errorMessage = base
 
     try {
       const errorData: unknown = await response.json()
       if (typeof errorData === 'object' && errorData !== null) {
         const data = errorData as Record<string, unknown>
         if (typeof data.error === 'string') {
-          errorMessage = `${this.providerName} API error: ${data.error}`
+          errorMessage = `${base} - ${data.error}`
         } else if (typeof data.message === 'string') {
-          errorMessage = `${this.providerName} API error: ${data.message}`
+          errorMessage = `${base} - ${data.message}`
         } else if (Array.isArray(data.errors)) {
           const messages = data.errors
             .map((e) => {
@@ -210,7 +211,7 @@ export abstract class BaseFirewallClient {
               return JSON.stringify(e)
             })
             .join(', ')
-          errorMessage = `${this.providerName} API error: ${messages}`
+          errorMessage = `${base} - ${messages}`
         }
       }
     } catch {

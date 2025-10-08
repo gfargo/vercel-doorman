@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
 import { logger } from '../logger'
 import { ValidationService } from '../services/ValidationService'
-import { FirewallConfig } from '../types'
+import { FirewallConfig, isUnifiedConfig } from '../types'
 import { prompt } from '../ui/prompt'
 import { ConfigFinder } from './configFinder'
 import { createEmptyConfig } from './createEmptyConfig'
@@ -38,14 +38,24 @@ export async function getConfig(
 
   // Read and parse config
   try {
+    // If explicit path was provided but file doesn't exist and caller doesn't want errors, return empty
+    if (configPath && !existsSync(filePath)) {
+      if (!options.throwOnError) {
+        return {} as unknown as FirewallConfig
+      }
+    }
+
     const configContent = readFileSync(filePath, 'utf8')
     const configJson = JSON.parse(configContent)
 
     // Validate config if requested
     if (options.validate) {
       try {
-        const validator: ValidationService = ValidationService.getInstance()
-        validator.validateConfig(configJson)
+        // Skip v1 validation for unified (v2) configs
+        if (!isUnifiedConfig(configJson)) {
+          const validator: ValidationService = ValidationService.getInstance()
+          validator.validateConfig(configJson)
+        }
       } catch (validationError) {
         logger.error('Config validation failed:', validationError)
         if (options.throwOnError) {

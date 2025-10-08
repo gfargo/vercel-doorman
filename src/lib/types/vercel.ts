@@ -68,6 +68,9 @@ export interface VercelConditionGroup {
 export interface VercelRateLimit {
   requests: number
   window: string // e.g., "60s", "1h", "1d"
+  characteristics?: string[] // Cloudflare-specific: fields to rate limit by
+  mitigationTimeout?: number // Cloudflare-specific: block duration in seconds
+  countingExpression?: string // Cloudflare-specific: custom counting expression
 }
 
 /**

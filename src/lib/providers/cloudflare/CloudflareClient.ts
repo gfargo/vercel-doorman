@@ -7,6 +7,13 @@ import type {
   CloudflareUpdateRulesetRequest,
   CloudflareCreateRuleRequest,
   CloudflareUpdateRuleRequest,
+  CloudflareList,
+  CloudflareListItem,
+  CloudflareCreateListRequest,
+  CloudflareUpdateListRequest,
+  CloudflareAddListItemsRequest,
+  CloudflareRemoveListItemsRequest,
+  CloudflareListItemsResponse,
 } from '../../types/cloudflare'
 
 /**
@@ -234,5 +241,213 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     return response.result
+  }
+
+  /**
+   * Cloudflare Lists API
+   * Lists are used for bulk IP management
+   */
+
+  /**
+   * List all Lists (account-level)
+   */
+  public async listLists(): Promise<CloudflareList[]> {
+    logger.debug('Fetching Cloudflare Lists')
+
+    if (!this.accountId) {
+      logger.warn('Account ID not provided, Lists API requires account-level access')
+      return []
+    }
+
+    const response = await this.get<CloudflareAPIResponse<CloudflareList[]>>(`/accounts/${this.accountId}/rules/lists`)
+
+    if (!response.success) {
+      throw new Error(`Failed to list Lists: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    return response.result
+  }
+
+  /**
+   * Get a specific List by ID
+   */
+  public async getList(listId: string): Promise<CloudflareList> {
+    logger.debug(`Fetching List ${listId}`)
+
+    if (!this.accountId) {
+      throw new Error('Account ID required for Lists API')
+    }
+
+    const response = await this.get<CloudflareAPIResponse<CloudflareList>>(
+      `/accounts/${this.accountId}/rules/lists/${listId}`,
+    )
+
+    if (!response.success) {
+      throw new Error(`Failed to get List: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    return response.result
+  }
+
+  /**
+   * Create a new List
+   */
+  public async createList(list: CloudflareCreateListRequest): Promise<CloudflareList> {
+    logger.debug(`Creating List: ${list.name}`)
+
+    if (!this.accountId) {
+      throw new Error('Account ID required for Lists API')
+    }
+
+    const response = await this.post<CloudflareAPIResponse<CloudflareList>>(
+      `/accounts/${this.accountId}/rules/lists`,
+      list,
+    )
+
+    if (!response.success) {
+      throw new Error(`Failed to create List: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    logger.info(`Created List: ${response.result.name} (${response.result.id})`)
+    return response.result
+  }
+
+  /**
+   * Update a List
+   */
+  public async updateList(listId: string, list: CloudflareUpdateListRequest): Promise<CloudflareList> {
+    logger.debug(`Updating List ${listId}`)
+
+    if (!this.accountId) {
+      throw new Error('Account ID required for Lists API')
+    }
+
+    const response = await this.put<CloudflareAPIResponse<CloudflareList>>(
+      `/accounts/${this.accountId}/rules/lists/${listId}`,
+      list,
+    )
+
+    if (!response.success) {
+      throw new Error(`Failed to update List: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    logger.info(`Updated List ${listId}`)
+    return response.result
+  }
+
+  /**
+   * Delete a List
+   */
+  public async deleteList(listId: string): Promise<void> {
+    logger.debug(`Deleting List ${listId}`)
+
+    if (!this.accountId) {
+      throw new Error('Account ID required for Lists API')
+    }
+
+    const response = await this.delete<CloudflareAPIResponse<void>>(`/accounts/${this.accountId}/rules/lists/${listId}`)
+
+    if (!response.success) {
+      throw new Error(`Failed to delete List: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    logger.info(`Deleted List ${listId}`)
+  }
+
+  /**
+   * Get all items in a List
+   */
+  public async getListItems(listId: string): Promise<CloudflareListItem[]> {
+    logger.debug(`Fetching items from List ${listId}`)
+
+    if (!this.accountId) {
+      throw new Error('Account ID required for Lists API')
+    }
+
+    const response = await this.get<CloudflareListItemsResponse>(
+      `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+    )
+
+    if (!response.success) {
+      throw new Error(`Failed to get List items: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    return response.result
+  }
+
+  /**
+   * Add items to a List
+   */
+  public async addListItems(listId: string, request: CloudflareAddListItemsRequest): Promise<CloudflareListItem[]> {
+    logger.debug(`Adding ${request.items.length} items to List ${listId}`)
+
+    if (!this.accountId) {
+      throw new Error('Account ID required for Lists API')
+    }
+
+    const response = await this.post<CloudflareListItemsResponse>(
+      `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+      request.items,
+    )
+
+    if (!response.success) {
+      throw new Error(`Failed to add items to List: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    logger.info(`Added ${request.items.length} items to List ${listId}`)
+    return response.result
+  }
+
+  /**
+   * Remove items from a List
+   */
+  public async removeListItems(listId: string, request: CloudflareRemoveListItemsRequest): Promise<void> {
+    logger.debug(`Removing ${request.items.length} items from List ${listId}`)
+
+    if (!this.accountId) {
+      throw new Error('Account ID required for Lists API')
+    }
+
+    const response = await this.delete<CloudflareAPIResponse<void>>(
+      `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+      {
+        body: JSON.stringify(request),
+      },
+    )
+
+    if (!response.success) {
+      throw new Error(`Failed to remove items from List: ${response.errors.map((e) => e.message).join(', ')}`)
+    }
+
+    logger.info(`Removed ${request.items.length} items from List ${listId}`)
+  }
+
+  /**
+   * Get or create a List for IP blocking
+   * Finds existing "Doorman IP Blocklist" or creates one
+   */
+  public async getOrCreateIPBlocklist(): Promise<CloudflareList> {
+    logger.debug('Looking for existing Doorman IP blocklist')
+
+    if (!this.accountId) {
+      logger.warn('Account ID not provided, cannot use Lists for IP blocking')
+      throw new Error('Account ID required for IP Lists')
+    }
+
+    const lists = await this.listLists()
+    const existingList = lists.find((list) => list.name === 'Doorman IP Blocklist' && list.kind === 'ip')
+
+    if (existingList) {
+      logger.debug(`Found existing IP blocklist: ${existingList.id}`)
+      return existingList
+    }
+
+    // Create new list
+    logger.info('No existing IP blocklist found, creating new one')
+    return this.createList({
+      name: 'Doorman IP Blocklist',
+      description: 'IP addresses blocked by Vercel Doorman',
+      kind: 'ip',
+    })
   }
 }
