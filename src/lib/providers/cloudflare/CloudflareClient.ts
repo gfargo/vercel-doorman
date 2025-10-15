@@ -1,5 +1,6 @@
 import { BaseFirewallClient } from '../BaseFirewallClient'
 import { logger } from '../../logger'
+import { providerErrors, cloudflareErrors } from '../../errors'
 import type {
   CloudflareRuleset,
   CloudflareAPIResponse,
@@ -50,7 +51,13 @@ export class CloudflareClient extends BaseFirewallClient {
     const response = await this.get<CloudflareAPIResponse<CloudflareRuleset[]>>(`/zones/${this.zoneId}/rulesets`)
 
     if (!response.success) {
-      throw new Error(`Failed to list rulesets: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     return response.result
@@ -67,7 +74,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to get ruleset: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets/${rulesetId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     return response.result
@@ -85,7 +98,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to create ruleset: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Created ruleset: ${response.result.name} (${response.result.id})`)
@@ -104,7 +123,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to update ruleset: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets/${rulesetId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Updated ruleset to version ${response.result.version}`)
@@ -120,7 +145,13 @@ export class CloudflareClient extends BaseFirewallClient {
     const response = await this.delete<CloudflareAPIResponse<void>>(`/zones/${this.zoneId}/rulesets/${rulesetId}`)
 
     if (!response.success) {
-      throw new Error(`Failed to delete ruleset: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets/${rulesetId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Deleted ruleset ${rulesetId}`)
@@ -138,7 +169,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to create rule: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets/${rulesetId}/rules`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Added rule to ruleset ${rulesetId}`)
@@ -161,7 +198,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to update rule: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets/${rulesetId}/rules/${ruleId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Updated rule ${ruleId}`)
@@ -179,7 +222,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to delete rule: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/zones/${this.zoneId}/rulesets/${rulesetId}/rules/${ruleId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Deleted rule ${ruleId}`)
@@ -237,7 +286,8 @@ export class CloudflareClient extends BaseFirewallClient {
     const response = await this.get<CloudflareAPIResponse<{ id: string; name: string }>>(`/zones/${this.zoneId}`)
 
     if (!response.success) {
-      throw new Error(`Failed to get zone info: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError('cloudflare', `/zones/${this.zoneId}`, response.errors[0]?.code || 0, errorMessage)
     }
 
     return response.result
@@ -262,7 +312,13 @@ export class CloudflareClient extends BaseFirewallClient {
     const response = await this.get<CloudflareAPIResponse<CloudflareList[]>>(`/accounts/${this.accountId}/rules/lists`)
 
     if (!response.success) {
-      throw new Error(`Failed to list Lists: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     return response.result
@@ -275,7 +331,7 @@ export class CloudflareClient extends BaseFirewallClient {
     logger.debug(`Fetching List ${listId}`)
 
     if (!this.accountId) {
-      throw new Error('Account ID required for Lists API')
+      throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
     const response = await this.get<CloudflareAPIResponse<CloudflareList>>(
@@ -283,7 +339,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to get List: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists/${listId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     return response.result
@@ -296,7 +358,7 @@ export class CloudflareClient extends BaseFirewallClient {
     logger.debug(`Creating List: ${list.name}`)
 
     if (!this.accountId) {
-      throw new Error('Account ID required for Lists API')
+      throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
     const response = await this.post<CloudflareAPIResponse<CloudflareList>>(
@@ -305,7 +367,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to create List: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Created List: ${response.result.name} (${response.result.id})`)
@@ -319,7 +387,7 @@ export class CloudflareClient extends BaseFirewallClient {
     logger.debug(`Updating List ${listId}`)
 
     if (!this.accountId) {
-      throw new Error('Account ID required for Lists API')
+      throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
     const response = await this.put<CloudflareAPIResponse<CloudflareList>>(
@@ -328,7 +396,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to update List: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists/${listId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Updated List ${listId}`)
@@ -342,13 +416,19 @@ export class CloudflareClient extends BaseFirewallClient {
     logger.debug(`Deleting List ${listId}`)
 
     if (!this.accountId) {
-      throw new Error('Account ID required for Lists API')
+      throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
     const response = await this.delete<CloudflareAPIResponse<void>>(`/accounts/${this.accountId}/rules/lists/${listId}`)
 
     if (!response.success) {
-      throw new Error(`Failed to delete List: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists/${listId}`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Deleted List ${listId}`)
@@ -361,7 +441,7 @@ export class CloudflareClient extends BaseFirewallClient {
     logger.debug(`Fetching items from List ${listId}`)
 
     if (!this.accountId) {
-      throw new Error('Account ID required for Lists API')
+      throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
     const response = await this.get<CloudflareListItemsResponse>(
@@ -369,7 +449,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to get List items: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     return response.result
@@ -382,7 +468,7 @@ export class CloudflareClient extends BaseFirewallClient {
     logger.debug(`Adding ${request.items.length} items to List ${listId}`)
 
     if (!this.accountId) {
-      throw new Error('Account ID required for Lists API')
+      throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
     const response = await this.post<CloudflareListItemsResponse>(
@@ -391,7 +477,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to add items to List: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Added ${request.items.length} items to List ${listId}`)
@@ -405,7 +497,7 @@ export class CloudflareClient extends BaseFirewallClient {
     logger.debug(`Removing ${request.items.length} items from List ${listId}`)
 
     if (!this.accountId) {
-      throw new Error('Account ID required for Lists API')
+      throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
     const response = await this.delete<CloudflareAPIResponse<void>>(
@@ -416,7 +508,13 @@ export class CloudflareClient extends BaseFirewallClient {
     )
 
     if (!response.success) {
-      throw new Error(`Failed to remove items from List: ${response.errors.map((e) => e.message).join(', ')}`)
+      const errorMessage = response.errors.map((e) => e.message).join(', ')
+      throw providerErrors.apiError(
+        'cloudflare',
+        `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+        response.errors[0]?.code || 0,
+        errorMessage,
+      )
     }
 
     logger.info(`Removed ${request.items.length} items from List ${listId}`)
@@ -431,7 +529,7 @@ export class CloudflareClient extends BaseFirewallClient {
 
     if (!this.accountId) {
       logger.warn('Account ID not provided, cannot use Lists for IP blocking')
-      throw new Error('Account ID required for IP Lists')
+      throw cloudflareErrors.accountIdRequired('IP Lists')
     }
 
     const lists = await this.listLists()
