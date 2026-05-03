@@ -1,3 +1,11 @@
+## [1.5.9](https://github.com/gfargo/vercel-doorman/compare/v1.5.8...v1.5.9) (2026-05-03)
+
+
+### Bug Fixes
+
+* **deps:** override handlebars to >=4.7.9 ([5c11bbd](https://github.com/gfargo/vercel-doorman/commit/5c11bbdc9762ed637ace76cf861550d334576591)), closes [#2](https://github.com/gfargo/vercel-doorman/issues/2)
+* package.json & pnpm-lock.yaml to reduce vulnerabilities ([b67ea9c](https://github.com/gfargo/vercel-doorman/commit/b67ea9ca1f9d01991a38621343bf36469e95a20b))
+
 ## [1.5.8](https://github.com/gfargo/vercel-doorman/compare/v1.5.7...v1.5.8) (2025-10-06)
 
 
