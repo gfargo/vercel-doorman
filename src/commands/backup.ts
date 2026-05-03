@@ -120,7 +120,7 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
         process.exit(1)
       }
 
-      const backupConfig = await getConfig(restorePath, { validate: false })
+      const backupConfig = await getConfig(restorePath, 'raw')
       const outputPath = argv.config || 'vercel-firewall.config.json'
 
       if (existsSync(outputPath)) {

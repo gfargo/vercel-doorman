@@ -32,7 +32,7 @@ export const builder = {
 export const handler = async (argv: Arguments<ValidateOptions>) => {
   try {
     // Load config without validation since we'll do that ourselves
-    const configJson = await getConfig(argv.config, { validate: false })
+    const configJson = await getConfig(argv.config, 'raw')
     const validator: ValidationService = ValidationService.getInstance()
 
     if (argv.verbose) {

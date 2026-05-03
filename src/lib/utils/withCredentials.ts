@@ -71,17 +71,14 @@ export async function withCredentials(
 
     if (options.optionalConfig) {
       try {
-        config = await getConfig(options.config, {
-          validate: !options.skipValidation,
-          throwOnError: false,
-        })
+        config = await getConfig(options.config, 'optional')
       } catch {
         config = {} as FirewallConfig
       }
+    } else if (options.skipValidation) {
+      config = await getConfig(options.config, 'raw')
     } else {
-      config = await getConfig(options.config, {
-        validate: !options.skipValidation,
-      })
+      config = await getConfig(options.config, 'required')
     }
 
     const { token, projectId, teamId } = await promptForCredentials({
