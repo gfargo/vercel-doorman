@@ -1,13 +1,8 @@
 import chalk from 'chalk'
-import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { FirewallService } from '../lib/services/FirewallService'
-import { VercelClient } from '../lib/services/VercelClient'
-import { promptForCredentials } from '../lib/ui/promptForCredentials'
-import { getConfig } from '../lib/utils/config'
 import { ConfigHealthChecker } from '../lib/utils/configHealth'
-import { handleCommandError } from '../lib/utils/handleCommandError'
+import { withCredentials } from '../lib/utils/withCredentials'
 
 interface StatusOptions {
   config?: string
@@ -48,82 +43,68 @@ export const builder = {
 }
 
 export const handler = async (argv: Arguments<StatusOptions>) => {
-  try {
-    if (argv.debug) {
-      logger.level = LogLevels.debug
-    }
-
-    // Load and validate config
-    const config = await getConfig(argv.config)
-
-    const { token, projectId, teamId } = await promptForCredentials({
+  await withCredentials(
+    {
+      config: argv.config,
+      projectId: argv.projectId,
+      teamId: argv.teamId,
       token: argv.token,
-      projectId: argv.projectId || config.projectId,
-      teamId: argv.teamId || config.teamId,
-    })
+      debug: argv.debug,
+      errorContext: 'checking status',
+    },
+    async ({ config, service }) => {
+      logger.start('Checking sync status...')
 
-    const client = new VercelClient(projectId, teamId, token)
-    const service = new FirewallService(client)
+      const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } =
+        await service.getChanges(config)
 
-    logger.start('Checking sync status...')
+      const hasCustomRuleChanges = toAdd.length > 0 || toUpdate.length > 0 || toDelete.length > 0
+      const hasIPRuleChanges = ipsToAdd.length > 0 || ipsToUpdate.length > 0 || ipsToDelete.length > 0
+      const hasVersionChange = config.version !== version
 
-    const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } = await service.getChanges(config)
+      logger.log(chalk.bold('\n📊 Sync Status Summary\n'))
 
-    const hasCustomRuleChanges = toAdd.length > 0 || toUpdate.length > 0 || toDelete.length > 0
-    const hasIPRuleChanges = ipsToAdd.length > 0 || ipsToUpdate.length > 0 || ipsToDelete.length > 0
-    const hasVersionChange = config.version !== version
-
-    // Display status summary
-    logger.log(chalk.bold('\n📊 Sync Status Summary\n'))
-
-    // Version info
-    logger.log(`${chalk.dim('Local Version:')} ${chalk.yellow(config.version || 'unknown')}`)
-    logger.log(`${chalk.dim('Remote Version:')} ${chalk.yellow(version)}`)
-
-    if (hasVersionChange) {
-      logger.log(`${chalk.dim('Version Status:')} ${chalk.red('Out of sync')}`)
-    } else {
-      logger.log(`${chalk.dim('Version Status:')} ${chalk.green('In sync')}`)
-    }
-
-    logger.log('')
-
-    // Custom rules status
-    logger.log(`${chalk.dim('Custom Rules:')}`)
-    logger.log(`  ${chalk.green('+')} ${toAdd.length} to add`)
-    logger.log(`  ${chalk.cyan('~')} ${toUpdate.length} to update`)
-    logger.log(`  ${chalk.red('-')} ${toDelete.length} to delete`)
-
-    // IP rules status
-    logger.log(`${chalk.dim('IP Blocking Rules:')}`)
-    logger.log(`  ${chalk.green('+')} ${ipsToAdd.length} to add`)
-    logger.log(`  ${chalk.cyan('~')} ${ipsToUpdate.length} to update`)
-    logger.log(`  ${chalk.red('-')} ${ipsToDelete.length} to delete`)
-
-    logger.log('')
-
-    // Overall status
-    if (!hasCustomRuleChanges && !hasIPRuleChanges && !hasVersionChange) {
-      logger.success(chalk.green('✅ Everything is in sync!'))
-    } else {
-      logger.warn(chalk.yellow('⚠️  Changes detected. Run `sync` to apply changes.'))
+      logger.log(`${chalk.dim('Local Version:')} ${chalk.yellow(config.version || 'unknown')}`)
+      logger.log(`${chalk.dim('Remote Version:')} ${chalk.yellow(version)}`)
 
       if (hasVersionChange) {
-        logger.info(chalk.dim('💡 Version mismatch detected - this will be updated during sync'))
+        logger.log(`${chalk.dim('Version Status:')} ${chalk.red('Out of sync')}`)
+      } else {
+        logger.log(`${chalk.dim('Version Status:')} ${chalk.green('In sync')}`)
       }
-    }
 
-    // Show last updated info if available
-    if (config.updatedAt) {
-      logger.log(`\n${chalk.dim('Last Updated:')} ${new Date(config.updatedAt).toLocaleString()}`)
-    }
+      logger.log('')
 
-    // Add health check
-    logger.log('\n' + chalk.bold('🏥 Configuration Health Check'))
-    const healthResult = ConfigHealthChecker.check(config)
-    const healthReport = ConfigHealthChecker.formatHealthReport(healthResult)
-    logger.log(healthReport)
-  } catch (error) {
-    handleCommandError(error, 'checking status')
-  }
+      logger.log(`${chalk.dim('Custom Rules:')}`)
+      logger.log(`  ${chalk.green('+')} ${toAdd.length} to add`)
+      logger.log(`  ${chalk.cyan('~')} ${toUpdate.length} to update`)
+      logger.log(`  ${chalk.red('-')} ${toDelete.length} to delete`)
+
+      logger.log(`${chalk.dim('IP Blocking Rules:')}`)
+      logger.log(`  ${chalk.green('+')} ${ipsToAdd.length} to add`)
+      logger.log(`  ${chalk.cyan('~')} ${ipsToUpdate.length} to update`)
+      logger.log(`  ${chalk.red('-')} ${ipsToDelete.length} to delete`)
+
+      logger.log('')
+
+      if (!hasCustomRuleChanges && !hasIPRuleChanges && !hasVersionChange) {
+        logger.success(chalk.green('✅ Everything is in sync!'))
+      } else {
+        logger.warn(chalk.yellow('⚠️  Changes detected. Run `sync` to apply changes.'))
+
+        if (hasVersionChange) {
+          logger.info(chalk.dim('💡 Version mismatch detected - this will be updated during sync'))
+        }
+      }
+
+      if (config.updatedAt) {
+        logger.log(`\n${chalk.dim('Last Updated:')} ${new Date(config.updatedAt).toLocaleString()}`)
+      }
+
+      logger.log('\n' + chalk.bold('🏥 Configuration Health Check'))
+      const healthResult = ConfigHealthChecker.check(config)
+      const healthReport = ConfigHealthChecker.formatHealthReport(healthResult)
+      logger.log(healthReport)
+    },
+  )
 }

@@ -1,13 +1,9 @@
 import chalk from 'chalk'
 import { Stats, watchFile, unwatchFile } from 'fs'
-import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { FirewallService } from '../lib/services/FirewallService'
-import { VercelClient } from '../lib/services/VercelClient'
-import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { getConfig, saveConfig } from '../lib/utils/config'
-import { handleCommandError } from '../lib/utils/handleCommandError'
+import { withCredentials } from '../lib/utils/withCredentials'
 
 interface WatchOptions {
   config?: string
@@ -55,120 +51,100 @@ export const builder = {
 }
 
 export const handler = async (argv: Arguments<WatchOptions>) => {
-  let isProcessing = false
-  let client: VercelClient
-  let service: FirewallService
-  let lastModified = 0
-
   const configPath = argv.config || 'vercel-firewall.config.json'
 
-  try {
-    if (argv.debug) {
-      logger.level = LogLevels.debug
-    }
-
-    // Initial setup
-    logger.start('Setting up watch mode...')
-
-    const config = await getConfig(configPath)
-    const { token, projectId, teamId } = await promptForCredentials({
+  await withCredentials(
+    {
+      config: configPath,
+      projectId: argv.projectId,
+      teamId: argv.teamId,
       token: argv.token,
-      projectId: argv.projectId || config.projectId,
-      teamId: argv.teamId || config.teamId,
-    })
+      debug: argv.debug,
+      errorContext: 'setting up watch mode',
+    },
+    async ({ service }) => {
+      let isProcessing = false
+      let lastModified = 0
 
-    client = new VercelClient(projectId, teamId, token)
-    service = new FirewallService(client)
+      logger.success(chalk.green(`👀 Watching ${configPath} for changes...`))
+      logger.log(chalk.dim('Press Ctrl+C to stop watching'))
+      logger.log('')
 
-    logger.success(chalk.green(`👀 Watching ${configPath} for changes...`))
-    logger.log(chalk.dim('Press Ctrl+C to stop watching'))
-    logger.log('')
-
-    const handleFileChange = async (curr: Stats, _prev: Stats) => {
-      // Avoid processing if already processing or file hasn't actually changed
-      if (isProcessing || curr.mtime.getTime() === lastModified) {
-        return
-      }
-
-      isProcessing = true
-      lastModified = curr.mtime.getTime()
-
-      try {
-        logger.log(chalk.yellow(`📝 Config file changed at ${new Date().toLocaleTimeString()}`))
-        logger.start('Validating and syncing changes...')
-
-        // Reload config
-        const updatedConfig = await getConfig(configPath)
-
-        // Check for changes
-        const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } =
-          await service.getChanges(updatedConfig)
-
-        const hasChanges =
-          toAdd.length > 0 ||
-          toUpdate.length > 0 ||
-          toDelete.length > 0 ||
-          ipsToAdd.length > 0 ||
-          ipsToUpdate.length > 0 ||
-          ipsToDelete.length > 0 ||
-          updatedConfig.version !== version
-
-        if (!hasChanges) {
-          logger.info(chalk.blue('No changes detected, skipping sync'))
+      const handleFileChange = async (curr: Stats, _prev: Stats) => {
+        if (isProcessing || curr.mtime.getTime() === lastModified) {
           return
         }
 
-        // Show what will be synced
-        const totalChanges =
-          toAdd.length + toUpdate.length + toDelete.length + ipsToAdd.length + ipsToUpdate.length + ipsToDelete.length
-        logger.log(chalk.cyan(`Syncing ${totalChanges} changes...`))
+        isProcessing = true
+        lastModified = curr.mtime.getTime()
 
-        // Perform sync
-        const syncResult = await service.syncRules(updatedConfig, { debug: argv.debug })
-
-        // Validate and update config with remote-assigned IDs
         try {
-          const validatedConfig = await service.validateAndUpdateConfig(updatedConfig, syncResult, { dryRun: false })
-          await saveConfig(validatedConfig, configPath)
-          logger.success(chalk.green(`✅ Sync completed at ${new Date().toLocaleTimeString()}`))
-        } catch (validationError) {
-          logger.warn(
-            chalk.yellow(
-              `⚠️ Sync applied but validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
-            ),
-          )
-          logger.info(chalk.dim('Run `download` to reconcile local config with remote state'))
+          logger.log(chalk.yellow(`📝 Config file changed at ${new Date().toLocaleTimeString()}`))
+          logger.start('Validating and syncing changes...')
+
+          const updatedConfig = await getConfig(configPath)
+
+          const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } =
+            await service.getChanges(updatedConfig)
+
+          const hasChanges =
+            toAdd.length > 0 ||
+            toUpdate.length > 0 ||
+            toDelete.length > 0 ||
+            ipsToAdd.length > 0 ||
+            ipsToUpdate.length > 0 ||
+            ipsToDelete.length > 0 ||
+            updatedConfig.version !== version
+
+          if (!hasChanges) {
+            logger.info(chalk.blue('No changes detected, skipping sync'))
+            return
+          }
+
+          const totalChanges =
+            toAdd.length + toUpdate.length + toDelete.length + ipsToAdd.length + ipsToUpdate.length + ipsToDelete.length
+          logger.log(chalk.cyan(`Syncing ${totalChanges} changes...`))
+
+          const syncResult = await service.syncRules(updatedConfig, { debug: argv.debug })
+
+          try {
+            const validatedConfig = await service.validateAndUpdateConfig(updatedConfig, syncResult, { dryRun: false })
+            await saveConfig(validatedConfig, configPath)
+            logger.success(chalk.green(`✅ Sync completed at ${new Date().toLocaleTimeString()}`))
+          } catch (validationError) {
+            logger.warn(
+              chalk.yellow(
+                `⚠️ Sync applied but validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
+              ),
+            )
+            logger.info(chalk.dim('Run `download` to reconcile local config with remote state'))
+          }
+
+          logger.log(chalk.dim('Watching for more changes...'))
+        } catch (error) {
+          logger.error(chalk.red(`❌ Sync failed: ${error instanceof Error ? error.message : String(error)}`))
+          logger.log(chalk.dim('Continuing to watch for changes...'))
+        } finally {
+          isProcessing = false
         }
-
-        logger.log(chalk.dim('Watching for more changes...'))
-      } catch (error) {
-        logger.error(chalk.red(`❌ Sync failed: ${error instanceof Error ? error.message : String(error)}`))
-        logger.log(chalk.dim('Continuing to watch for changes...'))
-      } finally {
-        isProcessing = false
       }
-    }
 
-    // Start watching
-    watchFile(configPath, { interval: argv.interval }, handleFileChange)
+      watchFile(configPath, { interval: argv.interval }, handleFileChange)
 
-    // Handle graceful shutdown
-    const cleanup = () => {
-      logger.log('\n')
-      logger.info(chalk.yellow('Stopping watch mode...'))
-      unwatchFile(configPath)
-      process.exit(0)
-    }
+      const cleanup = () => {
+        logger.log('\n')
+        logger.info(chalk.yellow('Stopping watch mode...'))
+        unwatchFile(configPath)
+        process.exit(0)
+      }
 
-    process.on('SIGINT', cleanup)
-    process.on('SIGTERM', cleanup)
+      process.on('SIGINT', cleanup)
+      process.on('SIGTERM', cleanup)
 
-    // Keep the process alive
-    const keepAlive = () => {
-      setTimeout(keepAlive, 1000)
-    }
-    keepAlive()
-  } catch (error) {
-    handleCommandError(error, 'setting up watch mode')
-  }
+      const keepAlive = () => {
+        setTimeout(keepAlive, 1000)
+      }
+      keepAlive()
+    },
+  )
 }

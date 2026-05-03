@@ -4,12 +4,11 @@ import { join } from 'path'
 import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { VercelClient } from '../lib/services/VercelClient'
 import { FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
-import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { getConfig, saveConfig } from '../lib/utils/config'
 import { handleCommandError } from '../lib/utils/handleCommandError'
+import { withCredentials } from '../lib/utils/withCredentials'
 
 interface BackupOptions {
   config?: string
@@ -77,7 +76,7 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
 
     const backupDir = argv.output || './backups'
 
-    // List backups
+    // List backups — no credentials needed
     if (argv.list) {
       if (!existsSync(backupDir)) {
         logger.info(chalk.yellow('No backup directory found.'))
@@ -112,7 +111,7 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
       return
     }
 
-    // Restore from backup
+    // Restore from backup — no credentials needed
     if (argv.restore) {
       const restorePath = argv.restore.startsWith('/') ? argv.restore : join(backupDir, argv.restore)
 
@@ -140,58 +139,63 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
       return
     }
 
-    // Create backup
-    const config = await getConfig(argv.config)
-
-    const { token, projectId, teamId } = await promptForCredentials({
-      token: argv.token,
-      projectId: argv.projectId || config.projectId,
-      teamId: argv.teamId || config.teamId,
-    })
-
-    const client = new VercelClient(projectId, teamId, token)
-
-    logger.start('Fetching current remote configuration...')
-    const remoteConfig = await client.fetchFirewallConfig()
-
-    // Create backup directory if it doesn't exist
-    if (!existsSync(backupDir)) {
-      mkdirSync(backupDir, { recursive: true })
-    }
-
-    // Generate backup filename with timestamp
-    const now = new Date()
-    const datePart = now.toISOString().split('T')[0] ?? 'unknown-date'
-    const timePart = (now.toISOString().split('T')[1] ?? '').split('.')[0]?.replace(/:/g, '-') ?? 'unknown-time'
-    const timestamp = `${datePart}_${timePart}`
-    const backupFilename = `firewall-backup-${timestamp}.json`
-    const backupPath = join(backupDir, backupFilename)
-
-    // Create backup config with metadata
-    const backupConfig: FirewallConfig & {
-      backup: { createdAt: string; source: string; projectId: string; teamId: string; originalVersion: number }
-    } = {
-      ...remoteConfig,
-      backup: {
-        createdAt: new Date().toISOString(),
-        source: 'remote',
-        projectId,
-        teamId,
-        originalVersion: remoteConfig.version,
+    // Create backup — needs credentials
+    await withCredentials(
+      {
+        config: argv.config,
+        projectId: argv.projectId,
+        teamId: argv.teamId,
+        token: argv.token,
+        debug: argv.debug,
+        errorContext: 'creating backup',
       },
-    }
+      async ({ client, projectId, teamId }) => {
+        logger.start('Fetching current remote configuration...')
+        const remoteConfig = await client.fetchFirewallConfig()
 
-    await saveConfig(backupConfig, backupPath)
+        if (!existsSync(backupDir)) {
+          mkdirSync(backupDir, { recursive: true })
+        }
 
-    logger.success(chalk.green(`✅ Backup created: ${backupPath}`))
-    logger.log('')
-    logger.log(chalk.bold('Backup Details:'))
-    logger.log(`${chalk.dim('Version:')} ${remoteConfig.version}`)
-    logger.log(`${chalk.dim('Rules:')} ${remoteConfig.rules.length} custom, ${remoteConfig.ips.length} IP blocking`)
-    logger.log(`${chalk.dim('Created:')} ${new Date().toLocaleString()}`)
-    logger.log('')
-    logger.log(chalk.dim('To restore this backup later, run:'))
-    logger.log(chalk.cyan(`vercel-doorman backup --restore ${backupFilename}`))
+        const now = new Date()
+        const datePart = now.toISOString().split('T')[0] ?? 'unknown-date'
+        const timePart = (now.toISOString().split('T')[1] ?? '').split('.')[0]?.replace(/:/g, '-') ?? 'unknown-time'
+        const timestamp = `${datePart}_${timePart}`
+        const backupFilename = `firewall-backup-${timestamp}.json`
+        const backupPath = join(backupDir, backupFilename)
+
+        const backupConfig: FirewallConfig & {
+          backup: {
+            createdAt: string
+            source: string
+            projectId: string
+            teamId: string
+            originalVersion: number
+          }
+        } = {
+          ...remoteConfig,
+          backup: {
+            createdAt: new Date().toISOString(),
+            source: 'remote',
+            projectId,
+            teamId,
+            originalVersion: remoteConfig.version,
+          },
+        }
+
+        await saveConfig(backupConfig, backupPath)
+
+        logger.success(chalk.green(`✅ Backup created: ${backupPath}`))
+        logger.log('')
+        logger.log(chalk.bold('Backup Details:'))
+        logger.log(`${chalk.dim('Version:')} ${remoteConfig.version}`)
+        logger.log(`${chalk.dim('Rules:')} ${remoteConfig.rules.length} custom, ${remoteConfig.ips.length} IP blocking`)
+        logger.log(`${chalk.dim('Created:')} ${new Date().toLocaleString()}`)
+        logger.log('')
+        logger.log(chalk.dim('To restore this backup later, run:'))
+        logger.log(chalk.cyan(`vercel-doorman backup --restore ${backupFilename}`))
+      },
+    )
   } catch (error) {
     handleCommandError(error, 'managing backup')
   }
