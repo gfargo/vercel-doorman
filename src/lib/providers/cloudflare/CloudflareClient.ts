@@ -2,6 +2,9 @@ import { BaseFirewallClient } from '../BaseFirewallClient'
 import { logger } from '../../logger'
 import { providerErrors, cloudflareErrors } from '../../errors'
 import { CloudflareErrorHandler } from './CloudflareErrorHandler'
+import { ApiCache, CacheKeys, CacheTTL } from '../../utils/cache'
+import { CloudflareOptimizer } from './CloudflareOptimizer'
+import type { CacheStats } from '../../utils/cache'
 import type {
     CloudflareRuleset,
     CloudflareAPIResponse,
@@ -26,12 +29,47 @@ export class CloudflareClient extends BaseFirewallClient {
   private readonly apiToken: string
   private readonly zoneId: string
   private readonly accountId?: string
+  private readonly cache: ApiCache
+  private readonly optimizer: CloudflareOptimizer
 
   constructor(apiToken: string, zoneId: string, accountId?: string) {
     super('https://api.cloudflare.com/client/v4', 'cloudflare')
     this.apiToken = apiToken
     this.zoneId = zoneId
     this.accountId = accountId
+    this.cache = new ApiCache({ enableLogging: true })
+    this.optimizer = new CloudflareOptimizer()
+  }
+
+  /**
+   * Get cache statistics for monitoring
+   */
+  public getCacheStats(): CacheStats {
+    return this.cache.getStats()
+  }
+
+  /**
+   * Clear all cached data. Call after write operations that
+   * invalidate previously cached responses.
+   */
+  public clearCache(): void {
+    this.cache.clear()
+  }
+
+  /**
+   * Invalidate cache entries related to rulesets for this zone.
+   */
+  private invalidateRulesetCache(): void {
+    this.cache.invalidateByPrefix(`zone:${this.zoneId}`)
+  }
+
+  /**
+   * Invalidate cache entries related to lists for this account.
+   */
+  private invalidateListCache(): void {
+    if (this.accountId) {
+      this.cache.invalidateByPrefix(`account:${this.accountId}`)
+    }
   }
 
   /**
@@ -40,7 +78,15 @@ export class CloudflareClient extends BaseFirewallClient {
   protected getAuthHeaders(): Record<string, string> {
     return {
       Authorization: `Bearer ${this.apiToken}`,
+      ...this.optimizer.getConnectionHeaders(),
     }
+  }
+
+  /**
+   * Get the optimizer instance for use by the service layer.
+   */
+  public getOptimizer(): CloudflareOptimizer {
+    return this.optimizer
   }
 
   /**
@@ -49,43 +95,55 @@ export class CloudflareClient extends BaseFirewallClient {
   public async listRulesets(): Promise<CloudflareRuleset[]> {
     logger.debug(`Fetching rulesets for zone ${this.zoneId}`)
 
-    try {
-      const response = await this.get<CloudflareAPIResponse<CloudflareRuleset[]>>(`/zones/${this.zoneId}/rulesets`)
-
-      if (!response.success) {
-        throw CloudflareErrorHandler.handleApiResponse(response, `/zones/${this.zoneId}/rulesets`)
-      }
-
-      // Validate response structure to prevent malformed data issues
-      if (!Array.isArray(response.result)) {
-        logger.warn('Malformed API response: expected array of rulesets, got:', typeof response.result)
-        return []
-      }
-
-      // Filter out any malformed ruleset objects
-      const validRulesets = response.result.filter((ruleset) => {
-        if (!ruleset || typeof ruleset !== 'object') {
-          logger.warn('Skipping malformed ruleset object:', ruleset)
-          return false
-        }
-        if (!ruleset.id || !ruleset.name) {
-          logger.warn('Skipping ruleset with missing required fields:', { id: ruleset.id, name: ruleset.name })
-          return false
-        }
-        return true
-      })
-
-      if (validRulesets.length !== response.result.length) {
-        logger.warn(`Filtered out ${response.result.length - validRulesets.length} malformed rulesets`)
-      }
-
-      return validRulesets
-    } catch (error) {
-      if (error instanceof Error && !(error as any).code) {
-        throw CloudflareErrorHandler.handleNetworkError(error, 'listing rulesets')
-      }
-      throw error
+    // Check cache first
+    const cacheKey = CacheKeys.rulesets(this.zoneId)
+    const cached = this.cache.get<CloudflareRuleset[]>(cacheKey)
+    if (cached) {
+      return cached
     }
+
+    // Deduplicate concurrent requests for the same rulesets
+    const dedupKey = CloudflareOptimizer.requestKey('GET', `/zones/${this.zoneId}/rulesets`)
+    return this.optimizer.deduplicateRequest(dedupKey, async () => {
+      try {
+        const response = await this.get<CloudflareAPIResponse<CloudflareRuleset[]>>(`/zones/${this.zoneId}/rulesets`)
+
+        if (!response.success) {
+          throw CloudflareErrorHandler.handleApiResponse(response, `/zones/${this.zoneId}/rulesets`)
+        }
+
+        // Validate response structure to prevent malformed data issues
+        if (!Array.isArray(response.result)) {
+          logger.warn('Malformed API response: expected array of rulesets, got:', typeof response.result)
+          return []
+        }
+
+        // Filter out any malformed ruleset objects
+        const validRulesets = response.result.filter((ruleset) => {
+          if (!ruleset || typeof ruleset !== 'object') {
+            logger.warn('Skipping malformed ruleset object:', ruleset)
+            return false
+          }
+          if (!ruleset.id || !ruleset.name) {
+            logger.warn('Skipping ruleset with missing required fields:', { id: ruleset.id, name: ruleset.name })
+            return false
+          }
+          return true
+        })
+
+        if (validRulesets.length !== response.result.length) {
+          logger.warn(`Filtered out ${response.result.length - validRulesets.length} malformed rulesets`)
+        }
+
+        this.cache.set(cacheKey, validRulesets, CacheTTL.RULESETS)
+        return validRulesets
+      } catch (error) {
+        if (error instanceof Error && !(error as any).code) {
+          throw CloudflareErrorHandler.handleNetworkError(error, 'listing rulesets')
+        }
+        throw error
+      }
+    })
   }
 
   /**
@@ -101,60 +159,72 @@ export class CloudflareClient extends BaseFirewallClient {
   public async getRuleset(rulesetId: string): Promise<CloudflareRuleset> {
     logger.debug(`Fetching ruleset ${rulesetId}`)
 
-    try {
-      const response = await this.get<CloudflareAPIResponse<CloudflareRuleset>>(
-        `/zones/${this.zoneId}/rulesets/${rulesetId}`,
-      )
-
-      if (!response.success) {
-        throw CloudflareErrorHandler.handleApiResponse(response, `/zones/${this.zoneId}/rulesets/${rulesetId}`)
-      }
-
-      // Validate response structure
-      if (!response.result || typeof response.result !== 'object') {
-        throw CloudflareErrorHandler.handleValidationError('ruleset', 'Invalid ruleset data received from API', response.result)
-      }
-
-      const ruleset = response.result
-      if (!ruleset.id || !ruleset.name) {
-        throw CloudflareErrorHandler.handleValidationError('ruleset', 'Ruleset missing required fields (id, name)', ruleset)
-      }
-
-      // Ensure rules array exists and is valid
-      if (!Array.isArray(ruleset.rules)) {
-        logger.warn(`Ruleset ${rulesetId} has invalid rules array, initializing as empty`)
-        ruleset.rules = []
-      }
-
-      // Filter out malformed rules
-      const validRules = ruleset.rules.filter((rule) => {
-        if (!rule || typeof rule !== 'object') {
-          logger.warn(`Skipping malformed rule in ruleset ${rulesetId}:`, rule)
-          return false
-        }
-        if (!rule.id || !rule.expression || !rule.action) {
-          logger.warn(`Skipping rule with missing required fields in ruleset ${rulesetId}:`, {
-            id: rule.id,
-            expression: rule.expression,
-            action: rule.action,
-          })
-          return false
-        }
-        return true
-      })
-
-      if (validRules.length !== ruleset.rules.length) {
-        logger.warn(`Filtered out ${ruleset.rules.length - validRules.length} malformed rules from ruleset ${rulesetId}`)
-        ruleset.rules = validRules
-      }
-
-      return ruleset
-    } catch (error) {
-      if (error instanceof Error && !(error as any).code) {
-        throw CloudflareErrorHandler.handleNetworkError(error, 'fetching ruleset')
-      }
-      throw error
+    // Check cache first
+    const cacheKey = CacheKeys.ruleset(this.zoneId, rulesetId)
+    const cached = this.cache.get<CloudflareRuleset>(cacheKey)
+    if (cached) {
+      return cached
     }
+
+    // Deduplicate concurrent requests for the same ruleset
+    const dedupKey = CloudflareOptimizer.requestKey('GET', `/zones/${this.zoneId}/rulesets/${rulesetId}`)
+    return this.optimizer.deduplicateRequest(dedupKey, async () => {
+      try {
+        const response = await this.get<CloudflareAPIResponse<CloudflareRuleset>>(
+          `/zones/${this.zoneId}/rulesets/${rulesetId}`,
+        )
+
+        if (!response.success) {
+          throw CloudflareErrorHandler.handleApiResponse(response, `/zones/${this.zoneId}/rulesets/${rulesetId}`)
+        }
+
+        // Validate response structure
+        if (!response.result || typeof response.result !== 'object') {
+          throw CloudflareErrorHandler.handleValidationError('ruleset', 'Invalid ruleset data received from API', response.result)
+        }
+
+        const ruleset = response.result
+        if (!ruleset.id || !ruleset.name) {
+          throw CloudflareErrorHandler.handleValidationError('ruleset', 'Ruleset missing required fields (id, name)', ruleset)
+        }
+
+        // Ensure rules array exists and is valid
+        if (!Array.isArray(ruleset.rules)) {
+          logger.warn(`Ruleset ${rulesetId} has invalid rules array, initializing as empty`)
+          ruleset.rules = []
+        }
+
+        // Filter out malformed rules
+        const validRules = ruleset.rules.filter((rule) => {
+          if (!rule || typeof rule !== 'object') {
+            logger.warn(`Skipping malformed rule in ruleset ${rulesetId}:`, rule)
+            return false
+          }
+          if (!rule.id || !rule.expression || !rule.action) {
+            logger.warn(`Skipping rule with missing required fields in ruleset ${rulesetId}:`, {
+              id: rule.id,
+              expression: rule.expression,
+              action: rule.action,
+            })
+            return false
+          }
+          return true
+        })
+
+        if (validRules.length !== ruleset.rules.length) {
+          logger.warn(`Filtered out ${ruleset.rules.length - validRules.length} malformed rules from ruleset ${rulesetId}`)
+          ruleset.rules = validRules
+        }
+
+        this.cache.set(cacheKey, ruleset, CacheTTL.RULESET)
+        return ruleset
+      } catch (error) {
+        if (error instanceof Error && !(error as any).code) {
+          throw CloudflareErrorHandler.handleNetworkError(error, 'fetching ruleset')
+        }
+        throw error
+      }
+    })
   }
 
   /**
@@ -179,6 +249,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Created ruleset: ${response.result.name} (${response.result.id})`)
+    this.invalidateRulesetCache()
     return response.result
   }
 
@@ -204,6 +275,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Updated ruleset to version ${response.result.version}`)
+    this.invalidateRulesetCache()
     return response.result
   }
 
@@ -226,7 +298,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Deleted ruleset ${rulesetId}`)
-  }
+    this.invalidateRulesetCache()  }
 
   /**
    * Add a rule to a ruleset
@@ -250,6 +322,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Added rule to ruleset ${rulesetId}`)
+    this.invalidateRulesetCache()
     return response.result
   }
 
@@ -279,6 +352,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Updated rule ${ruleId}`)
+    this.invalidateRulesetCache()
     return response.result
   }
 
@@ -303,6 +377,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Deleted rule ${ruleId}`)
+    this.invalidateRulesetCache()
     return response.result
   }
 
@@ -336,6 +411,15 @@ export class CloudflareClient extends BaseFirewallClient {
    * Verify API credentials and connectivity
    */
   public async verifyCredentials(): Promise<boolean> {
+    // Check cache for recent successful validation
+    const tokenHash = this.apiToken.slice(-8) // Use last 8 chars as a safe hash
+    const cacheKey = CacheKeys.credentialValidation(tokenHash)
+    const cached = this.cache.get<boolean>(cacheKey)
+    if (cached !== undefined) {
+      logger.debug('Using cached credential validation result')
+      return cached
+    }
+
     try {
       logger.debug('Verifying Cloudflare credentials')
 
@@ -343,6 +427,7 @@ export class CloudflareClient extends BaseFirewallClient {
       await this.listRulesets()
 
       logger.info('Cloudflare credentials verified successfully')
+      this.cache.set(cacheKey, true, CacheTTL.CREDENTIALS)
       return true
     } catch (error) {
       logger.error(`Cloudflare credential verification failed: ${error}`)
@@ -369,6 +454,13 @@ export class CloudflareClient extends BaseFirewallClient {
    * Get zone information
    */
   public async getZoneInfo(): Promise<{ id: string; name: string; status: string; plan?: { name: string } }> {
+    // Check cache first – zone info rarely changes
+    const cacheKey = CacheKeys.zoneInfo(this.zoneId)
+    const cached = this.cache.get<{ id: string; name: string; status: string; plan?: { name: string } }>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const response = await this.get<CloudflareAPIResponse<{ 
       id: string; 
       name: string; 
@@ -381,6 +473,7 @@ export class CloudflareClient extends BaseFirewallClient {
       throw providerErrors.apiError('cloudflare', `/zones/${this.zoneId}`, response.errors[0]?.code || 0, errorMessage)
     }
 
+    this.cache.set(cacheKey, response.result, CacheTTL.ZONE_INFO)
     return response.result
   }
 
@@ -400,6 +493,13 @@ export class CloudflareClient extends BaseFirewallClient {
       return []
     }
 
+    // Check cache first
+    const cacheKey = CacheKeys.lists(this.accountId)
+    const cached = this.cache.get<CloudflareList[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const response = await this.get<CloudflareAPIResponse<CloudflareList[]>>(`/accounts/${this.accountId}/rules/lists`)
 
     if (!response.success) {
@@ -412,6 +512,7 @@ export class CloudflareClient extends BaseFirewallClient {
       )
     }
 
+    this.cache.set(cacheKey, response.result, CacheTTL.LISTS)
     return response.result
   }
 
@@ -468,6 +569,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Created List: ${response.result.name} (${response.result.id})`)
+    this.invalidateListCache()
     return response.result
   }
 
@@ -497,6 +599,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Updated List ${listId}`)
+    this.invalidateListCache()
     return response.result
   }
 
@@ -523,7 +626,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Deleted List ${listId}`)
-  }
+    this.invalidateListCache()  }
 
   /**
    * Get all items in a List
@@ -535,21 +638,33 @@ export class CloudflareClient extends BaseFirewallClient {
       throw cloudflareErrors.accountIdRequired('Lists API')
     }
 
-    const response = await this.get<CloudflareListItemsResponse>(
-      `/accounts/${this.accountId}/rules/lists/${listId}/items`,
-    )
-
-    if (!response.success) {
-      const errorMessage = response.errors.map((e) => e.message).join(', ')
-      throw providerErrors.apiError(
-        'cloudflare',
-        `/accounts/${this.accountId}/rules/lists/${listId}/items`,
-        response.errors[0]?.code || 0,
-        errorMessage,
-      )
+    // Check cache first
+    const cacheKey = CacheKeys.listItems(this.accountId, listId)
+    const cached = this.cache.get<CloudflareListItem[]>(cacheKey)
+    if (cached) {
+      return cached
     }
 
-    return response.result
+    // Deduplicate concurrent requests for the same list items
+    const dedupKey = CloudflareOptimizer.requestKey('GET', `/accounts/${this.accountId}/rules/lists/${listId}/items`)
+    return this.optimizer.deduplicateRequest(dedupKey, async () => {
+      const response = await this.get<CloudflareListItemsResponse>(
+        `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+      )
+
+      if (!response.success) {
+        const errorMessage = response.errors.map((e) => e.message).join(', ')
+        throw providerErrors.apiError(
+          'cloudflare',
+          `/accounts/${this.accountId}/rules/lists/${listId}/items`,
+          response.errors[0]?.code || 0,
+          errorMessage,
+        )
+      }
+
+      this.cache.set(cacheKey, response.result, CacheTTL.LIST_ITEMS)
+      return response.result
+    })
   }
 
   /**
@@ -578,6 +693,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Added ${request.items.length} items to List ${listId}`)
+    this.invalidateListCache()
     return response.result
   }
 
@@ -609,7 +725,7 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Removed ${request.items.length} items from List ${listId}`)
-  }
+    this.invalidateListCache()  }
 
   /**
    * Get or create a List for IP blocking

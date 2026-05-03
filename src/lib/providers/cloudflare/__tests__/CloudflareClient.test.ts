@@ -855,7 +855,9 @@ describe('CloudflareClient', () => {
       const results = await Promise.all(promises)
 
       expect(results).toHaveLength(5)
-      expect(fetchMock).toHaveBeenCalledTimes(5)
+      // With request deduplication, concurrent identical requests share a single fetch call
+      // The first call triggers the fetch, subsequent concurrent calls are deduplicated
+      expect(fetchMock).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -906,7 +908,7 @@ describe('CloudflareClient', () => {
         success: false,
         errors: [{ code: 10037, message: 'List quota exceeded' }],
         messages: [],
-        result: {} as unknown,
+        result: {} as unknown as CloudflareList,
       }
 
       fetchMock.mockResolvedValueOnce(makeResponse({ ok: false, status: 400, jsonBody: mockResponse }))

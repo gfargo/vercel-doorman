@@ -1,5 +1,6 @@
 import { BaseFirewallService } from '../BaseFirewallService'
 import { CloudflareClient } from './CloudflareClient'
+import { CloudflareOptimizer } from './CloudflareOptimizer'
 import { RuleTranslator } from '../../translators/RuleTranslator'
 import { logger } from '../../logger'
 import { CloudflareErrorHandler } from './CloudflareErrorHandler'
@@ -17,6 +18,7 @@ import type { CloudflareRule } from '../../types/cloudflare'
 export class CloudflareFirewallService extends BaseFirewallService {
   public readonly name: ProviderType = 'cloudflare'
   private client: CloudflareClient
+  private optimizer: CloudflareOptimizer
   // Cached for potential future use
   // private _currentRuleset?: CloudflareRuleset
   // private _ipBlocklistId?: string
@@ -25,6 +27,7 @@ export class CloudflareFirewallService extends BaseFirewallService {
   constructor(apiToken: string, zoneId: string, accountId?: string) {
     super()
     this.client = new CloudflareClient(apiToken, zoneId, accountId)
+    this.optimizer = this.client.getOptimizer()
     // Use Lists for IP blocking if accountId is provided
     this.useListsForIPs = !!accountId
 
@@ -383,23 +386,17 @@ export class CloudflareFirewallService extends BaseFirewallService {
   public async getChanges(config: UnifiedConfig): Promise<ChangeSet> {
     const remoteConfig = await this.fetchConfig()
 
-    // Compare rules
-    const ruleDiff = this.diffItems<UnifiedRule>(
-      config.rules,
-      remoteConfig.rules,
-      (a, b) => a.id === b.id && JSON.stringify(a) === JSON.stringify(b),
-      'id',
-    )
+    // Use optimizer's hash-based diff for better performance with large rule sets
+    const ruleDiff = this.optimizer.diffRules(config.rules, remoteConfig.rules)
 
-    // Compare IPs
-    let ipDiff: import('../BaseFirewallService').DiffResult<UnifiedIPRule> = { toAdd: [], toUpdate: [], toDelete: [] }
+    // Compare IPs using optimizer's diff
+    let ipDiff: { toAdd: UnifiedIPRule[]; toUpdate: UnifiedIPRule[]; toDelete: UnifiedIPRule[] } = {
+      toAdd: [],
+      toUpdate: [],
+      toDelete: [],
+    }
     if (config.ips && remoteConfig.ips) {
-      ipDiff = this.diffItems<UnifiedIPRule>(
-        config.ips,
-        remoteConfig.ips,
-        (a, b) => a.ip === b.ip && a.action === b.action,
-        'ip',
-      )
+      ipDiff = this.optimizer.diffIPRules(config.ips, remoteConfig.ips)
     }
 
     return {
@@ -632,6 +629,28 @@ export class CloudflareFirewallService extends BaseFirewallService {
   }
 
   /**
+   * Get cache statistics for performance monitoring
+   */
+  public getCacheStats(): import('../../utils/cache').CacheStats {
+    return this.client.getCacheStats()
+  }
+
+  /**
+   * Get optimizer statistics for performance monitoring
+   */
+  public getOptimizerStats(): import('./CloudflareOptimizer').OptimizerStats {
+    return this.optimizer.getStats()
+  }
+
+  /**
+   * Clear all cached API responses
+   */
+  public clearCache(): void {
+    this.client.clearCache()
+    this.optimizer.clearCaches()
+  }
+
+  /**
    * Check if a Cloudflare rule is a List-based IP blocking rule
    */
   private isListBasedIPRule(rule: CloudflareRule): boolean {
@@ -746,7 +765,7 @@ export class CloudflareFirewallService extends BaseFirewallService {
     const hasDangerousRules = config.rules.some(rule => 
       rule.action.type === 'deny' && 
       rule.conditions.some(condition => 
-        condition.type === 'path' && (condition.value === '/' || condition.value === '*')
+        condition.field === 'path' && (condition.value === '/' || condition.value === '*')
       )
     )
 
