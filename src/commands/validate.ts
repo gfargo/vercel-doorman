@@ -255,6 +255,66 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
         if (!providerValidation.valid) {
           throw new Error(`Configuration validation failed for ${providerName}`)
         }
+
+        // Enhanced Cloudflare validation
+        if (provider.name === 'cloudflare' && isUnifiedConfig(configJson)) {
+          if (argv.verbose) {
+            logger.log(chalk.bold.underline('\nEnhanced Cloudflare Validation:'))
+          }
+
+          try {
+            const { CloudflareValidationService } = await import('../lib/providers/cloudflare/CloudflareValidationService')
+            
+            const validationService = new CloudflareValidationService({
+              validateCredentials: !!(argv.apiToken || process.env.CLOUDFLARE_API_TOKEN),
+              checkEnvironmentVariables: true,
+              validateConnectivity: false, // Skip connectivity for validate command
+              skipSetupVerification: true, // Skip setup verification for validate command
+            })
+
+            const enhancedResult = await validationService.quickValidate(unifiedConfig)
+
+            if (argv.verbose) {
+              if (enhancedResult.valid) {
+                logger.log(chalk.green('✓ Enhanced Cloudflare validation passed'))
+              } else {
+                logger.error(chalk.red('✗ Enhanced Cloudflare validation failed:'))
+                enhancedResult.errors.forEach((err) => {
+                  logger.error(chalk.red(`  - ${err.field}: ${err.message}`))
+                  if (err.suggestion) {
+                    logger.info(chalk.dim(`    💡 ${err.suggestion}`))
+                  }
+                })
+              }
+
+              if (enhancedResult.warnings.length > 0) {
+                logger.log(chalk.yellow('\n⚠️  Enhanced Cloudflare Warnings:'))
+                enhancedResult.warnings.forEach((warn) => {
+                  logger.warn(chalk.yellow(`  - ${warn.field}: ${warn.message}`))
+                  if (warn.suggestion) {
+                    logger.info(chalk.dim(`    💡 ${warn.suggestion}`))
+                  }
+                })
+              }
+
+              if (enhancedResult.suggestions.length > 0) {
+                logger.log(chalk.cyan('\n💡 Suggestions:'))
+                enhancedResult.suggestions.forEach((suggestion) => {
+                  logger.info(chalk.cyan(`  • ${suggestion}`))
+                })
+              }
+            }
+
+            if (!enhancedResult.valid) {
+              throw new Error('Enhanced Cloudflare validation failed')
+            }
+          } catch (enhancedError) {
+            if (argv.verbose) {
+              logger.warn(chalk.yellow('Enhanced Cloudflare validation skipped'))
+              logger.debug(enhancedError instanceof Error ? enhancedError.message : String(enhancedError))
+            }
+          }
+        }
       } catch (error) {
         if (argv.verbose) {
           logger.warn(chalk.yellow('Provider-specific validation skipped (credentials not provided or invalid)'))

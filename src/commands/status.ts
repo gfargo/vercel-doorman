@@ -27,7 +27,7 @@ interface StatusOptions {
 }
 
 export const command = 'status'
-export const desc = 'Show sync status between local and remote firewall configuration'
+export const desc = 'Show sync status between local and remote firewall configuration (Vercel/Cloudflare)'
 
 export const builder = {
   config: {

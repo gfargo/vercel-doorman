@@ -28,10 +28,12 @@ interface SyncOptions {
   // Common options
   debug?: boolean
   ci?: boolean
+  force?: boolean
+  'dry-run'?: boolean
 }
 
 export const command = 'sync'
-export const desc = 'Sync firewall rules with config file'
+export const desc = 'Sync firewall rules with config file (supports Vercel and Cloudflare)'
 
 export const builder = {
   config: {
@@ -81,6 +83,17 @@ export const builder = {
   ci: {
     type: 'boolean',
     description: 'Run in CI mode (non-interactive)',
+    default: false,
+  },
+  force: {
+    alias: 'f',
+    type: 'boolean',
+    description: 'Skip confirmation prompts for destructive operations',
+    default: false,
+  },
+  'dry-run': {
+    type: 'boolean',
+    description: 'Show what would be changed without making actual changes',
     default: false,
   },
 }
@@ -279,7 +292,11 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       const rules = config.rules.map((rule: CustomRule) => {
         const translation = RuleTranslator.vercelToUnified(rule)
         if (translation.warnings.length > 0) {
-          translation.warnings.forEach((w) => logger.debug(`Rule ${rule.name}: ${w.message}`))
+          translation.warnings.forEach((w) => {
+            const { TranslationWarningSystem } = require('../lib/translators/TranslationWarningSystem')
+            const formattedWarning = TranslationWarningSystem.formatWarning(w)
+            logger.debug(`Rule ${rule.name}:\n${formattedWarning}`)
+          })
         }
         return translation.result
       })
@@ -367,8 +384,11 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
 
     logger.start(`Syncing firewall rules to ${providerName}...`)
 
-    // Perform sync operation
-    const syncResult = await provider.syncRules(unifiedConfig)
+    // Perform sync operation with safety options
+    const syncResult = await provider.syncRules(unifiedConfig, {
+      dryRun: argv['dry-run'],
+      force: argv.force || argv.ci, // CI mode implies force
+    })
 
     if (!syncResult.success) {
       logger.error(chalk.red('Sync failed!'))
@@ -376,6 +396,13 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
         syncResult.errors.forEach((error) => logger.error(`  - ${error}`))
       }
       process.exit(1)
+    }
+
+    // Handle dry-run results
+    if (argv['dry-run']) {
+      logger.success(chalk.green('Dry-run completed successfully'))
+      logger.info('No actual changes were made. Use without --dry-run to apply changes.')
+      return
     }
 
     logger.success(chalk.green(`Firewall rules synced successfully to ${providerName}`))

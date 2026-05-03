@@ -32,7 +32,7 @@ interface ListOptions {
 }
 
 export const command = 'list [configVersion]'
-export const desc = 'List firewall rules, optionally for a specific configuration version'
+export const desc = 'List firewall rules from Vercel or Cloudflare, optionally for a specific configuration version'
 
 export const builder = {
   configVersion: {

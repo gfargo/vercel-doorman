@@ -4,9 +4,13 @@ import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
 import { prompt } from '../lib/ui/prompt'
 import { createEmptyConfig } from '../lib/utils/createEmptyConfig'
-import { saveConfig } from '../lib/utils/config'
+import { saveConfig, getConfig as loadConfig } from '../lib/utils/config'
 import { ErrorFormatter } from '../lib/utils/errorFormatter'
 import { getProviderDisplayName } from '../lib/utils/providerHelper'
+import { CloudflareCredentials } from '../lib/providers/cloudflare'
+import { ValidationResult } from '../lib/providers'
+import { autoMigrate, needsMigration } from '../lib/schemas'
+import { CloudflareValidator } from '../lib/providers/cloudflare'
 
 interface InitOptions {
   config?: string
@@ -14,6 +18,7 @@ interface InitOptions {
   template?: string
   interactive?: boolean
   provider?: 'vercel' | 'cloudflare'
+  validateOnly?: boolean
   // Vercel options
   projectId?: string
   teamId?: string
@@ -23,7 +28,7 @@ interface InitOptions {
 }
 
 export const command = 'init [template]'
-export const desc = 'Initialize a new Vercel Doorman configuration'
+export const desc = 'Initialize a new Vercel Doorman configuration (supports Vercel and Cloudflare)'
 
 export const builder = {
   template: {
@@ -55,6 +60,11 @@ export const builder = {
     description: 'Firewall provider (vercel or cloudflare)',
     choices: ['vercel', 'cloudflare'],
   },
+  'validate-only': {
+    type: 'boolean',
+    description: 'Only validate credentials without creating configuration',
+    default: false,
+  },
   // Vercel options
   projectId: {
     alias: 'p',
@@ -76,6 +86,14 @@ export const builder = {
     description: 'Cloudflare Account ID (optional)',
   },
 }
+
+export const examples = [
+  ['$0 init', 'Interactive setup with provider selection'],
+  ['$0 init --provider vercel', 'Initialize for Vercel Firewall'],
+  ['$0 init --provider cloudflare', 'Initialize for Cloudflare WAF'],
+  ['$0 init basic --provider cloudflare', 'Create basic Cloudflare configuration'],
+  ['$0 init --validate-only --provider cloudflare', 'Test Cloudflare credentials only'],
+]
 
 const showWelcomeMessage = (providerName: string) => {
   logger.log('')
@@ -114,6 +132,138 @@ const showHelpLinks = (provider: 'vercel' | 'cloudflare') => {
   logger.log(chalk.cyan('🔗 Documentation:'))
   logger.log(chalk.dim('   https://doorman.griffen.codes/getting-started'))
   logger.log('')
+}
+
+/**
+ * Validate Cloudflare credentials and provide detailed feedback
+ */
+const validateCloudflareCredentials = async (credentials: CloudflareCredentials): Promise<boolean> => {
+  logger.log('')
+  logger.log(chalk.bold('🔍 Validating Cloudflare Credentials'))
+  logger.log(chalk.dim('This may take a few seconds...\n'))
+
+  try {
+    const validator = new CloudflareValidator()
+    const result = await validator.validateCredentials(credentials)
+
+    // Display validation results
+    if (result.valid) {
+      logger.log(chalk.green('✅ Credential validation successful!'))
+
+      if (result.warnings.length > 0) {
+        logger.log('')
+        logger.log(chalk.yellow('⚠️  Warnings:'))
+        for (const warning of result.warnings) {
+          logger.log(chalk.yellow(`   • ${warning.message}`))
+          if (warning.impact) {
+            logger.log(chalk.dim(`     Impact: ${warning.impact}`))
+          }
+        }
+      }
+
+      if (result.suggestions.length > 0) {
+        logger.log('')
+        logger.log(chalk.cyan('💡 Suggestions:'))
+        for (const suggestion of result.suggestions) {
+          logger.log(chalk.cyan(`   • ${suggestion}`))
+        }
+      }
+
+      return true
+    } else {
+      logger.log(chalk.red('❌ Credential validation failed'))
+      logger.log('')
+
+      for (const error of result.errors) {
+        logger.log(chalk.red(`   • ${error.message}`))
+        if (error.suggestion) {
+          logger.log(chalk.dim(`     Suggestion: ${error.suggestion}`))
+        }
+        if (error.docsUrl) {
+          logger.log(chalk.dim(`     Documentation: ${error.docsUrl}`))
+        }
+      }
+
+      if (result.suggestions.length > 0) {
+        logger.log('')
+        logger.log(chalk.cyan('💡 Next Steps:'))
+        for (const suggestion of result.suggestions) {
+          logger.log(chalk.cyan(`   • ${suggestion}`))
+        }
+      }
+
+      return false
+    }
+  } catch (error) {
+    logger.log(chalk.red('❌ Validation failed with error:'))
+    logger.log(chalk.red(`   ${error instanceof Error ? error.message : String(error)}`))
+    return false
+  }
+}
+
+/**
+ * Check for existing Vercel configuration and offer migration
+ */
+const checkForMigration = async (configPath: string): Promise<boolean> => {
+  // Look for existing Vercel-only config files
+  const possibleConfigs = ['vercel-firewall.config.json', 'firewall.config.json', '.vercel-firewall.json']
+
+  for (const configFile of possibleConfigs) {
+    if (configFile !== configPath && existsSync(configFile)) {
+      try {
+        const existingConfig = await loadConfig(configFile)
+
+        if (needsMigration(existingConfig)) {
+          logger.log('')
+          logger.log(chalk.yellow('🔄 Migration Opportunity'))
+          logger.log(chalk.dim(`Found existing Vercel configuration: ${configFile}`))
+          logger.log('')
+
+          const shouldMigrate = await prompt('Would you like to migrate this to multi-provider format?', {
+            type: 'confirm',
+          })
+
+          if (shouldMigrate) {
+            try {
+              const migratedConfig = autoMigrate(existingConfig)
+              await saveConfig(migratedConfig, configPath)
+
+              logger.log(chalk.green(`✅ Successfully migrated ${configFile} to ${configPath}`))
+              logger.log(chalk.dim('The original file has been preserved'))
+
+              return true
+            } catch (error) {
+              logger.log(chalk.red(`❌ Migration failed: ${error instanceof Error ? error.message : String(error)}`))
+              logger.log(chalk.dim('Continuing with new configuration...'))
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore errors reading existing configs
+        logger.debug(`Could not read ${configFile}: ${error}`)
+      }
+    }
+  }
+
+  return false
+}
+
+/**
+ * Display validation summary for credentials
+ */
+const displayValidationSummary = (result: ValidationResult, provider: string) => {
+  logger.log('')
+  logger.log(chalk.bold('📋 Validation Summary'))
+  logger.log(`${chalk.dim('Provider:')} ${provider}`)
+  logger.log(`${chalk.dim('Status:')} ${result.valid ? chalk.green('Valid') : chalk.red('Invalid')}`)
+
+  if (result.errors.length > 0) {
+    logger.log(`${chalk.dim('Errors:')} ${chalk.red(result.errors.length)}`)
+  }
+
+  if (result.warnings.length > 0) {
+    logger.log(`${chalk.dim('Warnings:')} ${chalk.yellow(result.warnings.length)}`)
+  }
 }
 
 const promptForProviderDetails = async (argv: Arguments<InitOptions>, provider: 'vercel' | 'cloudflare') => {
@@ -191,11 +341,12 @@ const promptForProviderDetails = async (argv: Arguments<InitOptions>, provider: 
       }
     }
 
-    return { projectId, teamId, zoneId: undefined, accountId: undefined }
+    return { projectId, teamId, zoneId: undefined, accountId: undefined, credentialsValid: false }
   } else {
     // Cloudflare
     let zoneId = argv.zoneId
     let accountId = argv.accountId
+    let credentialsValid = false
 
     if (argv.interactive) {
       if (!zoneId) {
@@ -225,7 +376,7 @@ const promptForProviderDetails = async (argv: Arguments<InitOptions>, provider: 
         }
       }
 
-      // Validate environment variable setup
+      // Check environment variable setup
       const hasToken = process.env.CLOUDFLARE_API_TOKEN
       if (!hasToken) {
         logger.log('')
@@ -251,16 +402,53 @@ const promptForProviderDetails = async (argv: Arguments<InitOptions>, provider: 
         }
       } else {
         logger.log(chalk.green('✅ CLOUDFLARE_API_TOKEN environment variable found'))
+
+        // Validate credentials if we have all required information
+        if (zoneId && hasToken) {
+          const shouldValidate = await prompt('Would you like to validate your Cloudflare credentials now?', {
+            type: 'confirm',
+          })
+
+          if (shouldValidate) {
+            const credentials: CloudflareCredentials = {
+              apiToken: hasToken,
+              zoneId,
+              accountId: accountId || undefined,
+            }
+
+            credentialsValid = await validateCloudflareCredentials(credentials)
+
+            if (!credentialsValid) {
+              const continueAnyway = await prompt(
+                'Credentials validation failed. Continue with configuration anyway?',
+                {
+                  type: 'confirm',
+                },
+              )
+
+              if (!continueAnyway) {
+                logger.log(chalk.yellow('Setup cancelled. Please fix credential issues and try again.'))
+                process.exit(0)
+              }
+            }
+          }
+        }
       }
     }
 
-    return { projectId: undefined, teamId: undefined, zoneId, accountId }
+    return { projectId: undefined, teamId: undefined, zoneId, accountId, credentialsValid }
   }
 }
 
 export const handler = async (argv: Arguments<InitOptions>) => {
   try {
     const configPath = argv.config || 'vercel-firewall.config.json'
+
+    // Handle validate-only mode
+    if (argv.validateOnly) {
+      await handleValidateOnlyMode(argv)
+      return
+    }
 
     // Select provider
     let provider: 'vercel' | 'cloudflare' = argv.provider || 'vercel'
@@ -280,6 +468,15 @@ export const handler = async (argv: Arguments<InitOptions>) => {
       showWelcomeMessage(providerName)
     }
 
+    // Check for migration opportunities
+    const migrated = await checkForMigration(configPath)
+    if (migrated) {
+      logger.log('')
+      logger.log(chalk.green('🎉 Configuration migration completed successfully!'))
+      logger.log(chalk.dim('You can now use this configuration with multiple providers.'))
+      return
+    }
+
     // Check if config already exists
     if (existsSync(configPath) && !argv.force) {
       const overwrite = await prompt(`Config file ${configPath} already exists. Do you want to overwrite it?`, {
@@ -293,7 +490,7 @@ export const handler = async (argv: Arguments<InitOptions>) => {
     }
 
     // Get provider details
-    const { projectId, teamId, zoneId, accountId } = await promptForProviderDetails(argv, provider)
+    const { projectId, teamId, zoneId, accountId, credentialsValid } = await promptForProviderDetails(argv, provider)
 
     if (argv.interactive) {
       logger.log('')
@@ -521,6 +718,17 @@ export const handler = async (argv: Arguments<InitOptions>) => {
       logger.log(`${missingId ? '2' : '1'}. ${chalk.yellow(`Set ${envVar}`)} environment variable`)
     }
 
+    // Show credential validation status for Cloudflare
+    if (provider === 'cloudflare' && hasEnvVar && !missingId) {
+      if (credentialsValid) {
+        logger.log(`${missingId ? '2' : '1'}. ${chalk.green('✅ Credentials validated successfully')}`)
+      } else {
+        logger.log(
+          `${missingId ? '2' : '1'}. ${chalk.yellow('⚠️  Credentials not validated - run with --validate-only to test')}`,
+        )
+      }
+    }
+
     const nextStep = missingId ? 3 : !hasEnvVar ? 2 : 1
     logger.log(`${nextStep}. ${chalk.dim('Review and enable rules in')} ${configPath}`)
     logger.log(
@@ -539,6 +747,12 @@ export const handler = async (argv: Arguments<InitOptions>) => {
       logger.log(chalk.dim('   Review each rule and set active: true when ready.'))
     }
 
+    // Show connectivity test option
+    if (provider === 'cloudflare' && hasEnvVar && zoneId && !credentialsValid) {
+      logger.log('')
+      logger.log(chalk.cyan('💡 Tip: Run with --validate-only to test your credentials without creating a config file'))
+    }
+
     // Show help links if interactive
     if (argv.interactive && (missingId || !hasEnvVar)) {
       showHelpLinks(provider)
@@ -551,5 +765,86 @@ export const handler = async (argv: Arguments<InitOptions>) => {
       ]),
     )
     process.exit(1)
+  }
+}
+
+/**
+ * Handle validate-only mode - test credentials without creating configuration
+ */
+const handleValidateOnlyMode = async (argv: Arguments<InitOptions>) => {
+  logger.log('')
+  logger.log(chalk.bold.cyan('🔍 Credential Validation Mode'))
+  logger.log(chalk.dim('Testing connectivity without creating configuration files\n'))
+
+  // Determine provider
+  let provider: 'vercel' | 'cloudflare' = argv.provider || 'vercel'
+  if (!argv.provider) {
+    provider = await prompt('Select provider to validate:', {
+      type: 'select',
+      choices: [
+        { title: 'Vercel Firewall', value: 'vercel' },
+        { title: 'Cloudflare WAF', value: 'cloudflare' },
+      ],
+    })
+  }
+
+  if (provider === 'vercel') {
+    // Vercel validation
+    const token = argv.projectId || process.env.VERCEL_TOKEN
+    const projectId = argv.projectId || process.env.VERCEL_PROJECT_ID
+    const teamId = argv.teamId || process.env.VERCEL_TEAM_ID
+
+    if (!token) {
+      logger.log(chalk.red('❌ VERCEL_TOKEN environment variable not found'))
+      logger.log(chalk.dim('Set your Vercel API token to validate credentials'))
+      process.exit(1)
+    }
+
+    if (!projectId) {
+      logger.log(chalk.red('❌ Project ID not provided'))
+      logger.log(chalk.dim('Provide --projectId or set VERCEL_PROJECT_ID environment variable'))
+      process.exit(1)
+    }
+
+    logger.log(chalk.yellow('⚠️  Vercel credential validation not yet implemented'))
+    logger.log(chalk.dim('This feature is coming soon. For now, try running a sync command to test credentials.'))
+  } else {
+    // Cloudflare validation
+    const apiToken = process.env.CLOUDFLARE_API_TOKEN
+    const zoneId = argv.zoneId || process.env.CLOUDFLARE_ZONE_ID
+    const accountId = argv.accountId || process.env.CLOUDFLARE_ACCOUNT_ID
+
+    if (!apiToken) {
+      logger.log(chalk.red('❌ CLOUDFLARE_API_TOKEN environment variable not found'))
+      logger.log(chalk.dim('Set your Cloudflare API token to validate credentials'))
+      showHelpLinks('cloudflare')
+      process.exit(1)
+    }
+
+    if (!zoneId) {
+      logger.log(chalk.red('❌ Zone ID not provided'))
+      logger.log(chalk.dim('Provide --zoneId or set CLOUDFLARE_ZONE_ID environment variable'))
+      showHelpLinks('cloudflare')
+      process.exit(1)
+    }
+
+    const credentials: CloudflareCredentials = {
+      apiToken,
+      zoneId,
+      accountId: accountId || undefined,
+    }
+
+    const isValid = await validateCloudflareCredentials(credentials)
+
+    if (isValid) {
+      logger.log('')
+      logger.log(chalk.green('🎉 All credentials are valid and ready to use!'))
+      logger.log(chalk.dim('You can now run the init command to create your configuration.'))
+    } else {
+      logger.log('')
+      logger.log(chalk.red('❌ Credential validation failed'))
+      logger.log(chalk.dim('Please fix the issues above before proceeding.'))
+      process.exit(1)
+    }
   }
 }
