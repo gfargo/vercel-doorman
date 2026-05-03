@@ -7,21 +7,26 @@
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/gfargo/vercel-doorman)](https://github.com/gfargo/vercel-doorman/pulls)
 [![Last Commit](https://img.shields.io/github/last-commit/gfargo/vercel-doorman)](https://github.com/gfargo/vercel-doorman/tree/main)
 
-**The complete toolkit for managing [Vercel Firewall](https://vercel.com/docs/security/vercel-firewall) rules as code.**
+**The complete toolkit for managing firewall rules as code across multiple providers.**
 
-Doorman enables Infrastructure as Code (IaC) for Vercel's security layer, bringing version control, automated deployment, and team collaboration to your firewall configuration.
+Doorman enables Infrastructure as Code (IaC) for firewall management, supporting both [Vercel Firewall](https://vercel.com/docs/security/vercel-firewall) and [Cloudflare WAF](https://developers.cloudflare.com/waf/). Bring version control, automated deployment, and team collaboration to your security configuration.
 
 ## ✨ Features
+
+### Multi-Provider Support
+
+- 🌐 **Vercel Firewall** - Full support for Vercel's security platform
+- ☁️ **Cloudflare WAF** - Complete Cloudflare Web Application Firewall integration
+- 🔄 **Cross-Provider Migration** - Migrate rules between providers with translation
+- 🎯 **Provider Detection** - Automatic provider detection from configuration
 
 ### Core Functionality
 
 - 🔒 **Complete Rule Management** - Create, update, delete custom rules and IP blocking
-- 🔄 **Bidirectional Sync** - Keep local configs and Vercel in perfect sync
+- 🔄 **Bidirectional Sync** - Keep local configs and remote providers in perfect sync
 - 📊 **Smart Status Checking** - Know exactly what needs syncing before you deploy
 - 🔍 **Detailed Diff Analysis** - See exactly what will change with color-coded output
 - ✅ **Advanced Validation** - Syntax checking plus configuration health scoring
-
-> 🚧 **Coming Soon:** Cloudflare Firewall support is in active development! Manage both Vercel and Cloudflare firewall rules from a single tool.
 
 ### Developer Experience
 
@@ -52,6 +57,8 @@ pnpm add -g vercel-doorman
 
 ### Get Started in 30 Seconds
 
+#### For Vercel Firewall
+
 ```bash
 # 1. See the setup guide
 vercel-doorman setup
@@ -66,15 +73,81 @@ vercel-doorman status
 vercel-doorman sync
 ```
 
+#### For Cloudflare WAF
+
+```bash
+# 1. Set up Cloudflare credentials
+export CLOUDFLARE_API_TOKEN="your_token"
+export CLOUDFLARE_ZONE_ID="your_zone_id"
+
+# 2. Initialize Cloudflare configuration
+vercel-doorman init --provider cloudflare --interactive
+
+# 3. Check connectivity and status
+vercel-doorman status --provider cloudflare
+
+# 4. Deploy your rules
+vercel-doorman sync --provider cloudflare
+```
+
 ## 📋 Configuration
 
-Doorman uses a simple JSON configuration file with full TypeScript support and JSON Schema validation:
+Doorman uses a unified JSON configuration format that works across providers, with full TypeScript support and JSON Schema validation:
+
+### Vercel Configuration
 
 ```json
 {
   "$schema": "https://doorman.griffen.codes/schema.json",
+  "provider": "vercel",
   "projectId": "prj_abc123",
   "teamId": "team_xyz789",
+  "rules": [
+    {
+      "id": "rule_block_bots",
+      "name": "Block Bad Bots",
+      "description": "Block malicious bots and crawlers",
+      "active": true,
+      "conditionGroup": [
+        {
+          "conditions": [
+            {
+              "type": "user_agent",
+              "op": "sub",
+              "value": "bot"
+            }
+          ]
+        }
+      ],
+      "action": {
+        "mitigate": {
+          "action": "deny"
+        }
+      }
+    }
+  ],
+  "ips": [
+    {
+      "ip": "192.168.1.100",
+      "hostname": "suspicious-host",
+      "action": "deny"
+    }
+  ]
+}
+```
+
+### Cloudflare Configuration
+
+```json
+{
+  "$schema": "https://doorman.griffen.codes/schema.json",
+  "provider": "cloudflare",
+  "providers": {
+    "cloudflare": {
+      "zoneId": "your_zone_id",
+      "accountId": "your_account_id"
+    }
+  },
   "rules": [
     {
       "id": "rule_block_bots",
@@ -214,13 +287,74 @@ export VERCEL_PROJECT_ID="prj_abc123"  # Optional
 export VERCEL_TEAM_ID="team_xyz789"    # Optional if using team
 ```
 
+### 🌟 Production-Ready Cloudflare WAF Support
+
+**NEW in v2.0**: Complete production-ready support for Cloudflare Web Application Firewall with enterprise-grade reliability:
+
+#### Environment Variables
+
+```bash
+export CLOUDFLARE_API_TOKEN="your_api_token"        # Required
+export CLOUDFLARE_ZONE_ID="your_zone_id"           # Required  
+export CLOUDFLARE_ACCOUNT_ID="your_account_id"     # Optional (enables Lists API)
+```
+
+#### 🚀 Key Features
+
+- **🛡️ Complete WAF Integration** - Custom rules, rate limiting, IP blocking, and advanced security
+- **📋 Lists API Support** - Efficient bulk IP management with Account ID
+- **🤖 Advanced Security** - Bot protection, threat intelligence, geo-blocking, and DDoS mitigation
+- **🔄 Intelligent Rule Translation** - Automatic translation between Vercel and Cloudflare formats with warnings
+- **🚀 Seamless Migration Tools** - Preview and migrate from Vercel to Cloudflare with zero downtime
+- **⚡ Production-Grade Reliability** - Enhanced error handling, retry logic, and performance optimizations
+- **📚 Comprehensive Documentation** - Complete setup, migration, and troubleshooting guides
+
+#### Quick Commands
+
+```bash
+# Initialize Cloudflare configuration
+vercel-doorman init --provider cloudflare --interactive
+
+# Check status and connectivity
+vercel-doorman status --provider cloudflare
+
+# Preview changes before deployment
+vercel-doorman diff --provider cloudflare
+
+# Deploy rules to Cloudflare
+vercel-doorman sync --provider cloudflare
+
+# Migrate from Vercel to Cloudflare
+vercel-doorman migrate --from vercel --to cloudflare
+```
+
+#### Documentation
+
+- **[Setup Guide](docs/cloudflare/setup.md)** - Complete Cloudflare setup instructions
+- **[Migration Guide](docs/cloudflare/migration.md)** - Migrate from Vercel to Cloudflare
+- **[Troubleshooting](docs/cloudflare/troubleshooting.md)** - Common issues and solutions
+- **[Feature Comparison](docs/cloudflare/comparison.md)** - Vercel vs Cloudflare features
+
 ### API Token Setup
+
+#### Vercel Setup
 
 1. Visit [Vercel Account Tokens](https://vercel.com/account/tokens)
 2. Click "Create Token"
 3. Name: "Doorman Firewall Management"
 4. Scope: Select your project/team
 5. Copy token and set as `VERCEL_TOKEN`
+
+#### Cloudflare Setup
+
+1. Visit [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+2. Click "Create Token" → "Custom token"
+3. Set permissions:
+   - Zone:Firewall Services:Edit
+   - Zone:Zone Settings:Read
+   - Account:Account Rulesets:Edit (optional, for Lists API)
+4. Set zone resources to include your domain
+5. Copy token and set as `CLOUDFLARE_API_TOKEN`
 
 **Need help?** Run `vercel-doorman setup` for detailed instructions with direct links.
 
@@ -253,6 +387,13 @@ vercel-doorman watch
 
 # Get detailed diff in JSON for CI/CD
 vercel-doorman diff --format json
+
+# Cross-provider migration
+vercel-doorman migrate --from vercel --to cloudflare --dry-run
+
+# Provider-specific operations
+vercel-doorman sync --provider cloudflare
+vercel-doorman status --provider vercel
 ```
 
 ### CI/CD Integration
@@ -264,8 +405,12 @@ vercel-doorman validate
 # Check for changes (exit code indicates changes)
 vercel-doorman diff --format json > changes.json
 
-# Deploy in production
-vercel-doorman sync --config production.config.json
+# Deploy to specific provider
+vercel-doorman sync --config production.config.json --provider cloudflare
+
+# Multi-provider deployment
+vercel-doorman sync --config vercel-prod.config.json --provider vercel
+vercel-doorman sync --config cloudflare-prod.config.json --provider cloudflare
 ```
 
 ## 🏥 Configuration Health
@@ -382,11 +527,24 @@ vercel-doorman setup  # Comprehensive setup guide
 
 ## 📚 Resources
 
+### Documentation
+
 - **[Setup Guide](https://github.com/gfargo/vercel-doorman#setup)** - Complete setup instructions
 - **[Example Configurations](/examples)** - Real-world examples
-- **[Vercel Firewall Docs](https://vercel.com/docs/security/vercel-firewall)** - Official documentation
+- **[Cloudflare Setup Guide](docs/cloudflare/setup.md)** - Cloudflare WAF setup
+- **[Migration Guide](docs/cloudflare/migration.md)** - Migrate between providers
+- **[Troubleshooting Guide](docs/cloudflare/troubleshooting.md)** - Common issues and solutions
+
+### Provider Documentation
+
+- **[Vercel Firewall Docs](https://vercel.com/docs/security/vercel-firewall)** - Official Vercel documentation
+- **[Cloudflare WAF Docs](https://developers.cloudflare.com/waf/)** - Official Cloudflare documentation
 - **[Template Library](https://vercel.com/templates/vercel-firewall)** - Pre-built rule templates
-- **[API Reference](https://vercel.com/docs/rest-api/endpoints/firewall)** - Vercel Firewall API
+
+### API References
+
+- **[Vercel Firewall API](https://vercel.com/docs/rest-api/endpoints/firewall)** - Vercel API reference
+- **[Cloudflare Ruleset API](https://developers.cloudflare.com/api/operations/listZoneRulesets)** - Cloudflare API reference
 
 ## 🤝 Contributing
 
