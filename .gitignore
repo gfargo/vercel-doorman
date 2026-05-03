@@ -82,3 +82,6 @@ AGENTS.md
 # Test scripts
 test-sync-fix.js
 test-sync-fix.config.json
+
+# Local firewall config files
+vercel-firewall*.config.json
