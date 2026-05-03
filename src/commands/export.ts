@@ -1,13 +1,11 @@
 import chalk from 'chalk'
 import { writeFileSync } from 'fs'
-import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { VercelClient } from '../lib/services/VercelClient'
 import { CustomRule, FirewallConfig, IPBlockingRule } from '../lib/types'
-import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { getConfig } from '../lib/utils/config'
 import { handleCommandError } from '../lib/utils/handleCommandError'
+import { withCredentials } from '../lib/utils/withCredentials'
 
 interface ExportOptions {
   config?: string
@@ -77,7 +75,6 @@ const generateMarkdownReport = (config: FirewallConfig): string => {
   markdown += `**Last Updated:** ${updatedAt ? new Date(updatedAt).toLocaleString() : 'Unknown'}\n`
   markdown += `**Generated:** ${new Date().toLocaleString()}\n\n`
 
-  // Custom Rules
   markdown += `## Custom Rules (${rules.length})\n\n`
   if (rules.length > 0) {
     rules.forEach((rule: CustomRule, index: number) => {
@@ -104,7 +101,6 @@ const generateMarkdownReport = (config: FirewallConfig): string => {
     markdown += `No custom rules configured.\n\n`
   }
 
-  // IP Blocking Rules
   markdown += `## IP Blocking Rules (${ips.length})\n\n`
   if (ips.length > 0) {
     markdown += `| IP Address | Hostname | Action |\n`
@@ -124,8 +120,6 @@ const generateTerraformConfig = (config: FirewallConfig): string => {
 
   let terraform = `# Vercel Firewall Configuration\n`
   terraform += `# Generated on ${new Date().toISOString()}\n\n`
-
-  // Note: This is a simplified example - actual Terraform provider would need to be implemented
   terraform += `# Note: This is a conceptual Terraform configuration\n`
   terraform += `# A Vercel Terraform provider would need to be implemented for actual use\n\n`
 
@@ -159,26 +153,25 @@ const generateTerraformConfig = (config: FirewallConfig): string => {
 
 export const handler = async (argv: Arguments<ExportOptions>) => {
   try {
-    if (argv.debug) {
-      logger.level = LogLevels.debug
-    }
-
     let config: FirewallConfig
 
     if (argv.source === 'remote') {
-      // Export from remote Vercel
-      const localConfig = await getConfig(argv.config)
-      const { token, projectId, teamId } = await promptForCredentials({
-        token: argv.token,
-        projectId: argv.projectId || localConfig.projectId,
-        teamId: argv.teamId || localConfig.teamId,
-      })
-
-      const client = new VercelClient(projectId, teamId, token)
-      logger.start('Fetching remote configuration...')
-      config = await client.fetchFirewallConfig()
+      // Remote export needs credentials
+      await withCredentials(
+        {
+          config: argv.config,
+          projectId: argv.projectId,
+          teamId: argv.teamId,
+          token: argv.token,
+          debug: argv.debug,
+          errorContext: 'exporting configuration',
+        },
+        async ({ client }) => {
+          logger.start('Fetching remote configuration...')
+          config = await client.fetchFirewallConfig()
+        },
+      )
     } else {
-      // Export from local config
       config = await getConfig(argv.config)
     }
 
@@ -189,17 +182,16 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
 
     switch (argv.format) {
       case 'json':
-        output = JSON.stringify(config, null, 2)
+        output = JSON.stringify(config!, null, 2)
         defaultExtension = 'json'
         break
 
       case 'yaml':
-        // Simple YAML-like output (would need yaml library for proper YAML)
         output = `# Vercel Firewall Configuration\n`
-        output += `version: ${config.version}\n`
-        output += `updatedAt: "${config.updatedAt}"\n`
+        output += `version: ${config!.version}\n`
+        output += `updatedAt: "${config!.updatedAt}"\n`
         output += `rules:\n`
-        config.rules.forEach((rule: CustomRule) => {
+        config!.rules.forEach((rule: CustomRule) => {
           output += `  - name: "${rule.name}"\n`
           output += `    id: "${rule.id}"\n`
           output += `    active: ${rule.active}\n`
@@ -209,12 +201,12 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
         break
 
       case 'terraform':
-        output = generateTerraformConfig(config)
+        output = generateTerraformConfig(config!)
         defaultExtension = 'tf'
         break
 
       case 'markdown':
-        output = generateMarkdownReport(config)
+        output = generateMarkdownReport(config!)
         defaultExtension = 'md'
         break
 
@@ -222,22 +214,19 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
         throw new Error(`Unsupported format: ${argv.format}`)
     }
 
-    // Determine output path
     const outputPath = argv.output || `firewall-export.${defaultExtension}`
 
-    // Write to file or stdout
     if (argv.output === '-' || !argv.output) {
       logger.log(output)
     } else {
       writeFileSync(outputPath, output, 'utf8')
       logger.success(chalk.green(`✅ Exported to ${outputPath}`))
 
-      // Show summary
       logger.log('')
       logger.log(chalk.bold('Export Summary:'))
       logger.log(`${chalk.dim('Format:')} ${argv.format}`)
       logger.log(`${chalk.dim('Source:')} ${argv.source}`)
-      logger.log(`${chalk.dim('Rules:')} ${config.rules.length} custom, ${(config.ips || []).length} IP blocking`)
+      logger.log(`${chalk.dim('Rules:')} ${config!.rules.length} custom, ${(config!.ips || []).length} IP blocking`)
       logger.log(`${chalk.dim('Size:')} ${(output.length / 1024).toFixed(1)} KB`)
     }
   } catch (error) {

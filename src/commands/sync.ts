@@ -1,15 +1,11 @@
 import chalk from 'chalk'
-import { LogLevels } from 'consola'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
-import { FirewallService } from '../lib/services/FirewallService'
-import { VercelClient } from '../lib/services/VercelClient'
 import { CustomRule, FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
-import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
-import { getConfig, saveConfig } from '../lib/utils/config'
-import { handleCommandError } from '../lib/utils/handleCommandError'
+import { saveConfig } from '../lib/utils/config'
+import { withCredentials } from '../lib/utils/withCredentials'
 
 interface SyncOptions {
   config?: string
@@ -50,145 +46,144 @@ export const builder = {
 }
 
 export const handler = async (argv: Arguments<SyncOptions>) => {
-  try {
-    if (argv.debug) {
-      logger.level = LogLevels.debug
-    }
-
-    // Load and validate config
-    let config = await getConfig(argv.config)
-
-    const { token, projectId, teamId } = await promptForCredentials({
+  await withCredentials(
+    {
+      config: argv.config,
+      projectId: argv.projectId,
+      teamId: argv.teamId,
       token: argv.token,
-      projectId: argv.projectId || config.projectId,
-      teamId: argv.teamId || config.teamId,
-    })
-
-    const client = new VercelClient(projectId, teamId, token)
-    const service = new FirewallService(client)
-
-    logger.start(chalk.magenta('Calculating firewall configuration changes...'))
-    const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } = await service.getChanges(config)
-
-    const hasCustomRuleChanges = toAdd.length > 0 || toUpdate.length > 0 || toDelete.length > 0
-    const hasIPRuleChanges = ipsToAdd.length > 0 || ipsToUpdate.length > 0 || ipsToDelete.length > 0
-    const hasVersionChange = config.version !== version
-
-    if (!hasCustomRuleChanges && !hasIPRuleChanges && !hasVersionChange) {
-      logger.success(chalk.green('No changes detected. Firewall rules are in sync.'))
-      return
-    }
-
-    if (hasCustomRuleChanges) {
-      logger.log(chalk.bold('\nProposed Custom Rule Changes:\n'))
-      displayRulesTable(
-        [
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ...toAdd.map((rule: any) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id as string })),
-          ...toUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id as string })),
-          ...toDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id as string })),
-        ],
-        { showStatus: true },
-      )
-    }
-
-    if (hasIPRuleChanges) {
-      logger.log(chalk.bold('\nProposed IP Blocking Rule Changes:\n'))
-      displayIPBlockingTable(
-        [
-          ...ipsToAdd.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id || undefined })),
-          ...ipsToUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id || undefined })),
-          ...ipsToDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id || undefined })),
-        ],
-        { showStatus: true },
-      )
-    }
-
-    if (hasVersionChange) {
-      logger.log(chalk.bold('\nProposed Metadata Changes:\n'))
-      logger.log(`  - Version: ${chalk.red(config.version)} ${chalk.dim('->')} ${chalk.green(version)}`)
-    }
-
-    const confirmed = await prompt('Do you want to apply these changes?', { type: 'confirm' })
-    if (!confirmed) {
-      logger.info(chalk.yellow('Sync cancelled.'))
-      return
-    }
-
-    logger.start('Starting firewall rules sync...')
-
-    // Create backup of original config
-    const backupConfig = JSON.parse(JSON.stringify(config)) as FirewallConfig
-
-    // Perform sync operation
-    const syncResult = await service.syncRules(config, {
       debug: argv.debug,
-    })
-    const { rulesToUpdateLocally } = syncResult
-    logger.success(chalk.green('Firewall rules sync completed successfully'))
+      errorContext: 'syncing firewall rules',
+    },
+    async (ctx) => {
+      let config = ctx.config
+      const service = ctx.service
 
-    // Validate and update config metadata
-    try {
-      const updatedConfig = await service.validateAndUpdateConfig(config, syncResult, { dryRun: false })
-      config = updatedConfig // Update our working copy
-    } catch (error) {
-      logger.error('Failed to validate sync result or update config metadata')
-      logger.error(error instanceof Error ? error.message : String(error))
+      logger.start(chalk.magenta('Calculating firewall configuration changes...'))
+      const { toAdd, toUpdate, toDelete, ipsToAdd, ipsToUpdate, ipsToDelete, version } =
+        await service.getChanges(config)
 
-      // Write backup to config file
-      await saveConfig(backupConfig, argv.config)
+      const hasCustomRuleChanges = toAdd.length > 0 || toUpdate.length > 0 || toDelete.length > 0
+      const hasIPRuleChanges = ipsToAdd.length > 0 || ipsToUpdate.length > 0 || ipsToDelete.length > 0
+      const hasVersionChange = config.version !== version
 
-      logger.info(chalk.yellow('Restored original config due to validation failure'))
-      throw new Error('Sync validation failed - original config restored')
-    }
-
-    // Filter rulesToUpdateLocally to only include entries whose oldId still
-    // exists in the current config. validateAndUpdateConfig may have already
-    // updated some rule IDs to match remote-assigned IDs.
-    const pendingIdUpdates = rulesToUpdateLocally.filter((r) =>
-      config.rules.some((rule) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name)),
-    )
-
-    if (pendingIdUpdates.length > 0) {
-      logger.log('')
-      logger.info(chalk.yellow('Some rules have IDs that do not match their expected snake_case name:'))
-      pendingIdUpdates.forEach((rule) => {
-        logger.log(
-          `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
-        )
-      })
-
-      const updateConfirmed = await prompt('Do you want to update the local config with the new IDs?', {
-        type: 'confirm',
-      })
-
-      if (updateConfirmed) {
-        config = {
-          ...config,
-          rules: config.rules.map((rule: CustomRule) => {
-            const ruleToUpdate = pendingIdUpdates.find(
-              (r) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name),
-            )
-            return ruleToUpdate ? { ...rule, id: ruleToUpdate.newId } : rule
-          }),
-          ips: config.ips || [],
-        }
-
-        await saveConfig(config, argv.config)
-        logger.success(chalk.green('Updated local config with new rule IDs'))
-      } else {
-        logger.warn(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
+      if (!hasCustomRuleChanges && !hasIPRuleChanges && !hasVersionChange) {
+        logger.success(chalk.green('No changes detected. Firewall rules are in sync.'))
+        return
       }
-    }
 
-    // Always save config if version or metadata changed
-    if (backupConfig.version !== config.version || backupConfig.updatedAt !== config.updatedAt) {
-      await saveConfig(config, argv.config)
-      logger.success(
-        chalk.green(`Updated version ${chalk.dim(`(v${config.version})`)} and metadata in local config file`),
+      if (hasCustomRuleChanges) {
+        logger.log(chalk.bold('\nProposed Custom Rule Changes:\n'))
+        displayRulesTable(
+          [
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ...toAdd.map((rule: any) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id as string })),
+            ...toUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id as string })),
+            ...toDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id as string })),
+          ],
+          { showStatus: true },
+        )
+      }
+
+      if (hasIPRuleChanges) {
+        logger.log(chalk.bold('\nProposed IP Blocking Rule Changes:\n'))
+        displayIPBlockingTable(
+          [
+            ...ipsToAdd.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id || undefined })),
+            ...ipsToUpdate.map((rule) => ({
+              ...rule,
+              changeStatus: RULE_STATUS_MAP.modified,
+              id: rule.id || undefined,
+            })),
+            ...ipsToDelete.map((rule) => ({
+              ...rule,
+              changeStatus: RULE_STATUS_MAP.deleted,
+              id: rule.id || undefined,
+            })),
+          ],
+          { showStatus: true },
+        )
+      }
+
+      if (hasVersionChange) {
+        logger.log(chalk.bold('\nProposed Metadata Changes:\n'))
+        logger.log(`  - Version: ${chalk.red(config.version)} ${chalk.dim('->')} ${chalk.green(version)}`)
+      }
+
+      const confirmed = await prompt('Do you want to apply these changes?', { type: 'confirm' })
+      if (!confirmed) {
+        logger.info(chalk.yellow('Sync cancelled.'))
+        return
+      }
+
+      logger.start('Starting firewall rules sync...')
+
+      const backupConfig = JSON.parse(JSON.stringify(config)) as FirewallConfig
+
+      const syncResult = await service.syncRules(config, {
+        debug: argv.debug,
+      })
+      const { rulesToUpdateLocally } = syncResult
+      logger.success(chalk.green('Firewall rules sync completed successfully'))
+
+      try {
+        const updatedConfig = await service.validateAndUpdateConfig(config, syncResult, { dryRun: false })
+        config = updatedConfig
+      } catch (error) {
+        logger.error('Failed to validate sync result or update config metadata')
+        logger.error(error instanceof Error ? error.message : String(error))
+
+        await saveConfig(backupConfig, argv.config)
+
+        logger.info(chalk.yellow('Restored original config due to validation failure'))
+        throw new Error('Sync validation failed - original config restored')
+      }
+
+      // Filter rulesToUpdateLocally to only include entries whose oldId still
+      // exists in the current config. validateAndUpdateConfig may have already
+      // updated some rule IDs to match remote-assigned IDs.
+      const pendingIdUpdates = rulesToUpdateLocally.filter((r) =>
+        config.rules.some((rule) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name)),
       )
-    }
-  } catch (error) {
-    handleCommandError(error, 'syncing firewall rules')
-  }
+
+      if (pendingIdUpdates.length > 0) {
+        logger.log('')
+        logger.info(chalk.yellow('Some rules have IDs that do not match their expected snake_case name:'))
+        pendingIdUpdates.forEach((rule) => {
+          logger.log(
+            `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
+          )
+        })
+
+        const updateConfirmed = await prompt('Do you want to update the local config with the new IDs?', {
+          type: 'confirm',
+        })
+
+        if (updateConfirmed) {
+          config = {
+            ...config,
+            rules: config.rules.map((rule: CustomRule) => {
+              const ruleToUpdate = pendingIdUpdates.find(
+                (r) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name),
+              )
+              return ruleToUpdate ? { ...rule, id: ruleToUpdate.newId } : rule
+            }),
+            ips: config.ips || [],
+          }
+
+          await saveConfig(config, argv.config)
+          logger.success(chalk.green('Updated local config with new rule IDs'))
+        } else {
+          logger.warn(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
+        }
+      }
+
+      if (backupConfig.version !== config.version || backupConfig.updatedAt !== config.updatedAt) {
+        await saveConfig(config, argv.config)
+        logger.success(
+          chalk.green(`Updated version ${chalk.dim(`(v${config.version})`)} and metadata in local config file`),
+        )
+      }
+    },
+  )
 }
