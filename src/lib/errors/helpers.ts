@@ -1,12 +1,12 @@
 import { DoormanError } from './DoormanError'
 import {
-  ConfigErrorCode,
-  ValidationErrorCode,
-  SyncErrorCode,
-  ProviderErrorCode,
-  CloudflareErrorCode,
-  NetworkErrorCode,
-  TranslationErrorCode,
+    ConfigErrorCode,
+    ValidationErrorCode,
+    SyncErrorCode,
+    ProviderErrorCode,
+    CloudflareErrorCode,
+    NetworkErrorCode,
+    TranslationErrorCode,
 } from './ErrorCodes'
 
 const DOCS_BASE_URL = 'https://docs.doorman.griffen.codes/errors'
@@ -122,16 +122,43 @@ export const cloudflareErrors = {
     new DoormanError({
       code: CloudflareErrorCode.ACCOUNT_ID_REQUIRED,
       message: `Account ID required for ${operation}`,
-      suggestion: 'Provide CLOUDFLARE_ACCOUNT_ID in your environment or configuration',
+      suggestion: 'Provide CLOUDFLARE_ACCOUNT_ID in your environment or configuration to use Lists API',
       details: { operation },
       docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.ACCOUNT_ID_REQUIRED}`,
+    }),
+
+  zoneIdRequired: (operation: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.ZONE_ID_REQUIRED,
+      message: `Zone ID required for ${operation}`,
+      suggestion: 'Provide CLOUDFLARE_ZONE_ID in your environment or configuration',
+      details: { operation },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.ZONE_ID_REQUIRED}`,
+    }),
+
+  invalidCredentials: (credentialType: string, details?: Record<string, unknown>) =>
+    new DoormanError({
+      code: CloudflareErrorCode.INVALID_CREDENTIALS,
+      message: `Invalid Cloudflare ${credentialType}`,
+      suggestion: 'Check your Cloudflare API credentials and ensure they have the correct permissions',
+      details: { credentialType, ...details },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.INVALID_CREDENTIALS}`,
+    }),
+
+  insufficientPermissions: (operation: string, requiredPermissions: string[]) =>
+    new DoormanError({
+      code: CloudflareErrorCode.INSUFFICIENT_PERMISSIONS,
+      message: `Insufficient permissions for ${operation}`,
+      suggestion: `Ensure your API token has the following permissions: ${requiredPermissions.join(', ')}`,
+      details: { operation, requiredPermissions },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.INSUFFICIENT_PERMISSIONS}`,
     }),
 
   ruleLimitExceeded: (count: number, limit: number) =>
     new DoormanError({
       code: CloudflareErrorCode.RULE_LIMIT_EXCEEDED,
       message: `Rule count (${count}) exceeds Cloudflare limit (${limit})`,
-      suggestion: 'Consider consolidating rules or using Lists for IP blocking',
+      suggestion: 'Consider consolidating rules, using Lists for IP blocking, or upgrading your Cloudflare plan',
       details: { count, limit },
       docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.RULE_LIMIT_EXCEEDED}`,
     }),
@@ -140,7 +167,7 @@ export const cloudflareErrors = {
     new DoormanError({
       code: CloudflareErrorCode.INVALID_EXPRESSION,
       message: `Invalid Cloudflare expression: ${reason}`,
-      suggestion: 'Check Cloudflare Wirefilter expression syntax',
+      suggestion: 'Check Cloudflare Wirefilter expression syntax and field names',
       details: { expression, reason },
       docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.INVALID_EXPRESSION}`,
     }),
@@ -149,7 +176,7 @@ export const cloudflareErrors = {
     new DoormanError({
       code: CloudflareErrorCode.RULE_NO_CONDITIONS,
       message: `Rule "${ruleName}" has no conditions`,
-      suggestion: 'Add at least one condition to the rule',
+      suggestion: 'Add at least one condition to the rule or remove the empty rule',
       details: { ruleName },
       docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.RULE_NO_CONDITIONS}`,
     }),
@@ -158,27 +185,165 @@ export const cloudflareErrors = {
     new DoormanError({
       code: CloudflareErrorCode.INVALID_RATE_LIMIT,
       message: `Invalid rate limit configuration for rule "${ruleName}": ${issue}`,
-      suggestion: 'Rate limit requests must be at least 1',
+      suggestion: 'Rate limit requests must be at least 1, and window format should be like "60s", "1h", "1d"',
       details: { ruleName, issue },
       docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.INVALID_RATE_LIMIT}`,
+    }),
+
+  invalidWindowFormat: (window: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.INVALID_WINDOW_FORMAT,
+      message: `Invalid rate limit window format: ${window}`,
+      suggestion: 'Use format like "60s", "5m", "1h", or "1d"',
+      details: { window },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.INVALID_WINDOW_FORMAT}`,
+    }),
+
+  shortMitigationTimeout: (timeout: number) =>
+    new DoormanError({
+      code: CloudflareErrorCode.SHORT_MITIGATION_TIMEOUT,
+      message: `Mitigation timeout (${timeout}s) may be too short`,
+      suggestion: 'Consider using at least 60 seconds for effective rate limiting',
+      details: { timeout },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.SHORT_MITIGATION_TIMEOUT}`,
     }),
 
   redirectNoLocation: (ruleName: string) =>
     new DoormanError({
       code: CloudflareErrorCode.REDIRECT_NO_LOCATION,
       message: `Redirect rule "${ruleName}" is missing location URL`,
-      suggestion: 'Add a redirect.location property to the rule action',
+      suggestion: 'Add a redirect.location property with a valid URL or path',
       details: { ruleName },
       docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.REDIRECT_NO_LOCATION}`,
+    }),
+
+  invalidRedirectUrl: (url: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.INVALID_REDIRECT_URL,
+      message: `Invalid redirect URL: ${url}`,
+      suggestion: 'Use a valid absolute URL (https://...) or relative path (/...)',
+      details: { url },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.INVALID_REDIRECT_URL}`,
     }),
 
   invalidIP: (ip: string) =>
     new DoormanError({
       code: CloudflareErrorCode.INVALID_IP,
       message: `Invalid IP address format: ${ip}`,
-      suggestion: 'Use valid IPv4 or IPv6 address (with optional CIDR notation)',
+      suggestion: 'Use valid IPv4 or IPv6 address with optional CIDR notation (e.g., 192.168.1.1 or 192.168.1.0/24)',
       details: { ip },
       docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.INVALID_IP}`,
+    }),
+
+  largeIPList: (count: number) =>
+    new DoormanError({
+      code: CloudflareErrorCode.LARGE_IP_LIST,
+      message: `Large IP list detected (${count} IPs)`,
+      suggestion:
+        'Consider providing CLOUDFLARE_ACCOUNT_ID to use Lists API for better performance with large IP lists',
+      details: { count },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.LARGE_IP_LIST}`,
+    }),
+
+  rulesetNotFound: (rulesetId?: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.RULESET_NOT_FOUND,
+      message: rulesetId ? `Ruleset not found: ${rulesetId}` : 'Ruleset not found',
+      suggestion: 'The ruleset may have been deleted. Try running the command again to create a new one.',
+      details: { rulesetId },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.RULESET_NOT_FOUND}`,
+    }),
+
+  listNotFound: (listId?: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.LIST_NOT_FOUND,
+      message: listId ? `List not found: ${listId}` : 'List not found',
+      suggestion: 'The IP list may have been deleted. Try running the command again to create a new one.',
+      details: { listId },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.LIST_NOT_FOUND}`,
+    }),
+
+  emptyCharacteristics: (ruleName: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.EMPTY_CHARACTERISTICS,
+      message: `Rate limit rule "${ruleName}" has empty characteristics`,
+      suggestion: 'Add characteristics like ["ip.src"] or remove the characteristics array to use default',
+      details: { ruleName },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.EMPTY_CHARACTERISTICS}`,
+    }),
+
+  translationWarning: (feature: string, limitation: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.TRANSLATION_WARNING,
+      message: `Translation warning for feature "${feature}": ${limitation}`,
+      suggestion: 'Review the translated configuration and adjust if necessary',
+      details: { feature, limitation },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.TRANSLATION_WARNING}`,
+    }),
+
+  featureUnsupported: (feature: string, provider: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.FEATURE_UNSUPPORTED,
+      message: `Feature "${feature}" is not supported when migrating from ${provider} to Cloudflare`,
+      suggestion: 'Remove this feature or implement it using Cloudflare-specific alternatives',
+      details: { feature, provider },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.FEATURE_UNSUPPORTED}`,
+    }),
+
+  planLimitExceeded: (resource: string, limit: number, current: number) =>
+    new DoormanError({
+      code: CloudflareErrorCode.PLAN_LIMIT_EXCEEDED,
+      message: `${resource} limit exceeded: ${current}/${limit}`,
+      suggestion: 'Consider upgrading your Cloudflare plan or reducing resource usage',
+      details: { resource, limit, current },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.PLAN_LIMIT_EXCEEDED}`,
+    }),
+
+  zoneSuspended: (zoneId: string, reason?: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.ZONE_SUSPENDED,
+      message: `Zone is suspended: ${zoneId}${reason ? ` (${reason})` : ''}`,
+      suggestion: 'Contact Cloudflare support to resolve zone suspension issues',
+      details: { zoneId, reason },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.ZONE_SUSPENDED}`,
+    }),
+
+  maintenanceMode: (service: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.MAINTENANCE_MODE,
+      message: `Cloudflare ${service} is currently in maintenance mode`,
+      suggestion: 'Wait for maintenance to complete and try again. Check Cloudflare status page for updates.',
+      details: { service, statusPage: 'https://www.cloudflarestatus.com/' },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.MAINTENANCE_MODE}`,
+    }),
+
+  quotaExceeded: (quotaType: string, resetTime?: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.QUOTA_EXCEEDED,
+      message: `${quotaType} quota exceeded`,
+      suggestion: resetTime
+        ? `Wait until ${resetTime} for quota reset, or upgrade your plan for higher limits`
+        : 'Wait for quota reset or upgrade your plan for higher limits',
+      details: { quotaType, resetTime },
+      docsUrl: `${DOCS_BASE_URL}/${CloudflareErrorCode.QUOTA_EXCEEDED}`,
+    }),
+
+  listsAPIUnavailable: (reason: string, fallbackAction: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.ACCOUNT_ID_REQUIRED,
+      message: `Lists API unavailable: ${reason}`,
+      suggestion: `Falling back to ${fallbackAction}. To enable Lists API, provide CLOUDFLARE_ACCOUNT_ID and ensure your API token has Account:Read permissions.`,
+      details: { reason, fallbackAction, severity: 'warning' },
+      docsUrl: `${DOCS_BASE_URL}/setup#account-id`,
+    }),
+
+  performanceWarning: (operation: string, count: number, impact: string) =>
+    new DoormanError({
+      code: CloudflareErrorCode.LARGE_IP_LIST,
+      message: `Performance warning: ${operation} with ${count} items`,
+      suggestion: `${impact} Consider providing CLOUDFLARE_ACCOUNT_ID to use Lists API for better performance.`,
+      details: { operation, count, impact, severity: 'warning' },
+      docsUrl: `${DOCS_BASE_URL}/performance#large-ip-lists`,
     }),
 }
 

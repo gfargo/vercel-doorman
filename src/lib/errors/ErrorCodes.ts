@@ -65,6 +65,7 @@ export enum ProviderErrorCode {
  * Cloudflare-specific errors (6000-6999)
  */
 export enum CloudflareErrorCode {
+  // API and connectivity errors
   RULESET_NOT_FOUND = 'CF_6000',
   RULE_LIMIT_EXCEEDED = 'CF_6001',
   INVALID_EXPRESSION = 'CF_6002',
@@ -73,12 +74,35 @@ export enum CloudflareErrorCode {
   ZONE_ID_REQUIRED = 'CF_6005',
   INVALID_RULESET = 'CF_6006',
   RULE_NO_CONDITIONS = 'CF_6007',
+
+  // Rate limiting errors
   INVALID_RATE_LIMIT = 'CF_6008',
   INVALID_WINDOW_FORMAT = 'CF_6009',
   SHORT_MITIGATION_TIMEOUT = 'CF_6010',
+
+  // Redirect errors
   REDIRECT_NO_LOCATION = 'CF_6011',
-  INVALID_IP = 'CF_6012',
-  LARGE_IP_LIST = 'CF_6013',
+  INVALID_REDIRECT_URL = 'CF_6012',
+
+  // IP blocking errors
+  INVALID_IP = 'CF_6013',
+  LARGE_IP_LIST = 'CF_6014',
+
+  // Configuration errors
+  EMPTY_CHARACTERISTICS = 'CF_6015',
+  INVALID_CREDENTIALS = 'CF_6016',
+  INSUFFICIENT_PERMISSIONS = 'CF_6017',
+
+  // Translation warnings
+  TRANSLATION_WARNING = 'CF_6018',
+  FEATURE_UNSUPPORTED = 'CF_6019',
+
+  // Additional production readiness errors
+  PLAN_LIMIT_EXCEEDED = 'CF_6020',
+  ZONE_SUSPENDED = 'CF_6021',
+  MAINTENANCE_MODE = 'CF_6022',
+  QUOTA_EXCEEDED = 'CF_6023',
+  INVALID_ZONE_SETTING = 'CF_6024',
 }
 
 /**
