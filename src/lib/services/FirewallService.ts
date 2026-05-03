@@ -406,9 +406,7 @@ export class FirewallService {
     if (updatedConfig.ips) {
       updatedConfig.ips = updatedConfig.ips.map((localRule): IPBlockingRule => {
         const matchingRemoteRule = remoteIPRules.find(
-          (remoteRule) =>
-            !matchedRemoteIPIds.has(remoteRule.id!) &&
-            isDeepEqual(omitId(remoteRule), omitId(localRule)),
+          (remoteRule) => !matchedRemoteIPIds.has(remoteRule.id!) && isDeepEqual(omitId(remoteRule), omitId(localRule)),
         )
         if (matchingRemoteRule && matchingRemoteRule.id !== localRule.id) {
           matchedRemoteIPIds.add(matchingRemoteRule.id!)
