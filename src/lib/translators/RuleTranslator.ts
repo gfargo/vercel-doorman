@@ -5,13 +5,35 @@ import { ExpressionBuilder } from './ExpressionBuilder'
 import { logger } from '../logger'
 
 /**
- * Translation warnings
+ * Translation warning severity levels
+ */
+export type TranslationWarningSeverity = 'critical' | 'warning' | 'info'
+
+/**
+ * Translation warning categories for better organization
+ */
+export type TranslationWarningCategory = 
+  | 'feature_unsupported'
+  | 'lossy_conversion' 
+  | 'syntax_limitation'
+  | 'performance_impact'
+  | 'security_consideration'
+  | 'compatibility_issue'
+
+/**
+ * Enhanced translation warnings with severity levels and actionable suggestions
  */
 export interface TranslationWarning {
   rule?: string
   field?: string
+  category: TranslationWarningCategory
   message: string
-  severity: 'warning' | 'info'
+  explanation: string
+  severity: TranslationWarningSeverity
+  suggestion?: string
+  alternativeApproach?: string
+  impact?: string
+  docsUrl?: string
 }
 
 /**
@@ -64,6 +86,18 @@ export class RuleTranslator {
         } else {
           // Default to 1 hour (3600 seconds) for rate limit blocks
           cloudflareRule.ratelimit.mitigation_timeout = 3600
+          
+          // Import the warning system
+          const { TranslationWarningSystem } = require('./TranslationWarningSystem')
+          warnings.push(
+            TranslationWarningSystem.createWarning(
+              'rate_limiting_precision',
+              rule.id,
+              'rateLimit.mitigationTimeout',
+              'No mitigation timeout specified, using default 1 hour (3600 seconds)',
+              'Specify mitigationTimeout in your rate limit configuration for precise control'
+            )
+          )
         }
 
         // Add counting expression if specified
@@ -97,11 +131,17 @@ export class RuleTranslator {
   public static cloudflareToVercel(rule: CloudflareRule): TranslationResult<VercelCustomRule> {
     const warnings: TranslationWarning[] = []
 
-    warnings.push({
-      rule: rule.id,
-      message: 'Cloudflare → Vercel translation is lossy. Expression will be converted to structured conditions.',
-      severity: 'warning',
-    })
+    // Import the warning system
+    const { TranslationWarningSystem } = require('./TranslationWarningSystem')
+
+    warnings.push(
+      TranslationWarningSystem.createLossyConversionWarning(
+        'Cloudflare expression',
+        'Cloudflare expressions cannot be perfectly converted to Vercel structured conditions',
+        rule.id,
+        'expression'
+      )
+    )
 
     // For now, create a basic Vercel rule
     // Full expression parsing would require a wirefilter parser
@@ -137,6 +177,20 @@ export class RuleTranslator {
       for (const condition of group.conditions) {
         const operator = this.mapVercelOperatorToUnified(condition.op)
 
+        // Check for regex patterns and warn about potential compatibility issues
+        if (condition.op === 're' && typeof condition.value === 'string') {
+          const { TranslationWarningSystem } = require('./TranslationWarningSystem')
+          warnings.push(
+            TranslationWarningSystem.createWarning(
+              'regex_patterns',
+              rule.id,
+              condition.type,
+              `Regular expression pattern may need adjustment for target provider: ${condition.value}`,
+              'Test the regex pattern in the target provider and adjust syntax if needed'
+            )
+          )
+        }
+
         conditions.push({
           field: this.mapVercelTypeToUnified(condition.type),
           operator,
@@ -145,6 +199,20 @@ export class RuleTranslator {
           key: condition.key,
         })
       }
+    }
+
+    // Warn about complex rules with many conditions
+    if (conditions.length > 10) {
+      const { TranslationWarningSystem } = require('./TranslationWarningSystem')
+      warnings.push(
+        TranslationWarningSystem.createWarning(
+          'many_conditions',
+          rule.id,
+          undefined,
+          `Rule has ${conditions.length} conditions which may impact performance`,
+          'Consider splitting complex rules into multiple simpler rules for better performance'
+        )
+      )
     }
 
     const action: UnifiedAction = {
@@ -186,11 +254,18 @@ export class RuleTranslator {
   public static cloudflareToUnified(rule: CloudflareRule): TranslationResult<UnifiedRule> {
     const warnings: TranslationWarning[] = []
 
-    warnings.push({
-      rule: rule.id,
-      message: 'Expression parsing not fully implemented. Using simplified translation.',
-      severity: 'warning',
-    })
+    // Import the warning system
+    const { TranslationWarningSystem } = require('./TranslationWarningSystem')
+
+    warnings.push(
+      TranslationWarningSystem.createWarning(
+        'complex_expressions',
+        rule.id,
+        'expression',
+        'Expression parsing not fully implemented. Using simplified translation.',
+        'Review the translated rule and add missing conditions manually if needed.'
+      )
+    )
 
     const action: UnifiedAction = {
       type: this.mapCloudflareActionToUnified(rule.action),
