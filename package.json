@@ -117,7 +117,8 @@
       "brace-expansion@>=2.0.0": "^2.0.2",
       "tmp": ">=0.2.4",
       "esbuild": ">=0.25.0",
-      "@babel/helpers": ">=7.26.10"
+      "@babel/helpers": ">=7.26.10",
+      "handlebars": ">=4.7.9"
     }
   }
 }
