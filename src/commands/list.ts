@@ -145,7 +145,6 @@ export const handler = async (argv: Arguments<ListOptions>) => {
       }
     }
   } catch (error) {
-    logger.error(error instanceof Error)
-    process.exit(1)
+    handleCommandError(error, 'listing firewall rules')
   }
 }

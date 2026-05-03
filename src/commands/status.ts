@@ -6,7 +6,7 @@ import { FirewallService } from '../lib/services/FirewallService'
 import { VercelClient } from '../lib/services/VercelClient'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { getConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { ConfigHealthChecker } from '../lib/utils/configHealth'
 
 interface StatusOptions {
   config?: string
@@ -123,16 +123,6 @@ export const handler = async (argv: Arguments<StatusOptions>) => {
     const healthReport = ConfigHealthChecker.formatHealthReport(healthResult)
     logger.log(healthReport)
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else {
-      logger.error(
-        ErrorFormatter.wrapErrorBlock([
-          'Error checking status:',
-          `  ${error instanceof Error ? error.message : String(error)}`,
-        ]),
-      )
-    }
-    process.exit(1)
+    handleCommandError(error, 'checking status')
   }
 }

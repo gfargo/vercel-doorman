@@ -1,12 +1,10 @@
 import type { ErrorObject } from 'ajv'
 import chalk from 'chalk'
 import { Arguments } from 'yargs'
-import { ZodError } from 'zod'
 import { logger } from '../lib/logger'
 import { firewallConfigSchema } from '../lib/schemas/firewallSchemas'
 import { ValidationError, ValidationService } from '../lib/services/ValidationService'
 import { getConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
 interface ValidateOptions {
   config?: string
@@ -115,26 +113,6 @@ export const handler = async (argv: Arguments<ValidateOptions>) => {
       throw new Error('Configuration validation failed')
     }
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else if (error instanceof Error && error.name === 'ValidationError') {
-      // AJV validation error
-      logger.error(error)
-    } else if (error instanceof ZodError) {
-      // Zod validation error
-      logger.error(chalk.red('Schema validation failed:'))
-      error.errors.forEach((err) => {
-        const path = err.path.join('.')
-        logger.error(chalk.red(`  - ${path}: ${err.message}`))
-      })
-    } else {
-      logger.error(
-        ErrorFormatter.wrapErrorBlock([
-          'Error validating configuration:',
-          `  ${error instanceof Error ? error.message : String(error)}`,
-        ]),
-      )
-    }
-    process.exit(1)
+    handleCommandError(error, 'validating configuration')
   }
 }

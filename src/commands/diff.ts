@@ -7,7 +7,6 @@ import { VercelClient } from '../lib/services/VercelClient'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
 import { getConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
 
 interface DiffOptions {
   config?: string
@@ -158,16 +157,6 @@ export const handler = async (argv: Arguments<DiffOptions>) => {
     logger.log(chalk.bold(`Summary: ${totalChanges} total changes detected`))
     logger.log(chalk.dim('Run `sync` to apply these changes to the remote configuration.'))
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else {
-      logger.error(
-        ErrorFormatter.wrapErrorBlock([
-          'Error calculating diff:',
-          `  ${error instanceof Error ? error.message : String(error)}`,
-        ]),
-      )
-    }
-    process.exit(1)
+    handleCommandError(error, 'calculating diff')
   }
 }

@@ -10,7 +10,7 @@ import { prompt } from '../lib/ui/prompt'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
 import { getConfig, saveConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 interface DownloadOptions {
   config?: string
   projectId?: string
@@ -171,16 +171,6 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
     await saveConfig(newConfig, argv.config)
     logger.success(chalk.green('Successfully downloaded and updated configuration'))
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else {
-      logger.error(
-        ErrorFormatter.wrapErrorBlock([
-          'Error downloading firewall rules:',
-          `  ${error instanceof Error ? error.message : String(error)}`,
-        ]),
-      )
-    }
-    process.exit(1)
+    handleCommandError(error, 'downloading firewall rules')
   }
 }
