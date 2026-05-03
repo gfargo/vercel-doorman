@@ -9,7 +9,7 @@ import { prompt } from '../lib/ui/prompt'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
 import { getConfig, saveConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface SyncOptions {
   config?: string
@@ -142,10 +142,17 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       throw new Error('Sync validation failed - original config restored')
     }
 
-    if (rulesToUpdateLocally.length > 0) {
+    // Filter rulesToUpdateLocally to only include entries whose oldId still
+    // exists in the current config. validateAndUpdateConfig may have already
+    // updated some rule IDs to match remote-assigned IDs.
+    const pendingIdUpdates = rulesToUpdateLocally.filter((r) =>
+      config.rules.some((rule) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name)),
+    )
+
+    if (pendingIdUpdates.length > 0) {
       logger.log('')
       logger.info(chalk.yellow('Some rules have IDs that do not match their expected snake_case name:'))
-      rulesToUpdateLocally.forEach((rule) => {
+      pendingIdUpdates.forEach((rule) => {
         logger.log(
           `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
         )
@@ -156,29 +163,21 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       })
 
       if (updateConfirmed) {
-        // Update config with new IDs and preserve metadata
-        const updatedConfig: FirewallConfig = {
+        config = {
           ...config,
           rules: config.rules.map((rule: CustomRule) => {
-            const ruleToUpdate = rulesToUpdateLocally.find(
+            const ruleToUpdate = pendingIdUpdates.find(
               (r) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name),
             )
             return ruleToUpdate ? { ...rule, id: ruleToUpdate.newId } : rule
           }),
-          // Preserve IP blocking rules
           ips: config.ips || [],
         }
 
-        await saveConfig(updatedConfig, argv.config)
+        await saveConfig(config, argv.config)
         logger.success(chalk.green('Updated local config with new rule IDs'))
       } else {
         logger.warn(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
-        logger.log('Changes:')
-        rulesToUpdateLocally.forEach((rule) => {
-          logger.log(
-            `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
-          )
-        })
       }
     }
 
@@ -190,18 +189,6 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       )
     }
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else if (error instanceof Error && error.name === 'ValidationError') {
-      logger.error(error)
-    } else {
-      logger.error(
-        ErrorFormatter.wrapErrorBlock([
-          'Error syncing firewall rules:',
-          `  ${error instanceof Error ? error.message : String(error)}`,
-        ]),
-      )
-    }
-    process.exit(1)
+    handleCommandError(error, 'syncing firewall rules')
   }
 }

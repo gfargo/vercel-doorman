@@ -5,7 +5,7 @@ import { logger } from '../lib/logger'
 import { prompt } from '../lib/ui/prompt'
 import { createEmptyConfig } from '../lib/utils/createEmptyConfig'
 import { saveConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface InitOptions {
   config?: string
@@ -90,18 +90,9 @@ const promptForProjectDetails = async (argv: Arguments<InitOptions>) => {
     logger.log(chalk.dim('We need your Vercel project details to configure the firewall.\n'))
 
     if (!projectId) {
-      projectId = await prompt('Enter your Vercel Project ID:', {
-        type: 'input',
-        validate: (input: string) => {
-          if (!input || input.trim().length === 0) {
-            return 'Project ID is required'
-          }
-          if (input.length < 10) {
-            return 'Project ID seems too short. Please double-check.'
-          }
-          return true
-        },
-      })
+      projectId = (await prompt('Enter your Vercel Project ID:', {
+        type: 'text',
+      })) as string
     }
 
     if (!teamId) {
@@ -110,15 +101,9 @@ const promptForProjectDetails = async (argv: Arguments<InitOptions>) => {
       })
 
       if (hasTeam) {
-        teamId = await prompt('Enter your Vercel Team ID:', {
-          type: 'input',
-          validate: (input: string) => {
-            if (!input || input.trim().length === 0) {
-              return 'Team ID is required when using team account'
-            }
-            return true
-          },
-        })
+        teamId = (await prompt('Enter your Vercel Team ID:', {
+          type: 'text',
+        })) as string
       }
     }
 
@@ -191,14 +176,11 @@ export const handler = async (argv: Arguments<InitOptions>) => {
     // Allow template selection in interactive mode
     let template = argv.template
     if (argv.interactive && !argv.template) {
-      template = await prompt('Select a template:', {
+      template = (await prompt('Select a template:', {
         type: 'select',
-        choices: [
-          { title: 'Empty - Start from scratch', value: 'empty' },
-          { title: 'Basic - Simple bot protection', value: 'basic' },
-          { title: 'Security-focused - Comprehensive rules', value: 'security-focused' },
-        ],
-      })
+        options: ['empty', 'basic', 'security-focused'],
+        initial: 'empty',
+      })) as string
     }
 
     logger.start(`Creating ${template} configuration...`)
@@ -401,12 +383,6 @@ export const handler = async (argv: Arguments<InitOptions>) => {
       showHelpLinks()
     }
   } catch (error) {
-    logger.error(
-      ErrorFormatter.wrapErrorBlock([
-        'Error initializing configuration:',
-        `  ${error instanceof Error ? error.message : String(error)}`,
-      ]),
-    )
-    process.exit(1)
+    handleCommandError(error, 'initializing configuration')
   }
 }

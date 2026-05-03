@@ -9,7 +9,7 @@ import { FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { getConfig, saveConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface BackupOptions {
   config?: string
@@ -160,15 +160,17 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
     }
 
     // Generate backup filename with timestamp
-    const timestamp =
-      new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] +
-      '_' +
-      new Date().toISOString().replace(/[:.]/g, '-').split('T')[1].split('.')[0]
+    const now = new Date()
+    const datePart = now.toISOString().split('T')[0] ?? 'unknown-date'
+    const timePart = (now.toISOString().split('T')[1] ?? '').split('.')[0]?.replace(/:/g, '-') ?? 'unknown-time'
+    const timestamp = `${datePart}_${timePart}`
     const backupFilename = `firewall-backup-${timestamp}.json`
     const backupPath = join(backupDir, backupFilename)
 
     // Create backup config with metadata
-    const backupConfig: FirewallConfig & { backup: { createdAt: string; source: string } } = {
+    const backupConfig: FirewallConfig & {
+      backup: { createdAt: string; source: string; projectId: string; teamId: string; originalVersion: number }
+    } = {
       ...remoteConfig,
       backup: {
         createdAt: new Date().toISOString(),
@@ -191,16 +193,6 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
     logger.log(chalk.dim('To restore this backup later, run:'))
     logger.log(chalk.cyan(`vercel-doorman backup --restore ${backupFilename}`))
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else {
-      logger.error(
-        ErrorFormatter.wrapErrorBlock([
-          'Error creating backup:',
-          `  ${error instanceof Error ? error.message : String(error)}`,
-        ]),
-      )
-    }
-    process.exit(1)
+    handleCommandError(error, 'managing backup')
   }
 }

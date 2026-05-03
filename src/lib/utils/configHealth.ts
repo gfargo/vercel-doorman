@@ -120,7 +120,8 @@ export class ConfigHealthChecker {
         group.conditions.some(
           (condition) =>
             condition.type === 'user_agent' &&
-            (condition.value?.toLowerCase().includes('bot') || condition.value?.toLowerCase().includes('crawler')),
+            typeof condition.value === 'string' &&
+            (condition.value.toLowerCase().includes('bot') || condition.value.toLowerCase().includes('crawler')),
         ),
       ),
     )
@@ -154,7 +155,7 @@ export class ConfigHealthChecker {
     }
   }
 
-  private static checkPerformanceImpact(config: FirewallConfig, issues: HealthIssue[], recommendations: string[]) {
+  private static checkPerformanceImpact(config: FirewallConfig, issues: HealthIssue[], _recommendations: string[]) {
     const { rules } = config
 
     // Check for regex conditions (performance impact)
@@ -225,7 +226,7 @@ export class ConfigHealthChecker {
     // Issues
     if (result.issues.length > 0) {
       report += chalk.bold('Issues Found:\n')
-      result.issues.forEach((issue, index) => {
+      result.issues.forEach((issue) => {
         const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️'
 
         report += `${icon} ${issue.message}`

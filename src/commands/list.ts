@@ -10,6 +10,7 @@ import { FirewallConfig, IPBlockingRule } from '../lib/types'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
 import { getConfig } from '../lib/utils/config'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface ListOptions {
   projectId: string
@@ -145,7 +146,6 @@ export const handler = async (argv: Arguments<ListOptions>) => {
       }
     }
   } catch (error) {
-    logger.error(error instanceof Error)
-    process.exit(1)
+    handleCommandError(error, 'listing firewall rules')
   }
 }

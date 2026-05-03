@@ -6,7 +6,7 @@ import { TemplateName, getTemplateConfig, templates } from '../lib/templates'
 import { FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
 import { getConfig, saveConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface TemplateOptions {
   name?: string
@@ -61,7 +61,7 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
 
     const templateConfig = getTemplateConfig(templateName as TemplateName)
     if (!templateConfig) {
-      logger.error(ErrorFormatter.wrapErrorBlock(['Template not found:', `  ${templateName}`]))
+      logger.error(`Template not found: ${templateName}`)
       process.exit(1)
     }
 
@@ -89,25 +89,9 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
       await saveConfig(updatedConfig, undefined, { validate: true, throwOnError: true })
       logger.success(chalk.green(`Successfully added template '${templateName}' to configuration`))
     } catch (error) {
-      if (error instanceof SyntaxError) {
-        logger.error(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in template file:', `  ${error.message}`]))
-      } else {
-        logger.error(
-          ErrorFormatter.wrapErrorBlock([
-            'Error adding template:',
-            `  ${error instanceof Error ? error.message : String(error)}`,
-          ]),
-        )
-      }
-      process.exit(1)
+      handleCommandError(error, 'adding template')
     }
   } catch (error) {
-    logger.error(
-      ErrorFormatter.wrapErrorBlock([
-        'Unexpected error:',
-        `  ${error instanceof Error ? error.message : String(error)}`,
-      ]),
-    )
-    process.exit(1)
+    handleCommandError(error, 'adding template')
   }
 }

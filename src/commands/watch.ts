@@ -6,8 +6,8 @@ import { logger } from '../lib/logger'
 import { FirewallService } from '../lib/services/FirewallService'
 import { VercelClient } from '../lib/services/VercelClient'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
-import { getConfig } from '../lib/utils/config'
-import { ErrorFormatter } from '../lib/utils/errorFormatter'
+import { getConfig, saveConfig } from '../lib/utils/config'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface WatchOptions {
   config?: string
@@ -84,7 +84,7 @@ export const handler = async (argv: Arguments<WatchOptions>) => {
     logger.log(chalk.dim('Press Ctrl+C to stop watching'))
     logger.log('')
 
-    const handleFileChange = async (curr: Stats, prev: Stats) => {
+    const handleFileChange = async (curr: Stats, _prev: Stats) => {
       // Avoid processing if already processing or file hasn't actually changed
       if (isProcessing || curr.mtime.getTime() === lastModified) {
         return
@@ -124,9 +124,22 @@ export const handler = async (argv: Arguments<WatchOptions>) => {
         logger.log(chalk.cyan(`Syncing ${totalChanges} changes...`))
 
         // Perform sync
-        await service.syncRules(updatedConfig, { debug: argv.debug })
+        const syncResult = await service.syncRules(updatedConfig, { debug: argv.debug })
 
-        logger.success(chalk.green(`✅ Sync completed at ${new Date().toLocaleTimeString()}`))
+        // Validate and update config with remote-assigned IDs
+        try {
+          const validatedConfig = await service.validateAndUpdateConfig(updatedConfig, syncResult, { dryRun: false })
+          await saveConfig(validatedConfig, configPath)
+          logger.success(chalk.green(`✅ Sync completed at ${new Date().toLocaleTimeString()}`))
+        } catch (validationError) {
+          logger.warn(
+            chalk.yellow(
+              `⚠️ Sync applied but validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
+            ),
+          )
+          logger.info(chalk.dim('Run `download` to reconcile local config with remote state'))
+        }
+
         logger.log(chalk.dim('Watching for more changes...'))
       } catch (error) {
         logger.error(chalk.red(`❌ Sync failed: ${error instanceof Error ? error.message : String(error)}`))
@@ -156,16 +169,6 @@ export const handler = async (argv: Arguments<WatchOptions>) => {
     }
     keepAlive()
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.log(ErrorFormatter.wrapErrorBlock(['Invalid JSON format in config file:', `  ${error.message}`]))
-    } else {
-      logger.error(
-        ErrorFormatter.wrapErrorBlock([
-          'Error setting up watch mode:',
-          `  ${error instanceof Error ? error.message : String(error)}`,
-        ]),
-      )
-    }
-    process.exit(1)
+    handleCommandError(error, 'setting up watch mode')
   }
 }
