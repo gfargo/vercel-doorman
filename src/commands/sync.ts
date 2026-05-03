@@ -163,7 +163,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       })
 
       if (updateConfirmed) {
-        const updatedConfig: FirewallConfig = {
+        config = {
           ...config,
           rules: config.rules.map((rule: CustomRule) => {
             const ruleToUpdate = pendingIdUpdates.find(
@@ -174,7 +174,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
           ips: config.ips || [],
         }
 
-        await saveConfig(updatedConfig, argv.config)
+        await saveConfig(config, argv.config)
         logger.success(chalk.green('Updated local config with new rule IDs'))
       } else {
         logger.warn(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))

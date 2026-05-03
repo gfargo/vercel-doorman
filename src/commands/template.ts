@@ -6,6 +6,7 @@ import { TemplateName, getTemplateConfig, templates } from '../lib/templates'
 import { FirewallConfig } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
 import { getConfig, saveConfig } from '../lib/utils/config'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface TemplateOptions {
   name?: string
@@ -60,7 +61,7 @@ export const handler = async (argv: Arguments<TemplateOptions>) => {
 
     const templateConfig = getTemplateConfig(templateName as TemplateName)
     if (!templateConfig) {
-      logger.error(ErrorFormatter.wrapErrorBlock(['Template not found:', `  ${templateName}`]))
+      logger.error(`Template not found: ${templateName}`)
       process.exit(1)
     }
 

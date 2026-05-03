@@ -7,6 +7,7 @@ import { VercelClient } from '../lib/services/VercelClient'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable, RULE_STATUS_MAP } from '../lib/ui/table'
 import { getConfig } from '../lib/utils/config'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface DiffOptions {
   config?: string

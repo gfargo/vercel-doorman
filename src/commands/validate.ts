@@ -5,6 +5,7 @@ import { logger } from '../lib/logger'
 import { firewallConfigSchema } from '../lib/schemas/firewallSchemas'
 import { ValidationError, ValidationService } from '../lib/services/ValidationService'
 import { getConfig } from '../lib/utils/config'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface ValidateOptions {
   config?: string

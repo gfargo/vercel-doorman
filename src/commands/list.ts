@@ -10,6 +10,7 @@ import { FirewallConfig, IPBlockingRule } from '../lib/types'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
 import { getConfig } from '../lib/utils/config'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface ListOptions {
   projectId: string

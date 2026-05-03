@@ -7,6 +7,7 @@ import { VercelClient } from '../lib/services/VercelClient'
 import { promptForCredentials } from '../lib/ui/promptForCredentials'
 import { getConfig } from '../lib/utils/config'
 import { ConfigHealthChecker } from '../lib/utils/configHealth'
+import { handleCommandError } from '../lib/utils/handleCommandError'
 
 interface StatusOptions {
   config?: string
