@@ -1,3 +1,12 @@
+## [1.5.10](https://github.com/gfargo/vercel-doorman/compare/v1.5.9...v1.5.10) (2026-05-03)
+
+
+### Bug Fixes
+
+* address Copilot review feedback on PR [#63](https://github.com/gfargo/vercel-doorman/issues/63) ([0cdc00a](https://github.com/gfargo/vercel-doorman/commit/0cdc00a4d6e1acc2d4020b3938c8361e3ae95dcb))
+* resolve CLI audit issues [#57](https://github.com/gfargo/vercel-doorman/issues/57)-[#62](https://github.com/gfargo/vercel-doorman/issues/62) ([25e3d4a](https://github.com/gfargo/vercel-doorman/commit/25e3d4af055e5ed2e388cdd964e9ddcfb9530971)), closes [#59](https://github.com/gfargo/vercel-doorman/issues/59) [#60](https://github.com/gfargo/vercel-doorman/issues/60) [#55](https://github.com/gfargo/vercel-doorman/issues/55)
+* resolve prettier formatting error in FirewallService.ts ([3dc0326](https://github.com/gfargo/vercel-doorman/commit/3dc0326c707752ccd3085c69c0febbc9eeac387a))
+
 ## [1.5.9](https://github.com/gfargo/vercel-doorman/compare/v1.5.8...v1.5.9) (2026-05-03)
 
 
