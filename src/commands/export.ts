@@ -70,7 +70,7 @@ export const builder = {
 }
 
 const generateMarkdownReport = (config: FirewallConfig): string => {
-  const { rules, ips, version, updatedAt } = config
+  const { rules, ips = [], version, updatedAt } = config
 
   let markdown = `# Vercel Firewall Configuration Report\n\n`
   markdown += `**Version:** ${version}\n`
@@ -94,7 +94,7 @@ const generateMarkdownReport = (config: FirewallConfig): string => {
       markdown += `- **Conditions:**\n`
       rule.conditionGroup.forEach((group, groupIndex) => {
         markdown += `  - Group ${groupIndex + 1}:\n`
-        group.conditions.forEach((condition, condIndex) => {
+        group.conditions.forEach((condition) => {
           markdown += `    - ${condition.type} ${condition.op} \`${condition.value}\`\n`
         })
       })
@@ -120,7 +120,7 @@ const generateMarkdownReport = (config: FirewallConfig): string => {
 }
 
 const generateTerraformConfig = (config: FirewallConfig): string => {
-  const { rules, ips } = config
+  const { rules, ips = [] } = config
 
   let terraform = `# Vercel Firewall Configuration\n`
   terraform += `# Generated on ${new Date().toISOString()}\n\n`
@@ -237,7 +237,7 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
       logger.log(chalk.bold('Export Summary:'))
       logger.log(`${chalk.dim('Format:')} ${argv.format}`)
       logger.log(`${chalk.dim('Source:')} ${argv.source}`)
-      logger.log(`${chalk.dim('Rules:')} ${config.rules.length} custom, ${config.ips.length} IP blocking`)
+      logger.log(`${chalk.dim('Rules:')} ${config.rules.length} custom, ${(config.ips || []).length} IP blocking`)
       logger.log(`${chalk.dim('Size:')} ${(output.length / 1024).toFixed(1)} KB`)
     }
   } catch (error) {

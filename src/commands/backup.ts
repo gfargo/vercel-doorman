@@ -160,15 +160,17 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
     }
 
     // Generate backup filename with timestamp
-    const timestamp =
-      new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] +
-      '_' +
-      new Date().toISOString().replace(/[:.]/g, '-').split('T')[1].split('.')[0]
+    const now = new Date()
+    const datePart = now.toISOString().split('T')[0] ?? 'unknown-date'
+    const timePart = (now.toISOString().split('T')[1] ?? '').split('.')[0]?.replace(/:/g, '-') ?? 'unknown-time'
+    const timestamp = `${datePart}_${timePart}`
     const backupFilename = `firewall-backup-${timestamp}.json`
     const backupPath = join(backupDir, backupFilename)
 
     // Create backup config with metadata
-    const backupConfig: FirewallConfig & { backup: { createdAt: string; source: string } } = {
+    const backupConfig: FirewallConfig & {
+      backup: { createdAt: string; source: string; projectId: string; teamId: string; originalVersion: number }
+    } = {
       ...remoteConfig,
       backup: {
         createdAt: new Date().toISOString(),

@@ -142,10 +142,18 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       throw new Error('Sync validation failed - original config restored')
     }
 
-    if (rulesToUpdateLocally.length > 0) {
+    // Filter rulesToUpdateLocally to only include entries whose oldId still
+    // exists in the current config. validateAndUpdateConfig may have already
+    // updated some rule IDs to match remote-assigned IDs, making the oldId
+    // stale and the find() below a no-op. (See issue #47)
+    const pendingIdUpdates = rulesToUpdateLocally.filter((r) =>
+      config.rules.some((rule) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name)),
+    )
+
+    if (pendingIdUpdates.length > 0) {
       logger.log('')
       logger.info(chalk.yellow('Some rules have IDs that do not match their expected snake_case name:'))
-      rulesToUpdateLocally.forEach((rule) => {
+      pendingIdUpdates.forEach((rule) => {
         logger.log(
           `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
         )
@@ -160,7 +168,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
         const updatedConfig: FirewallConfig = {
           ...config,
           rules: config.rules.map((rule: CustomRule) => {
-            const ruleToUpdate = rulesToUpdateLocally.find(
+            const ruleToUpdate = pendingIdUpdates.find(
               (r) => r.oldId === rule.id || (r.oldId === '' && r.name === rule.name),
             )
             return ruleToUpdate ? { ...rule, id: ruleToUpdate.newId } : rule
@@ -174,7 +182,7 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
       } else {
         logger.warn(chalk.yellow('Local config not updated. Remember to update rule IDs manually if needed.'))
         logger.log('Changes:')
-        rulesToUpdateLocally.forEach((rule) => {
+        pendingIdUpdates.forEach((rule) => {
           logger.log(
             `  - Rule "${rule.name}": ${chalk.red(rule.oldId || 'empty')} ${chalk.dim('->')} ${chalk.green(rule.newId)}`,
           )
