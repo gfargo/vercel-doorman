@@ -302,19 +302,44 @@ export class FirewallService {
     const updatedIPIds = new Set(syncResult.updatedIPRules.map((r) => r.id).filter(Boolean))
     const deletedIPIds = new Set(syncResult.deletedIPRules.map((r) => r.id).filter(Boolean))
 
+    // Build a content-based lookup for added rules so we can match remote rules
+    // whose IDs were assigned by Vercel and may differ from what's in addedIds.
+    // This handles the case where a template is added locally and synced — the
+    // remote ID (e.g. rule_deny_word_press_ur_ls_abc123) won't match the local
+    // ID or the ID returned by the create API response.
+    const addedRulesByName = new Map(syncResult.addedRules.map((r) => [r.name, r]))
+
+    // Similarly, build a content-based lookup for added IP rules
+    const addedIPRuleContents = syncResult.addedIPRules.map((r) => omitId(r))
+
     // Check if all remote custom rules match our expectations
     const unexpectedRules = remoteRules.filter((remoteRule) => {
-      // Skip rules we just added or updated
+      // Skip rules we just added or updated (match by ID)
       if (addedIds.has(remoteRule.id) || updatedIds.has(remoteRule.id)) {
         return false
       }
+
+      // Skip rules that match a newly added rule by content.
+      // Vercel assigns its own IDs to new rules, so the remote ID may not match
+      // the ID we sent or received. Match by name + content instead.
+      const addedByName = addedRulesByName.get(remoteRule.name)
+      if (addedByName && isDeepEqual(omitId(remoteRule), omitId(addedByName))) {
+        return false
+      }
+
       // Rule should not exist if we deleted it
       if (deletedIds.has(remoteRule.id)) {
         return true
       }
+
       // Rule should match our local config if unchanged
       const localRule = config.rules.find((r) => r.id === remoteRule.id)
       if (!localRule) {
+        // Also try matching by content for rules whose local ID is stale
+        const localByContent = config.rules.find((r) => isDeepEqual(omitId(remoteRule), omitId(r)))
+        if (localByContent) {
+          return false
+        }
         return true
       }
       // Compare rule contents (excluding id)
@@ -327,6 +352,15 @@ export class FirewallService {
       if (addedIPIds.has(remoteRule.id) || updatedIPIds.has(remoteRule.id)) {
         return false
       }
+
+      // Skip rules that match a newly added IP rule by content
+      const matchesAddedContent = addedIPRuleContents.some((addedContent) =>
+        isDeepEqual(omitId(remoteRule), addedContent),
+      )
+      if (matchesAddedContent) {
+        return false
+      }
+
       // Rule should not exist if we deleted it
       if (deletedIPIds.has(remoteRule.id)) {
         return true
@@ -364,15 +398,39 @@ export class FirewallService {
       updatedAt: activeConfig.updatedAt,
     } as FirewallConfig
 
+    // Update custom rules with remote-assigned IDs for newly added rules.
+    // Track matched remote IDs to prevent assigning the same remote ID to
+    // multiple local rules when they have identical content.
+    const matchedRemoteIds = new Set<string>()
+    updatedConfig.rules = updatedConfig.rules.map((localRule): CustomRule => {
+      // Find matching remote rule by content for rules that were just added
+      const matchingRemoteRule = remoteRules.find(
+        (remoteRule) =>
+          !matchedRemoteIds.has(remoteRule.id!) &&
+          isDeepEqual(omitId(remoteRule), omitId(localRule)) &&
+          remoteRule.id !== localRule.id,
+      )
+
+      if (matchingRemoteRule) {
+        matchedRemoteIds.add(matchingRemoteRule.id!)
+        return { ...localRule, id: matchingRemoteRule.id }
+      }
+      return localRule
+    })
+
     // Update IP rules with remote IDs
+    const matchedRemoteIPIds = new Set<string>()
     if (updatedConfig.ips) {
       updatedConfig.ips = updatedConfig.ips.map((localRule): IPBlockingRule => {
         // Find matching remote rule by comparing content without IDs
-        const matchingRemoteRule = remoteIPRules.find((remoteRule) =>
-          isDeepEqual(omitId(remoteRule), omitId(localRule)),
+        const matchingRemoteRule = remoteIPRules.find(
+          (remoteRule) =>
+            !matchedRemoteIPIds.has(remoteRule.id!) &&
+            isDeepEqual(omitId(remoteRule), omitId(localRule)),
         )
 
         if (matchingRemoteRule && matchingRemoteRule.id !== localRule.id) {
+          matchedRemoteIPIds.add(matchingRemoteRule.id!)
           // Update to use newest remote ID, if different
           return { ...localRule, id: matchingRemoteRule.id as string }
         }
