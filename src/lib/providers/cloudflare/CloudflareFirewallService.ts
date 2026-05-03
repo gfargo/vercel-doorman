@@ -2,6 +2,8 @@ import { BaseFirewallService } from '../BaseFirewallService'
 import { CloudflareClient } from './CloudflareClient'
 import { RuleTranslator } from '../../translators/RuleTranslator'
 import { logger } from '../../logger'
+import { CloudflareErrorHandler } from './CloudflareErrorHandler'
+import { cloudflareErrors } from '../../errors'
 import type { ProviderType, SyncOptions, SyncResult, ChangeSet, FeatureSet, HealthScore } from '../IFirewallProvider'
 import type { UnifiedConfig, UnifiedRule, UnifiedIPRule } from '../../types/unified'
 import type { CloudflareRule } from '../../types/cloudflare'
@@ -25,6 +27,13 @@ export class CloudflareFirewallService extends BaseFirewallService {
     this.client = new CloudflareClient(apiToken, zoneId, accountId)
     // Use Lists for IP blocking if accountId is provided
     this.useListsForIPs = !!accountId
+
+    // Log Lists API availability status
+    if (this.useListsForIPs) {
+      logger.debug('Lists API enabled for IP blocking (account ID provided)')
+    } else {
+      logger.debug('Lists API disabled - will use individual IP rules (no account ID)')
+    }
   }
 
   /**
@@ -33,81 +42,155 @@ export class CloudflareFirewallService extends BaseFirewallService {
   public async fetchConfig(_version?: number): Promise<UnifiedConfig> {
     logger.info('Fetching configuration from Cloudflare')
 
-    // Get or create custom firewall ruleset
-    const ruleset = await this.client.getOrCreateFirewallRuleset()
-    // Cache for potential future use
-    // this._currentRuleset = ruleset
+    try {
+      // Get or create custom firewall ruleset
+      const ruleset = await this.client.getOrCreateFirewallRuleset()
+      // Cache for potential future use
+      // this._currentRuleset = ruleset
 
-    // Convert Cloudflare rules to unified format
-    const rules: UnifiedRule[] = []
-    const ips: UnifiedIPRule[] = []
-    const translationWarnings: string[] = []
+      // Convert Cloudflare rules to unified format
+      const rules: UnifiedRule[] = []
+      const ips: UnifiedIPRule[] = []
+      const translationWarnings: string[] = []
+      const processingErrors: string[] = []
 
-    for (const rule of ruleset.rules) {
-      // Skip List-based IP rules (we'll fetch those separately)
-      if (this.isListBasedIPRule(rule)) {
-        continue
+      // Process rules in batches to prevent memory issues with large rule sets
+      const batchSize = 50
+      const totalRules = ruleset.rules.length
+
+      if (totalRules > 100) {
+        logger.info(`Processing ${totalRules} rules in batches of ${batchSize} to optimize memory usage`)
       }
 
-      // Check if it's a simple IP blocking rule (individual IP rule)
-      if (this.isIPBlockingRule(rule)) {
-        const ipRule = this.cloudflareRuleToIPRule(rule)
-        ips.push(ipRule)
-      } else {
-        const translation = RuleTranslator.cloudflareToUnified(rule)
-        rules.push(translation.result)
+      for (let i = 0; i < totalRules; i += batchSize) {
+        const batch = ruleset.rules.slice(i, i + batchSize)
+        logger.debug(`Processing rules batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalRules / batchSize)} (${batch.length} rules)`)
 
-        if (translation.warnings.length > 0) {
-          translation.warnings.forEach((w) => translationWarnings.push(w.message))
-        }
-      }
-    }
+        for (const rule of batch) {
+          try {
+            // Validate rule structure before processing
+            if (!rule || typeof rule !== 'object') {
+              processingErrors.push(`Skipped malformed rule at index ${i}: not an object`)
+              continue
+            }
 
-    // Fetch IPs from List if using Lists
-    if (this.useListsForIPs) {
-      try {
-        const ipList = await this.client.getOrCreateIPBlocklist()
-        // Cache for potential future use
-        // this._ipBlocklistId = ipList.id
+            if (!rule.id || !rule.expression || !rule.action) {
+              processingErrors.push(`Skipped rule with missing required fields: ${JSON.stringify({ id: rule.id, expression: !!rule.expression, action: rule.action })}`)
+              continue
+            }
 
-        const listItems = await this.client.getListItems(ipList.id)
-        for (const item of listItems) {
-          if (item.ip) {
-            ips.push({
-              id: item.id,
-              ip: item.ip,
-              notes: item.comment,
-              action: 'deny', // Lists are for blocking
-            })
+            // Skip List-based IP rules (we'll fetch those separately)
+            if (this.isListBasedIPRule(rule)) {
+              continue
+            }
+
+            // Check if it's a simple IP blocking rule (individual IP rule)
+            if (this.isIPBlockingRule(rule)) {
+              const ipRule = this.cloudflareRuleToIPRule(rule)
+              ips.push(ipRule)
+            } else {
+              const translation = RuleTranslator.cloudflareToUnified(rule)
+              rules.push(translation.result)
+
+              if (translation.warnings.length > 0) {
+                translation.warnings.forEach((w) => {
+                  const { TranslationWarningSystem } = require('../../translators/TranslationWarningSystem')
+                  const formattedWarning = TranslationWarningSystem.formatWarning(w)
+                  translationWarnings.push(formattedWarning)
+                })
+              }
+            }
+          } catch (ruleError) {
+            const errorMessage = `Failed to process rule ${rule?.id || 'unknown'}: ${ruleError instanceof Error ? ruleError.message : String(ruleError)}`
+            logger.warn(errorMessage)
+            processingErrors.push(errorMessage)
+            // Continue processing other rules
           }
         }
 
-        logger.debug(`Fetched ${listItems.length} IPs from List`)
-      } catch (error) {
-        logger.warn(`Failed to fetch IPs from List: ${error instanceof Error ? error.message : String(error)}`)
-        // Continue without List IPs
+        // Add small delay between batches for large rule sets to prevent overwhelming the system
+        if (totalRules > 200 && i + batchSize < totalRules) {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        }
       }
-    }
 
-    if (translationWarnings.length > 0) {
-      logger.warn(`Translation warnings: ${translationWarnings.join('; ')}`)
-    }
+      // Report processing errors if any
+      if (processingErrors.length > 0) {
+        logger.warn(`Encountered ${processingErrors.length} rule processing errors:`)
+        processingErrors.slice(0, 5).forEach(error => logger.warn(`  - ${error}`))
+        if (processingErrors.length > 5) {
+          logger.warn(`  ... and ${processingErrors.length - 5} more errors`)
+        }
+      }
 
-    return {
-      version: '2.0',
-      provider: 'cloudflare',
-      providers: {
-        cloudflare: {
-          zoneId: this.client['zoneId'],
-          accountId: this.client['accountId'],
+      // Fetch IPs from List if using Lists
+      if (this.useListsForIPs) {
+        try {
+          const ipList = await this.client.getOrCreateIPBlocklist()
+          // Cache for potential future use
+          // this._ipBlocklistId = ipList.id
+
+          const listItems = await this.client.getListItems(ipList.id)
+          for (const item of listItems) {
+            if (item.ip) {
+              ips.push({
+                id: item.id,
+                ip: item.ip,
+                notes: item.comment,
+                action: 'deny', // Lists are for blocking
+              })
+            }
+          }
+
+          logger.debug(`Fetched ${listItems.length} IPs from List`)
+        } catch (error) {
+          // Enhanced error handling for Lists API with graceful degradation
+          this.handleListsAPIFallback(error, 'fetching IPs from List')
+          // Continue without List IPs - this is expected behavior when Lists aren't available
+        }
+      } else {
+        // Provide guidance when Lists API is not available
+        if (ips.length > 10) {
+          logger.warn(
+            `⚠️  Large IP list detected (${ips.length} IPs) without Lists API. ` +
+              'Consider providing CLOUDFLARE_ACCOUNT_ID for better performance.',
+          )
+        }
+      }
+
+      if (translationWarnings.length > 0) {
+        logger.warn('Translation warnings detected:')
+        translationWarnings.forEach((warning) => logger.warn(warning))
+
+        // Show warning summary if there are multiple warnings
+        if (translationWarnings.length > 3) {
+          logger.warn(
+            `\n📊 Summary: ${translationWarnings.length} translation warnings detected. Review each warning above for specific guidance.`,
+          )
+        }
+      }
+
+      return {
+        version: '2.0',
+        provider: 'cloudflare',
+        providers: {
+          cloudflare: {
+            zoneId: this.client['zoneId'],
+            accountId: this.client['accountId'],
+          },
         },
-      },
-      rules,
-      ips,
-      metadata: {
-        version: parseInt(ruleset.version, 10),
-        updatedAt: ruleset.last_updated,
-      },
+        rules,
+        ips,
+        metadata: {
+          version: parseInt(ruleset.version, 10),
+          updatedAt: ruleset.last_updated,
+        },
+      }
+    } catch (error) {
+      if (error instanceof Error && !('code' in error)) {
+        throw CloudflareErrorHandler.handleNetworkError(error, 'fetching configuration')
+      }
+      throw error
     }
   }
 
@@ -117,17 +200,47 @@ export class CloudflareFirewallService extends BaseFirewallService {
   public async syncRules(config: UnifiedConfig, options?: SyncOptions): Promise<SyncResult> {
     logger.info(`Syncing ${config.rules.length} rules to Cloudflare${options?.dryRun ? ' (dry run)' : ''}`)
 
+    // Import operation safety utilities
+    const { OperationSafety } = require('../../utils/operationSafety')
+
+    // Perform dry-run validation first
+    const dryRunResult = await OperationSafety.performDryRunValidation(
+      config,
+      'sync rules',
+      async (cfg: UnifiedConfig) => await this.getChanges(cfg)
+    )
+
+    if (!dryRunResult.valid) {
+      throw new Error(`Dry-run validation failed: ${dryRunResult.issues.join(', ')}`)
+    }
+
     if (options?.dryRun) {
-      const changes = await this.getChanges(config)
       return {
         success: true,
-        rulesAdded: changes.rulesToAdd.length,
-        rulesUpdated: changes.rulesToUpdate.length,
-        rulesDeleted: changes.rulesToDelete.length,
-        ipsAdded: changes.ipsToAdd?.length || 0,
-        ipsUpdated: changes.ipsToUpdate?.length || 0,
-        ipsDeleted: changes.ipsToDelete?.length || 0,
+        rulesAdded: dryRunResult.changes.rulesToAdd.length,
+        rulesUpdated: dryRunResult.changes.rulesToUpdate.length,
+        rulesDeleted: dryRunResult.changes.rulesToDelete.length,
+        ipsAdded: dryRunResult.changes.ipsToAdd?.length || 0,
+        ipsUpdated: dryRunResult.changes.ipsToUpdate?.length || 0,
+        ipsDeleted: dryRunResult.changes.ipsToDelete?.length || 0,
       }
+    }
+
+    // Determine risk level based on changes
+    const riskLevel = this.assessOperationRisk(dryRunResult.changes, config)
+
+    // Get user confirmation for destructive operations
+    const confirmed = await OperationSafety.confirmDestructiveOperation({
+      operation: 'sync rules',
+      target: `Cloudflare zone ${this.client['zoneId']}`,
+      changes: dryRunResult.changes,
+      riskLevel,
+      skipConfirmation: options?.force || false,
+      dryRun: options?.dryRun || false
+    })
+
+    if (!confirmed) {
+      throw new Error('Operation cancelled by user')
     }
 
     // Get or create ruleset
@@ -144,7 +257,11 @@ export class CloudflareFirewallService extends BaseFirewallService {
       cloudflareRules.push(translation.result)
 
       if (translation.warnings.length > 0) {
-        translation.warnings.forEach((w) => logger.warn(w.message))
+        translation.warnings.forEach((w) => {
+          const { TranslationWarningSystem } = require('../../translators/TranslationWarningSystem')
+          const formattedWarning = TranslationWarningSystem.formatWarning(w)
+          logger.warn(formattedWarning)
+        })
       }
     }
 
@@ -202,16 +319,37 @@ export class CloudflareFirewallService extends BaseFirewallService {
           })
         }
       } catch (error) {
-        logger.warn(`Failed to sync IPs via List, falling back to individual rules: ${error}`)
+        // Enhanced fallback handling with detailed messaging
+        this.handleListsAPIFallback(error, 'syncing IPs via List')
+
         // Fall back to individual IP rules
+        logger.info(`🔄 Falling back to individual IP rules for ${config.ips.length} IPs`)
         for (const ip of config.ips) {
           const cloudflareRule = RuleTranslator.unifiedIPToCloudflare(ip)
           cloudflareRules.push(cloudflareRule)
         }
         ipsAdded = config.ips.length
+
+        // Warn about performance impact for large lists
+        if (config.ips.length > 50) {
+          logger.warn(
+            `⚠️  Performance warning: Using ${config.ips.length} individual IP rules instead of Lists. ` +
+              'This may impact rule processing speed and count against your rule limit.',
+          )
+        }
       }
     } else if (config.ips && config.ips.length > 0) {
       // Use individual IP rules (no accountId provided or Lists disabled)
+      logger.info(`📝 Using individual IP rules for ${config.ips.length} IPs (Lists API not available)`)
+
+      // Warn about large IP lists without Lists API
+      if (config.ips.length > 20) {
+        logger.warn(
+          `⚠️  Large IP list detected (${config.ips.length} IPs) without Lists API. ` +
+            'Consider providing CLOUDFLARE_ACCOUNT_ID for better performance and rule efficiency.',
+        )
+      }
+
       for (const ip of config.ips) {
         const cloudflareRule = RuleTranslator.unifiedIPToCloudflare(ip)
         cloudflareRules.push(cloudflareRule)
@@ -310,114 +448,146 @@ export class CloudflareFirewallService extends BaseFirewallService {
       // Check rule count against Cloudflare limits
       const features = this.getSupportedFeatures()
       if (features.maxRules && config.rules.length > features.maxRules) {
+        const error = cloudflareErrors.ruleLimitExceeded(config.rules.length, features.maxRules)
         errors.push({
           path: 'rules',
-          message: `Rule count (${config.rules.length}) exceeds Cloudflare limit (${features.maxRules})`,
-          code: 'CLOUDFLARE_RULE_LIMIT_EXCEEDED',
+          message: error.message,
+          code: error.code,
         })
       }
 
       // Validate each rule
       config.rules.forEach((rule, index) => {
-        // Check for conditions (Cloudflare requires expressions)
-        if (!rule.conditions || rule.conditions.length === 0) {
-          errors.push({
-            path: `rules[${index}]`,
-            message: `Rule "${rule.name}" has no conditions`,
-            code: 'CLOUDFLARE_RULE_NO_CONDITIONS',
-          })
-        }
-
-        // Validate rate limiting configuration
-        if (rule.action.type === 'rate_limit' && rule.action.rateLimit) {
-          const rateLimit = rule.action.rateLimit
-
-          // Check requests per period
-          if (rateLimit.requests < 1) {
+        try {
+          // Check for conditions (Cloudflare requires expressions)
+          if (!rule.conditions || rule.conditions.length === 0) {
+            const error = cloudflareErrors.ruleNoConditions(rule.name || `Rule ${index + 1}`)
             errors.push({
-              path: `rules[${index}].action.rateLimit.requests`,
-              message: `Rate limit requests must be at least 1`,
-              code: 'CLOUDFLARE_INVALID_RATE_LIMIT',
+              path: `rules[${index}]`,
+              message: error.message,
+              code: error.code,
             })
           }
 
-          // Check period format
-          if (!rateLimit.window.match(/^\d+[smhd]$/)) {
-            errors.push({
-              path: `rules[${index}].action.rateLimit.window`,
-              message: `Invalid window format: ${rateLimit.window}. Must be like "60s", "1h", "1d"`,
-              code: 'CLOUDFLARE_INVALID_WINDOW_FORMAT',
-            })
+          // Validate rate limiting configuration
+          if (rule.action.type === 'rate_limit' && rule.action.rateLimit) {
+            const rateLimit = rule.action.rateLimit
+
+            // Check requests per period
+            if (rateLimit.requests < 1) {
+              const error = cloudflareErrors.invalidRateLimit(
+                rule.name || `Rule ${index + 1}`,
+                'requests must be at least 1',
+              )
+              errors.push({
+                path: `rules[${index}].action.rateLimit.requests`,
+                message: error.message,
+                code: error.code,
+              })
+            }
+
+            // Check period format
+            if (!rateLimit.window.match(/^\d+[smhd]$/)) {
+              const error = cloudflareErrors.invalidWindowFormat(rateLimit.window)
+              errors.push({
+                path: `rules[${index}].action.rateLimit.window`,
+                message: error.message,
+                code: error.code,
+              })
+            }
+
+            // Validate characteristics
+            if (rateLimit.characteristics && rateLimit.characteristics.length === 0) {
+              const error = cloudflareErrors.emptyCharacteristics(rule.name || `Rule ${index + 1}`)
+              warnings.push({
+                path: `rules[${index}].action.rateLimit.characteristics`,
+                message: error.message,
+                code: error.code,
+              })
+            }
+
+            // Validate mitigation timeout
+            if (rateLimit.mitigationTimeout !== undefined && rateLimit.mitigationTimeout < 60) {
+              const error = cloudflareErrors.shortMitigationTimeout(rateLimit.mitigationTimeout)
+              warnings.push({
+                path: `rules[${index}].action.rateLimit.mitigationTimeout`,
+                message: error.message,
+                code: error.code,
+              })
+            }
           }
 
-          // Validate characteristics
-          if (rateLimit.characteristics && rateLimit.characteristics.length === 0) {
-            warnings.push({
-              path: `rules[${index}].action.rateLimit.characteristics`,
-              message: 'Empty characteristics array, defaulting to ["ip.src"]',
-              code: 'CLOUDFLARE_EMPTY_CHARACTERISTICS',
-            })
-          }
+          // Validate redirect configuration
+          if (rule.action.type === 'redirect' && rule.action.redirect) {
+            const redirect = rule.action.redirect
 
-          // Validate mitigation timeout
-          if (rateLimit.mitigationTimeout !== undefined && rateLimit.mitigationTimeout < 60) {
-            warnings.push({
-              path: `rules[${index}].action.rateLimit.mitigationTimeout`,
-              message: 'Mitigation timeout less than 60 seconds may not be effective',
-              code: 'CLOUDFLARE_SHORT_MITIGATION_TIMEOUT',
-            })
-          }
-        }
-
-        // Validate redirect configuration
-        if (rule.action.type === 'redirect' && rule.action.redirect) {
-          const redirect = rule.action.redirect
-
-          if (!redirect.location) {
-            errors.push({
-              path: `rules[${index}].action.redirect.location`,
-              message: 'Redirect location is required',
-              code: 'CLOUDFLARE_REDIRECT_NO_LOCATION',
-            })
-          } else {
-            // Basic URL validation
-            try {
-              new URL(redirect.location)
-            } catch {
-              // Check if it's a relative path
-              if (!redirect.location.startsWith('/')) {
-                errors.push({
-                  path: `rules[${index}].action.redirect.location`,
-                  message: `Invalid redirect location: ${redirect.location}`,
-                  code: 'CLOUDFLARE_INVALID_REDIRECT_URL',
-                })
+            if (!redirect.location) {
+              const error = cloudflareErrors.redirectNoLocation(rule.name || `Rule ${index + 1}`)
+              errors.push({
+                path: `rules[${index}].action.redirect.location`,
+                message: error.message,
+                code: error.code,
+              })
+            } else {
+              // Basic URL validation
+              try {
+                new URL(redirect.location)
+              } catch {
+                // Check if it's a relative path
+                if (!redirect.location.startsWith('/')) {
+                  const error = cloudflareErrors.invalidRedirectUrl(redirect.location)
+                  errors.push({
+                    path: `rules[${index}].action.redirect.location`,
+                    message: error.message,
+                    code: error.code,
+                  })
+                }
               }
             }
           }
+        } catch (validationError) {
+          // Handle any unexpected validation errors
+          errors.push({
+            path: `rules[${index}]`,
+            message: `Validation error: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
+            code: 'CLOUDFLARE_VALIDATION_ERROR',
+          })
         }
       })
 
       // Validate IP rules
       if (config.ips) {
         config.ips.forEach((ip, index) => {
-          // Basic IP/CIDR validation
-          if (!ip.ip.match(/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/)) {
+          try {
+            // Enhanced IP/CIDR validation
+            const ipPattern =
+              /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/
+            if (!ipPattern.test(ip.ip)) {
+              const error = cloudflareErrors.invalidIP(ip.ip)
+              errors.push({
+                path: `ips[${index}].ip`,
+                message: error.message,
+                code: error.code,
+              })
+            }
+          } catch (validationError) {
             errors.push({
-              path: `ips[${index}].ip`,
-              message: `Invalid IP address or CIDR: ${ip.ip}`,
-              code: 'CLOUDFLARE_INVALID_IP',
-            })
-          }
-
-          // Warn about large IP lists without accountId
-          if (!this.useListsForIPs && config.ips && config.ips.length > 50) {
-            warnings.push({
-              path: 'ips',
-              message: `Large IP list (${config.ips.length} IPs) detected. Consider providing accountId to use Cloudflare Lists for better performance`,
-              code: 'CLOUDFLARE_LARGE_IP_LIST',
+              path: `ips[${index}]`,
+              message: `IP validation error: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
+              code: 'CLOUDFLARE_IP_VALIDATION_ERROR',
             })
           }
         })
+
+        // Warn about large IP lists without accountId
+        if (!this.useListsForIPs && config.ips.length > 50) {
+          const error = cloudflareErrors.largeIPList(config.ips.length)
+          warnings.push({
+            path: 'ips',
+            message: error.message,
+            code: error.code,
+          })
+        }
       }
     }
 
@@ -495,5 +665,109 @@ export class CloudflareFirewallService extends BaseFirewallService {
       notes: rule.description,
       action: rule.action === 'allow' ? 'allow' : 'deny',
     }
+  }
+
+  /**
+   * Handle Lists API fallback scenarios with clear messaging and guidance
+   */
+  private handleListsAPIFallback(error: unknown, operation: string): void {
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase()
+
+      if (errorMessage.includes('account')) {
+        logger.warn(
+          `🚫 Lists API unavailable: Account ID not provided or invalid. ` + 'Falling back to individual IP rules.',
+        )
+        logger.info(
+          `💡 To enable Lists API for better performance with large IP lists:\n` +
+            `   • Set CLOUDFLARE_ACCOUNT_ID in your environment\n` +
+            `   • Ensure your API token has Account:Read permissions\n` +
+            `   • Find your Account ID in the Cloudflare dashboard sidebar`,
+        )
+      } else if (errorMessage.includes('permission') || errorMessage.includes('forbidden')) {
+        logger.warn(
+          `🚫 Lists API permission denied: Insufficient permissions for ${operation}. ` +
+            'Falling back to individual IP rules.',
+        )
+        logger.info(
+          `💡 To fix Lists API permissions:\n` +
+            `   • Ensure your API token has Account:Read permissions\n` +
+            `   • Verify the account ID is correct\n` +
+            `   • Check token permissions in Cloudflare dashboard`,
+        )
+      } else if (errorMessage.includes('not found')) {
+        logger.warn(`🚫 Lists API resource not found during ${operation}. ` + 'Falling back to individual IP rules.')
+        logger.info(`💡 This may be temporary - the List will be recreated on next sync if Lists API is available.`)
+      } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+        logger.warn(`🚫 Lists API rate limited during ${operation}. ` + 'Falling back to individual IP rules.')
+        logger.info(
+          `💡 Lists API rate limit reached. Individual rules will be used this time. ` +
+            'Consider retrying later or upgrading your Cloudflare plan.',
+        )
+      } else {
+        logger.warn(`🚫 Lists API error during ${operation}: ${error.message}. Falling back to individual IP rules.`)
+        logger.info(
+          `💡 Lists API temporarily unavailable. Using individual IP rules as fallback. ` +
+            'Check Cloudflare status if this persists.',
+        )
+      }
+    } else {
+      logger.warn(`🚫 Unknown Lists API error during ${operation}. Falling back to individual IP rules.`)
+    }
+  }
+
+  /**
+   * Assess the risk level of an operation based on changes and configuration
+   */
+  private assessOperationRisk(changes: ChangeSet, config: UnifiedConfig): 'low' | 'medium' | 'high' {
+    const totalRules = config.rules.length
+    const totalIPs = config.ips?.length || 0
+    const totalDeletions = (changes.rulesToDelete?.length || 0) + (changes.ipsToDelete?.length || 0)
+    const totalChanges = (changes.rulesToAdd?.length || 0) + 
+                        (changes.rulesToUpdate?.length || 0) + 
+                        (changes.ipsToAdd?.length || 0) + 
+                        (changes.ipsToUpdate?.length || 0) + 
+                        totalDeletions
+
+    // High risk conditions
+    if (totalDeletions === totalRules && totalRules > 0) {
+      return 'high' // Deleting all rules
+    }
+
+    if (totalDeletions > 0 && totalDeletions / Math.max(totalRules + totalIPs, 1) > 0.5) {
+      return 'high' // Deleting more than 50% of existing rules/IPs
+    }
+
+    if (totalChanges > 50) {
+      return 'high' // Large number of changes
+    }
+
+    // Check for potentially dangerous rules
+    const hasDangerousRules = config.rules.some(rule => 
+      rule.action.type === 'deny' && 
+      rule.conditions.some(condition => 
+        condition.type === 'path' && (condition.value === '/' || condition.value === '*')
+      )
+    )
+
+    if (hasDangerousRules) {
+      return 'high'
+    }
+
+    // Medium risk conditions
+    if (totalDeletions > 0) {
+      return 'medium' // Any deletions
+    }
+
+    if (totalChanges > 10) {
+      return 'medium' // Moderate number of changes
+    }
+
+    if (changes.rulesToUpdate && changes.rulesToUpdate.length > 0) {
+      return 'medium' // Rule updates can be risky
+    }
+
+    // Low risk - only additions or small changes
+    return 'low'
   }
 }

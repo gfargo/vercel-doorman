@@ -1,20 +1,21 @@
 import { BaseFirewallClient } from '../BaseFirewallClient'
 import { logger } from '../../logger'
 import { providerErrors, cloudflareErrors } from '../../errors'
+import { CloudflareErrorHandler } from './CloudflareErrorHandler'
 import type {
-  CloudflareRuleset,
-  CloudflareAPIResponse,
-  CloudflareCreateRulesetRequest,
-  CloudflareUpdateRulesetRequest,
-  CloudflareCreateRuleRequest,
-  CloudflareUpdateRuleRequest,
-  CloudflareList,
-  CloudflareListItem,
-  CloudflareCreateListRequest,
-  CloudflareUpdateListRequest,
-  CloudflareAddListItemsRequest,
-  CloudflareRemoveListItemsRequest,
-  CloudflareListItemsResponse,
+    CloudflareRuleset,
+    CloudflareAPIResponse,
+    CloudflareCreateRulesetRequest,
+    CloudflareUpdateRulesetRequest,
+    CloudflareCreateRuleRequest,
+    CloudflareUpdateRuleRequest,
+    CloudflareList,
+    CloudflareListItem,
+    CloudflareCreateListRequest,
+    CloudflareUpdateListRequest,
+    CloudflareAddListItemsRequest,
+    CloudflareRemoveListItemsRequest,
+    CloudflareListItemsResponse,
 } from '../../types/cloudflare'
 
 /**
@@ -48,19 +49,50 @@ export class CloudflareClient extends BaseFirewallClient {
   public async listRulesets(): Promise<CloudflareRuleset[]> {
     logger.debug(`Fetching rulesets for zone ${this.zoneId}`)
 
-    const response = await this.get<CloudflareAPIResponse<CloudflareRuleset[]>>(`/zones/${this.zoneId}/rulesets`)
+    try {
+      const response = await this.get<CloudflareAPIResponse<CloudflareRuleset[]>>(`/zones/${this.zoneId}/rulesets`)
 
-    if (!response.success) {
-      const errorMessage = response.errors.map((e) => e.message).join(', ')
-      throw providerErrors.apiError(
-        'cloudflare',
-        `/zones/${this.zoneId}/rulesets`,
-        response.errors[0]?.code || 0,
-        errorMessage,
-      )
+      if (!response.success) {
+        throw CloudflareErrorHandler.handleApiResponse(response, `/zones/${this.zoneId}/rulesets`)
+      }
+
+      // Validate response structure to prevent malformed data issues
+      if (!Array.isArray(response.result)) {
+        logger.warn('Malformed API response: expected array of rulesets, got:', typeof response.result)
+        return []
+      }
+
+      // Filter out any malformed ruleset objects
+      const validRulesets = response.result.filter((ruleset) => {
+        if (!ruleset || typeof ruleset !== 'object') {
+          logger.warn('Skipping malformed ruleset object:', ruleset)
+          return false
+        }
+        if (!ruleset.id || !ruleset.name) {
+          logger.warn('Skipping ruleset with missing required fields:', { id: ruleset.id, name: ruleset.name })
+          return false
+        }
+        return true
+      })
+
+      if (validRulesets.length !== response.result.length) {
+        logger.warn(`Filtered out ${response.result.length - validRulesets.length} malformed rulesets`)
+      }
+
+      return validRulesets
+    } catch (error) {
+      if (error instanceof Error && !(error as any).code) {
+        throw CloudflareErrorHandler.handleNetworkError(error, 'listing rulesets')
+      }
+      throw error
     }
+  }
 
-    return response.result
+  /**
+   * Get all rulesets for the zone (alias for listRulesets)
+   */
+  public async getRulesets(): Promise<CloudflareRuleset[]> {
+    return this.listRulesets()
   }
 
   /**
@@ -69,21 +101,60 @@ export class CloudflareClient extends BaseFirewallClient {
   public async getRuleset(rulesetId: string): Promise<CloudflareRuleset> {
     logger.debug(`Fetching ruleset ${rulesetId}`)
 
-    const response = await this.get<CloudflareAPIResponse<CloudflareRuleset>>(
-      `/zones/${this.zoneId}/rulesets/${rulesetId}`,
-    )
-
-    if (!response.success) {
-      const errorMessage = response.errors.map((e) => e.message).join(', ')
-      throw providerErrors.apiError(
-        'cloudflare',
+    try {
+      const response = await this.get<CloudflareAPIResponse<CloudflareRuleset>>(
         `/zones/${this.zoneId}/rulesets/${rulesetId}`,
-        response.errors[0]?.code || 0,
-        errorMessage,
       )
-    }
 
-    return response.result
+      if (!response.success) {
+        throw CloudflareErrorHandler.handleApiResponse(response, `/zones/${this.zoneId}/rulesets/${rulesetId}`)
+      }
+
+      // Validate response structure
+      if (!response.result || typeof response.result !== 'object') {
+        throw CloudflareErrorHandler.handleValidationError('ruleset', 'Invalid ruleset data received from API', response.result)
+      }
+
+      const ruleset = response.result
+      if (!ruleset.id || !ruleset.name) {
+        throw CloudflareErrorHandler.handleValidationError('ruleset', 'Ruleset missing required fields (id, name)', ruleset)
+      }
+
+      // Ensure rules array exists and is valid
+      if (!Array.isArray(ruleset.rules)) {
+        logger.warn(`Ruleset ${rulesetId} has invalid rules array, initializing as empty`)
+        ruleset.rules = []
+      }
+
+      // Filter out malformed rules
+      const validRules = ruleset.rules.filter((rule) => {
+        if (!rule || typeof rule !== 'object') {
+          logger.warn(`Skipping malformed rule in ruleset ${rulesetId}:`, rule)
+          return false
+        }
+        if (!rule.id || !rule.expression || !rule.action) {
+          logger.warn(`Skipping rule with missing required fields in ruleset ${rulesetId}:`, {
+            id: rule.id,
+            expression: rule.expression,
+            action: rule.action,
+          })
+          return false
+        }
+        return true
+      })
+
+      if (validRules.length !== ruleset.rules.length) {
+        logger.warn(`Filtered out ${ruleset.rules.length - validRules.length} malformed rules from ruleset ${rulesetId}`)
+        ruleset.rules = validRules
+      }
+
+      return ruleset
+    } catch (error) {
+      if (error instanceof Error && !(error as any).code) {
+        throw CloudflareErrorHandler.handleNetworkError(error, 'fetching ruleset')
+      }
+      throw error
+    }
   }
 
   /**
@@ -275,6 +346,21 @@ export class CloudflareClient extends BaseFirewallClient {
       return true
     } catch (error) {
       logger.error(`Cloudflare credential verification failed: ${error}`)
+
+      // Provide more specific error information for credential issues
+      if (error instanceof Error) {
+        const message = error.message.toLowerCase()
+        if (message.includes('unauthorized') || message.includes('invalid token')) {
+          throw CloudflareErrorHandler.handleCredentialError('token')
+        }
+        if (message.includes('forbidden') || message.includes('access denied')) {
+          throw CloudflareErrorHandler.handleCredentialError('zone', this.zoneId)
+        }
+        if (message.includes('not found')) {
+          throw CloudflareErrorHandler.handleCredentialError('zone', this.zoneId)
+        }
+      }
+
       return false
     }
   }
@@ -282,8 +368,13 @@ export class CloudflareClient extends BaseFirewallClient {
   /**
    * Get zone information
    */
-  public async getZoneInfo(): Promise<{ id: string; name: string }> {
-    const response = await this.get<CloudflareAPIResponse<{ id: string; name: string }>>(`/zones/${this.zoneId}`)
+  public async getZoneInfo(): Promise<{ id: string; name: string; status: string; plan?: { name: string } }> {
+    const response = await this.get<CloudflareAPIResponse<{ 
+      id: string; 
+      name: string; 
+      status: string; 
+      plan?: { name: string } 
+    }>>(`/zones/${this.zoneId}`)
 
     if (!response.success) {
       const errorMessage = response.errors.map((e) => e.message).join(', ')
@@ -529,23 +620,30 @@ export class CloudflareClient extends BaseFirewallClient {
 
     if (!this.accountId) {
       logger.warn('Account ID not provided, cannot use Lists for IP blocking')
-      throw cloudflareErrors.accountIdRequired('IP Lists')
+      throw CloudflareErrorHandler.handleCredentialError('account')
     }
 
-    const lists = await this.listLists()
-    const existingList = lists.find((list) => list.name === 'Doorman IP Blocklist' && list.kind === 'ip')
+    try {
+      const lists = await this.listLists()
+      const existingList = lists.find((list) => list.name === 'Doorman IP Blocklist' && list.kind === 'ip')
 
-    if (existingList) {
-      logger.debug(`Found existing IP blocklist: ${existingList.id}`)
-      return existingList
+      if (existingList) {
+        logger.debug(`Found existing IP blocklist: ${existingList.id}`)
+        return existingList
+      }
+
+      // Create new list
+      logger.info('No existing IP blocklist found, creating new one')
+      return this.createList({
+        name: 'Doorman IP Blocklist',
+        description: 'IP addresses blocked by Vercel Doorman',
+        kind: 'ip',
+      })
+    } catch (error) {
+      if (error instanceof Error && !(error as any).code) {
+        throw CloudflareErrorHandler.handleNetworkError(error, 'managing IP blocklist')
+      }
+      throw error
     }
-
-    // Create new list
-    logger.info('No existing IP blocklist found, creating new one')
-    return this.createList({
-      name: 'Doorman IP Blocklist',
-      description: 'IP addresses blocked by Vercel Doorman',
-      kind: 'ip',
-    })
   }
 }

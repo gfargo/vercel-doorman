@@ -8,15 +8,15 @@ import { omitId } from '../../utils/omitId'
 import { retry } from '../../utils/retry'
 import { firewallConfigSchema } from '../../schemas/firewallSchemas'
 import type {
-  IFirewallProvider,
-  ProviderType,
-  SyncOptions,
-  SyncResult,
-  ChangeSet,
-  FeatureSet,
-  HealthScore,
-  HealthIssue,
-  ValidationResult,
+    IFirewallProvider,
+    ProviderType,
+    SyncOptions,
+    SyncResult,
+    ChangeSet,
+    FeatureSet,
+    HealthScore,
+    HealthIssue,
+    ValidationResult,
 } from '../IFirewallProvider'
 import type { UnifiedConfig, UnifiedRule, UnifiedIPRule } from '../../types/unified'
 import type { CustomRule, IPBlockingRule } from '../../types/vercel'
@@ -44,7 +44,11 @@ export class VercelFirewallService extends BaseFirewallService implements IFirew
       const rules: UnifiedRule[] = vercelConfig.rules.map((rule) => {
         const translation = RuleTranslator.vercelToUnified(rule)
         if (translation.warnings.length > 0) {
-          translation.warnings.forEach((w) => logger.warn(`Rule ${rule.name}: ${w.message}`))
+          translation.warnings.forEach((w) => {
+            const { TranslationWarningSystem } = require('../../translators/TranslationWarningSystem')
+            const formattedWarning = TranslationWarningSystem.formatWarning(w)
+            logger.warn(`Rule ${rule.name}:\n${formattedWarning}`)
+          })
         }
         return translation.result
       })
@@ -227,7 +231,11 @@ export class VercelFirewallService extends BaseFirewallService implements IFirew
       const configRules: CustomRule[] = config.rules.map((rule) => {
         const translation = RuleTranslator.unifiedToVercel(rule)
         if (translation.warnings.length > 0) {
-          translation.warnings.forEach((w) => logger.warn(`Rule ${rule.name}: ${w.message}`))
+          translation.warnings.forEach((w) => {
+            const { TranslationWarningSystem } = require('../../translators/TranslationWarningSystem')
+            const formattedWarning = TranslationWarningSystem.formatWarning(w)
+            logger.warn(`Rule ${rule.name}:\n${formattedWarning}`)
+          })
         }
         return translation.result
       })

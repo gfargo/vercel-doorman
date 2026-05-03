@@ -50,64 +50,122 @@ export abstract class BaseFirewallClient {
     const { timeout = 30000, retries = 3, retryDelay = 1000, ...fetchOptions } = options
 
     let lastError: Error | null = null
+    let controller: AbortController | null = null
+    let timeoutId: NodeJS.Timeout | null = null
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), timeout)
-
-        const response = await fetch(url, {
-          ...fetchOptions,
-          headers: {
-            'Content-Type': 'application/json',
-            ...this.getAuthHeaders(),
-            ...fetchOptions.headers,
-          },
-          signal: controller.signal,
-        })
-
+    // Cleanup function to prevent memory leaks
+    const cleanup = () => {
+      if (timeoutId) {
         clearTimeout(timeoutId)
-
-        // Update rate limit info
-        this.updateRateLimitInfo(response)
-
-        // Handle rate limiting
-        if (response.status === 429) {
-          const waitTime = this.calculateRateLimitWait()
-          logger.warn(`Rate limit exceeded for ${this.providerName}. Waiting ${waitTime}ms before retry...`)
-          await this.delay(waitTime)
-          continue
-        }
-
-        // Handle other errors
-        if (!response.ok) {
-          const error = await this.handleErrorResponse(response)
-          throw error
-        }
-
-        const data = await response.json()
-        return data as T
-      } catch (error) {
-        lastError = error as Error
-
-        // Don't retry on certain errors
-        if (this.isNonRetryableError(error)) {
-          throw error
-        }
-
-        // Last attempt - throw error
-        if (attempt === retries) {
-          throw error
-        }
-
-        // Calculate exponential backoff delay
-        const delay = retryDelay * Math.pow(2, attempt)
-        logger.debug(`Request failed (attempt ${attempt + 1}/${retries + 1}). Retrying in ${delay}ms...`)
-        await this.delay(delay)
+        timeoutId = null
+      }
+      if (controller) {
+        controller.abort()
+        controller = null
       }
     }
 
-    throw lastError || new Error('Request failed after all retries')
+    try {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          controller = new AbortController()
+          timeoutId = setTimeout(() => {
+            if (controller) {
+              controller.abort()
+            }
+          }, timeout)
+
+          const response = await fetch(url, {
+            ...fetchOptions,
+            headers: {
+              'Content-Type': 'application/json',
+              ...this.getAuthHeaders(),
+              ...fetchOptions.headers,
+            },
+            signal: controller.signal,
+          })
+
+          // Clear timeout on successful response
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
+
+          // Update rate limit info
+          this.updateRateLimitInfo(response)
+
+          // Handle rate limiting with exponential backoff
+          if (response.status === 429) {
+            const waitTime = this.calculateRateLimitWait(attempt)
+            logger.warn(`Rate limit exceeded for ${this.providerName}. Waiting ${waitTime}ms before retry (attempt ${attempt + 1}/${retries + 1})...`)
+            await this.delay(waitTime)
+            continue
+          }
+
+          // Handle other errors
+          if (!response.ok) {
+            const error = await this.handleErrorResponse(response)
+            throw error
+          }
+
+          // Parse response with error handling
+          let data: T
+          try {
+            const responseText = await response.text()
+            if (!responseText.trim()) {
+              // Handle empty responses
+              data = {} as T
+            } else {
+              data = JSON.parse(responseText) as T
+            }
+          } catch (parseError) {
+            logger.error(`Failed to parse response from ${url}:`, parseError)
+            throw new Error(`Invalid JSON response from ${this.providerName} API: ${parseError instanceof Error ? parseError.message : String(parseError)}`)
+          }
+
+          // Validate response structure for large responses to prevent memory issues
+          if (this.isLargeResponse(data)) {
+            logger.debug(`Large response detected from ${url}, validating structure...`)
+            this.validateLargeResponse(data)
+          }
+
+          return data
+        } catch (error) {
+          lastError = error as Error
+
+          // Clean up resources for this attempt
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
+
+          // Don't retry on certain errors
+          if (this.isNonRetryableError(error)) {
+            throw error
+          }
+
+          // Last attempt - throw error
+          if (attempt === retries) {
+            throw error
+          }
+
+          // Calculate exponential backoff delay with jitter
+          const baseDelay = retryDelay * Math.pow(2, attempt)
+          const jitter = Math.random() * 0.1 * baseDelay // Add up to 10% jitter
+          const delay = Math.min(baseDelay + jitter, 30000) // Cap at 30 seconds
+
+          logger.debug(`Request failed (attempt ${attempt + 1}/${retries + 1}). Retrying in ${Math.round(delay)}ms...`)
+          logger.debug(`Error details: ${error instanceof Error ? error.message : String(error)}`)
+          
+          await this.delay(delay)
+        }
+      }
+
+      throw lastError || new Error('Request failed after all retries')
+    } finally {
+      // Ensure cleanup happens even if an exception is thrown
+      cleanup()
+    }
   }
 
   /**
@@ -176,15 +234,21 @@ export abstract class BaseFirewallClient {
   }
 
   /**
-   * Calculate wait time for rate limit
+   * Calculate wait time for rate limit with exponential backoff
    */
-  private calculateRateLimitWait(): number {
+  private calculateRateLimitWait(attempt: number = 0): number {
     if (this.rateLimitInfo.reset) {
       const now = Math.floor(Date.now() / 1000)
       const waitTime = (this.rateLimitInfo.reset - now) * 1000
       return Math.max(waitTime, 1000) // Minimum 1 second
     }
-    return 5000 // Default 5 seconds
+    
+    // Use exponential backoff for rate limits when reset time is not available
+    const baseWait = 5000 // 5 seconds base
+    const exponentialWait = baseWait * Math.pow(2, attempt)
+    const maxWait = 60000 // Cap at 1 minute
+    
+    return Math.min(exponentialWait, maxWait)
   }
 
   /**
@@ -252,5 +316,85 @@ export abstract class BaseFirewallClient {
    */
   public getRateLimitInfo(): RateLimitInfo {
     return { ...this.rateLimitInfo }
+  }
+
+  /**
+   * Check if response is large and might cause memory issues
+   */
+  private isLargeResponse(data: unknown): boolean {
+    if (!data || typeof data !== 'object') {
+      return false
+    }
+
+    // Check if response contains large arrays
+    const checkObject = (obj: any, depth = 0): boolean => {
+      if (depth > 10) return false // Prevent deep recursion
+
+      for (const [, value] of Object.entries(obj)) {
+        if (Array.isArray(value) && value.length > 1000) {
+          return true
+        }
+        if (typeof value === 'object' && value !== null && checkObject(value, depth + 1)) {
+          return true
+        }
+      }
+      return false
+    }
+
+    return checkObject(data)
+  }
+
+  /**
+   * Validate large responses to prevent memory issues
+   */
+  private validateLargeResponse(data: unknown): void {
+    if (!data || typeof data !== 'object') {
+      return
+    }
+
+    const validateArray = (arr: unknown[], path: string) => {
+      if (arr.length > 5000) {
+        logger.warn(`Large array detected at ${path} with ${arr.length} items. This may impact performance.`)
+      }
+
+      // Sample validate first few items to ensure structure consistency
+      const sampleSize = Math.min(10, arr.length)
+      const firstItem = arr[0]
+      
+      if (firstItem && typeof firstItem === 'object') {
+        const expectedKeys = Object.keys(firstItem)
+        
+        for (let i = 1; i < sampleSize; i++) {
+          const item = arr[i]
+          if (!item || typeof item !== 'object') {
+            logger.warn(`Inconsistent array structure at ${path}[${i}]: expected object, got ${typeof item}`)
+            continue
+          }
+          
+          const itemKeys = Object.keys(item)
+          const missingKeys = expectedKeys.filter(key => !itemKeys.includes(key))
+          
+          if (missingKeys.length > 0) {
+            logger.warn(`Inconsistent array structure at ${path}[${i}]: missing keys ${missingKeys.join(', ')}`)
+          }
+        }
+      }
+    }
+
+    const validateObject = (obj: unknown, path = 'root', depth = 0) => {
+      if (depth > 10) return // Prevent deep recursion
+
+      for (const [currentKey, value] of Object.entries(obj as Record<string, unknown>)) {
+        const currentPath = `${path}.${currentKey}`
+        
+        if (Array.isArray(value)) {
+          validateArray(value, currentPath)
+        } else if (typeof value === 'object' && value !== null) {
+          validateObject(value, currentPath, depth + 1)
+        }
+      }
+    }
+
+    validateObject(data)
   }
 }
