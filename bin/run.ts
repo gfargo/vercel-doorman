@@ -12,7 +12,7 @@ for (const command of commands) {
   run.command(command as CommandModule)
 }
 
-run
+void run
   .demandCommand(1, 'You need at least one command before moving on')
   .help()
   .epilogue(chalk.dim(`See ${chalk.bold('https://doorman.griffen.codes/getting-started')} for more info`)).argv

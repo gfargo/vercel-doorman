@@ -2,9 +2,7 @@ import chalk from 'chalk'
 import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
 
-interface SetupOptions {
-  // No options needed for this command
-}
+type SetupOptions = Record<string, never>
 
 export const command = 'setup'
 export const desc = 'Show setup instructions and helpful links for Vercel Doorman'

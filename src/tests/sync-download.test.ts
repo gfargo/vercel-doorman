@@ -297,8 +297,8 @@ describe('Sync and Download Logic', () => {
 
       // Then
       // Should delete first, then add
-      expect(mockClient.deleteFirewallRule).toHaveBeenCalledWith(mockRemoteConfig.rules[0])
-      expect(mockClient.createFirewallRule).toHaveBeenCalledWith(localConfig.rules[0])
+      expect(mockClient.deleteFirewallRule).toHaveBeenCalledWith(mockRemoteConfig.rules[0]!)
+      expect(mockClient.createFirewallRule).toHaveBeenCalledWith(localConfig.rules[0]!)
 
       expect(result.deletedRules).toHaveLength(1)
       expect(result.addedRules).toHaveLength(1)

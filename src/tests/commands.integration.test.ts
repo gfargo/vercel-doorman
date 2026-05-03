@@ -314,10 +314,10 @@ describe('Command Integration Tests', () => {
       } as any)
 
       // Then
-      expect(MockedVercelClient.prototype.deleteFirewallRule).toHaveBeenCalledWith(mockRemoteConfig.rules[0])
-      expect(MockedVercelClient.prototype.deleteIPBlockingRule).toHaveBeenCalledWith(mockRemoteConfig.ips[0])
-      expect(MockedVercelClient.prototype.createFirewallRule).toHaveBeenCalledWith(localConfig.rules[0])
-      expect(MockedVercelClient.prototype.createIPBlockingRule).toHaveBeenCalledWith(localConfig.ips![0])
+      expect(MockedVercelClient.prototype.deleteFirewallRule).toHaveBeenCalledWith(mockRemoteConfig.rules[0]!)
+      expect(MockedVercelClient.prototype.deleteIPBlockingRule).toHaveBeenCalledWith(mockRemoteConfig.ips[0]!)
+      expect(MockedVercelClient.prototype.createFirewallRule).toHaveBeenCalledWith(localConfig.rules[0]!)
+      expect(MockedVercelClient.prototype.createIPBlockingRule).toHaveBeenCalledWith(localConfig.ips![0]!)
 
       // Check that config file was updated with new version
       const updatedConfig = JSON.parse(await fs.readFile(configPath, 'utf8')) as FirewallConfig
