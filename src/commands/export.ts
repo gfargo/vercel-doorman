@@ -9,13 +9,18 @@ import { withCredentials } from '../lib/utils/withCredentials'
 
 interface ExportOptions {
   config?: string
+  provider?: 'vercel' | 'cloudflare'
   projectId?: string
   teamId?: string
   token?: string
+  apiToken?: string
+  zoneId?: string
+  accountId?: string
   format?: 'json' | 'yaml' | 'terraform' | 'markdown'
   output?: string
   source?: 'local' | 'remote'
   debug?: boolean
+  ci?: boolean
 }
 
 export const command = 'export'
@@ -27,6 +32,7 @@ export const builder = {
     type: 'string',
     description: 'Path to firewall config file (defaults to vercel-firewall.config.json)',
   },
+  provider: { type: 'string', choices: ['vercel', 'cloudflare'], description: 'Firewall provider (auto-detected)' },
   projectId: {
     alias: 'p',
     type: 'string',
@@ -41,6 +47,9 @@ export const builder = {
     type: 'string',
     description: 'Vercel API token (defaults to VERCEL_TOKEN env var)',
   },
+  apiToken: { type: 'string', description: 'Cloudflare API token (defaults to CLOUDFLARE_API_TOKEN env var)' },
+  zoneId: { type: 'string', description: 'Cloudflare Zone ID (defaults to CLOUDFLARE_ZONE_ID env var)' },
+  accountId: { type: 'string', description: 'Cloudflare Account ID (optional)' },
   format: {
     alias: 'f',
     type: 'string',
@@ -65,6 +74,7 @@ export const builder = {
     description: 'Enable debug logging',
     default: false,
   },
+  ci: { type: 'boolean', description: 'Run in CI mode (non-interactive)', default: false },
 }
 
 const generateMarkdownReport = (config: FirewallConfig): string => {
@@ -160,10 +170,15 @@ export const handler = async (argv: Arguments<ExportOptions>) => {
       await withCredentials(
         {
           config: argv.config,
+          provider: argv.provider,
           projectId: argv.projectId,
           teamId: argv.teamId,
           token: argv.token,
+          apiToken: argv.apiToken,
+          zoneId: argv.zoneId,
+          accountId: argv.accountId,
           debug: argv.debug,
+          ci: argv.ci,
           errorContext: 'exporting configuration',
         },
         async ({ client }) => {

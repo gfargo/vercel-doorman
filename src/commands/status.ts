@@ -6,10 +6,15 @@ import { withCredentials } from '../lib/utils/withCredentials'
 
 interface StatusOptions {
   config?: string
+  provider?: 'vercel' | 'cloudflare'
   projectId?: string
   teamId?: string
   token?: string
+  apiToken?: string
+  zoneId?: string
+  accountId?: string
   debug?: boolean
+  ci?: boolean
 }
 
 export const command = 'status'
@@ -21,6 +26,7 @@ export const builder = {
     type: 'string',
     description: 'Path to firewall config file (defaults to vercel-firewall.config.json)',
   },
+  provider: { type: 'string', choices: ['vercel', 'cloudflare'], description: 'Firewall provider (auto-detected)' },
   projectId: {
     alias: 'p',
     type: 'string',
@@ -35,21 +41,30 @@ export const builder = {
     type: 'string',
     description: 'Vercel API token (defaults to VERCEL_TOKEN env var)',
   },
+  apiToken: { type: 'string', description: 'Cloudflare API token (defaults to CLOUDFLARE_API_TOKEN env var)' },
+  zoneId: { type: 'string', description: 'Cloudflare Zone ID (defaults to CLOUDFLARE_ZONE_ID env var)' },
+  accountId: { type: 'string', description: 'Cloudflare Account ID (optional)' },
   debug: {
     type: 'boolean',
     description: 'Enable debug logging',
     default: false,
   },
+  ci: { type: 'boolean', description: 'Run in CI mode (non-interactive)', default: false },
 }
 
 export const handler = async (argv: Arguments<StatusOptions>) => {
   await withCredentials(
     {
       config: argv.config,
+      provider: argv.provider,
       projectId: argv.projectId,
       teamId: argv.teamId,
       token: argv.token,
+      apiToken: argv.apiToken,
+      zoneId: argv.zoneId,
+      accountId: argv.accountId,
       debug: argv.debug,
+      ci: argv.ci,
       errorContext: 'checking status',
     },
     async ({ config, service }) => {

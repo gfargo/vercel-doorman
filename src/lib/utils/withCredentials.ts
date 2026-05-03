@@ -1,19 +1,31 @@
 import { LogLevels } from 'consola'
 import { logger } from '../logger'
+import type { IFirewallProvider, ProviderType } from '../providers/IFirewallProvider'
 import { FirewallService } from '../services/FirewallService'
 import { VercelClient } from '../services/VercelClient'
 import { FirewallConfig } from '../types'
 import { promptForCredentials } from '../ui/promptForCredentials'
 import { getConfig } from './config'
 import { handleCommandError } from './handleCommandError'
+import { getProviderInstance } from './providerHelper'
 
 /**
  * Context provided to command handlers by `withCredentials`.
+ *
+ * For Vercel (legacy) usage, `client` and `service` are available.
+ * For multi-provider usage, use `provider` which implements `IFirewallProvider`.
+ * Both are always populated — `provider` wraps the Vercel client when in legacy mode.
  */
 export interface CommandContext {
+  /** The loaded config (FirewallConfig for legacy, may be UnifiedConfig for multi-provider) */
   config: FirewallConfig
+  /** The resolved provider instance (works for both Vercel and Cloudflare) */
+  provider: IFirewallProvider
+  /** @deprecated Use `provider` instead. Vercel client (only populated for Vercel provider) */
   client: VercelClient
+  /** @deprecated Use `provider` instead. Vercel firewall service (only populated for Vercel provider) */
   service: FirewallService
+  /** Resolved credentials */
   token: string
   projectId: string
   teamId: string
@@ -25,24 +37,31 @@ export interface CommandContext {
 export interface WithCredentialsOptions {
   /** CLI --config path */
   config?: string
-  /** CLI --projectId override */
+  /** Explicit provider selection (auto-detected if not specified) */
+  provider?: ProviderType
+  /** CLI --projectId override (Vercel) */
   projectId?: string
-  /** CLI --teamId override */
+  /** CLI --teamId override (Vercel) */
   teamId?: string
-  /** CLI --token override */
+  /** CLI --token override (Vercel) */
   token?: string
+  /** CLI --apiToken override (Cloudflare) */
+  apiToken?: string
+  /** CLI --zoneId override (Cloudflare) */
+  zoneId?: string
+  /** CLI --accountId override (Cloudflare) */
+  accountId?: string
   /** CLI --debug flag */
   debug?: boolean
+  /** CLI --ci flag (non-interactive mode) */
+  ci?: boolean
   /**
    * If true, config file is optional — missing/invalid configs are silently
    * ignored and an empty partial config is used for credential resolution.
-   * Use for commands like `list` and `download` that can work without a local config.
    */
   optionalConfig?: boolean
   /**
    * If true, config is loaded without schema validation.
-   * Use for commands like `download` that need to read projectId/teamId
-   * from a potentially incomplete config.
    */
   skipValidation?: boolean
   /** Context string for error messages (e.g., 'syncing firewall rules') */
@@ -50,13 +69,11 @@ export interface WithCredentialsOptions {
 }
 
 /**
- * Shared middleware that handles the common credential resolution pattern:
- * 1. Enable debug logging if requested
- * 2. Load config (required or optional)
- * 3. Resolve credentials from CLI args → config → env vars → interactive prompt
- * 4. Create VercelClient and FirewallService
- * 5. Call the handler with the resolved context
- * 6. Catch and format errors consistently
+ * Shared middleware that handles config loading, provider detection, credential
+ * resolution, and error handling for all CLI commands.
+ *
+ * Supports both legacy Vercel-only usage and multi-provider (Vercel/Cloudflare) usage.
+ * Provider is auto-detected from config/environment when not explicitly specified.
  */
 export async function withCredentials(
   options: WithCredentialsOptions,
@@ -67,6 +84,7 @@ export async function withCredentials(
       logger.level = LogLevels.debug
     }
 
+    // 1. Load config
     let config: FirewallConfig
 
     if (options.optionalConfig) {
@@ -81,16 +99,49 @@ export async function withCredentials(
       config = await getConfig(options.config, 'required')
     }
 
-    const { token, projectId, teamId } = await promptForCredentials({
+    // 2. Get provider instance (handles credential resolution for both providers)
+    const provider = await getProviderInstance({
+      provider: options.provider,
+      config,
+      interactive: !options.ci,
+      // Vercel credentials
       token: options.token,
-      projectId: options.projectId || config.projectId,
-      teamId: options.teamId || config.teamId,
+      projectId: options.projectId,
+      teamId: options.teamId,
+      // Cloudflare credentials
+      apiToken: options.apiToken,
+      zoneId: options.zoneId,
+      accountId: options.accountId,
     })
 
-    const client = new VercelClient(projectId, teamId, token)
-    const service = new FirewallService(client)
+    // 3. For backward compatibility, also create legacy Vercel client/service
+    //    These are only meaningful when the provider is Vercel.
+    let client: VercelClient
+    let service: FirewallService
+    let token = ''
+    let projectId = ''
+    let teamId = ''
 
-    await handler({ config, client, service, token, projectId, teamId })
+    if (provider.name === 'vercel') {
+      // Resolve Vercel credentials for the legacy context fields
+      const resolved = await promptForCredentials({
+        token: options.token,
+        projectId: options.projectId || config.projectId,
+        teamId: options.teamId || config.teamId,
+      })
+      token = resolved.token
+      projectId = resolved.projectId
+      teamId = resolved.teamId
+      client = new VercelClient(projectId, teamId, token)
+      service = new FirewallService(client)
+    } else {
+      // For non-Vercel providers, create stub instances
+      // Commands should use `provider` instead
+      client = {} as VercelClient
+      service = {} as FirewallService
+    }
+
+    await handler({ config, provider, client, service, token, projectId, teamId })
   } catch (error) {
     handleCommandError(error, options.errorContext)
   }
