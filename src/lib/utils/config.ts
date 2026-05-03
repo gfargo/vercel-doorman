@@ -101,7 +101,95 @@ export async function saveConfig(
     mkdirSync(configDir, { recursive: true })
   }
 
-  // Write config
-  writeFileSync(filePath, JSON.stringify(config, null, 2))
-  logger.debug(`Config saved to ${filePath}`)
+  // Create backup of existing config to prevent corruption
+  let backupPath: string | null = null
+  if (existsSync(filePath)) {
+    backupPath = `${filePath}.backup.${Date.now()}`
+    try {
+      const existingContent = readFileSync(filePath, 'utf8')
+      writeFileSync(backupPath, existingContent)
+      logger.debug(`Created backup at ${backupPath}`)
+    } catch (backupError) {
+      logger.warn(`Failed to create backup: ${backupError instanceof Error ? backupError.message : String(backupError)}`)
+      // Continue without backup - better to save than fail completely
+    }
+  }
+
+  try {
+    // Serialize config with error handling
+    let configJson: string
+    try {
+      configJson = JSON.stringify(config, null, 2)
+    } catch (serializationError) {
+      throw new Error(`Failed to serialize configuration: ${serializationError instanceof Error ? serializationError.message : String(serializationError)}`)
+    }
+
+    // Validate JSON before writing
+    try {
+      JSON.parse(configJson)
+    } catch (parseError) {
+      throw new Error(`Generated invalid JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`)
+    }
+
+    // Write config atomically using temporary file
+    const tempPath = `${filePath}.tmp.${Date.now()}`
+    try {
+      writeFileSync(tempPath, configJson)
+      
+      // Verify the written file is valid
+      const writtenContent = readFileSync(tempPath, 'utf8')
+      JSON.parse(writtenContent) // Throws if invalid
+      
+      // Atomic move to final location
+      if (existsSync(filePath)) {
+        // On Windows, we need to remove the target file first
+        if (process.platform === 'win32') {
+          const fs = require('fs')
+          fs.unlinkSync(filePath)
+        }
+      }
+      
+      const fs = require('fs')
+      fs.renameSync(tempPath, filePath)
+      
+      logger.debug(`Config saved to ${filePath}`)
+      
+      // Clean up backup after successful write
+      if (backupPath && existsSync(backupPath)) {
+        try {
+          fs.unlinkSync(backupPath)
+          logger.debug(`Cleaned up backup ${backupPath}`)
+        } catch (cleanupError) {
+          logger.debug(`Failed to clean up backup: ${cleanupError}`)
+          // Not critical - leave backup file
+        }
+      }
+      
+    } catch (writeError) {
+      // Clean up temp file
+      if (existsSync(tempPath)) {
+        try {
+          const fs = require('fs')
+          fs.unlinkSync(tempPath)
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      throw writeError
+    }
+    
+  } catch (saveError) {
+    // Restore from backup if save failed and backup exists
+    if (backupPath && existsSync(backupPath)) {
+      try {
+        const backupContent = readFileSync(backupPath, 'utf8')
+        writeFileSync(filePath, backupContent)
+        logger.info(`Restored configuration from backup due to save failure`)
+      } catch (restoreError) {
+        logger.error(`Failed to restore from backup: ${restoreError instanceof Error ? restoreError.message : String(restoreError)}`)
+      }
+    }
+    
+    throw new Error(`Failed to save configuration: ${saveError instanceof Error ? saveError.message : String(saveError)}`)
+  }
 }
