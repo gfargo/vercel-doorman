@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 import { CloudflareClient } from '../CloudflareClient'
 import type {
-  CloudflareRuleset,
-  CloudflareAPIResponse,
-  CloudflareList,
-  CloudflareListItem,
+    CloudflareRuleset,
+    CloudflareAPIResponse,
+    CloudflareList,
+    CloudflareListItem,
+    CloudflareRule,
 } from '../../../types/cloudflare'
 
 // Helper to build Response-like objects
@@ -713,6 +714,252 @@ describe('CloudflareClient', () => {
       const clientWithoutAccount = new CloudflareClient(API_TOKEN, ZONE_ID)
 
       await expect(clientWithoutAccount.getOrCreateIPBlocklist()).rejects.toThrow('Account ID required')
+    })
+  })
+
+  describe('Error Handling', () => {
+    it('should handle network errors with proper error mapping', async () => {
+      const networkError = new Error('Network connection failed')
+      fetchMock.mockRejectedValueOnce(networkError)
+
+      await expect(client.listRulesets()).rejects.toThrow()
+    })
+
+    it('should handle malformed API responses', async () => {
+      fetchMock.mockResolvedValueOnce(makeResponse({ 
+        ok: true, 
+        status: 200, 
+        jsonBody: { invalid: 'response' } // Missing required fields
+      }))
+
+      await expect(client.listRulesets()).rejects.toThrow()
+    })
+
+    it('should handle rate limiting with retry-after header', async () => {
+      const mockResponse: CloudflareAPIResponse<CloudflareRuleset[]> = {
+        success: false,
+        errors: [{ code: 10013, message: 'Rate limit exceeded' }],
+        messages: [],
+        result: [],
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ 
+        ok: false, 
+        status: 429, 
+        jsonBody: mockResponse,
+        headers: { 'Retry-After': '120' }
+      }))
+
+      await expect(client.listRulesets()).rejects.toThrow('Rate limit exceeded')
+    })
+
+    it('should handle partial API failures gracefully', async () => {
+      const mockResponse: CloudflareAPIResponse<CloudflareRuleset[]> = {
+        success: false,
+        errors: [
+          { code: 81044, message: 'Ruleset not found' },
+          { code: 81045, message: 'Rule limit exceeded' }
+        ],
+        messages: [],
+        result: [],
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: mockResponse }))
+
+      await expect(client.listRulesets()).rejects.toThrow()
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('should handle empty ruleset responses', async () => {
+      const mockResponse: CloudflareAPIResponse<CloudflareRuleset[]> = {
+        success: true,
+        errors: [],
+        messages: [],
+        result: [],
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: mockResponse }))
+
+      const result = await client.listRulesets()
+      expect(result).toEqual([])
+    })
+
+    it('should handle rulesets with complex rule structures', async () => {
+      const complexRule: CloudflareRule = {
+        id: 'complex-rule',
+        action: 'challenge',
+        expression: '(http.request.uri.path matches "^/api/.*") and (ip.geoip.country ne "US")',
+        description: 'Challenge non-US API requests',
+        enabled: true,
+      }
+
+      const mockRuleset: CloudflareRuleset = {
+        id: 'complex-ruleset',
+        name: 'Complex Ruleset',
+        description: 'Ruleset with complex rules',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [complexRule],
+      }
+
+      const mockResponse: CloudflareAPIResponse<CloudflareRuleset> = {
+        success: true,
+        errors: [],
+        messages: [],
+        result: mockRuleset,
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: mockResponse }))
+
+      const result = await client.getRuleset('complex-ruleset')
+      expect(result.rules[0]?.action).toBe('challenge')
+      expect(result.rules[0]?.expression).toContain('matches')
+    })
+
+    it('should handle large list operations', async () => {
+      const largeItemList: CloudflareListItem[] = Array.from({ length: 1000 }, (_, i) => ({
+        id: `item-${i}`,
+        ip: `192.168.${Math.floor(i / 256)}.${i % 256}`,
+        comment: `Test IP ${i}`,
+        created_on: '2024-01-01T00:00:00Z',
+        modified_on: '2024-01-01T00:00:00Z',
+      }))
+
+      const mockResponse = {
+        success: true,
+        errors: [],
+        messages: [],
+        result: largeItemList,
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: mockResponse }))
+
+      const result = await client.getListItems('large-list')
+      expect(result).toHaveLength(1000)
+    })
+
+    it('should handle concurrent API calls', async () => {
+      const mockResponse: CloudflareAPIResponse<CloudflareRuleset[]> = {
+        success: true,
+        errors: [],
+        messages: [],
+        result: [],
+      }
+
+      // Mock multiple concurrent calls
+      fetchMock.mockResolvedValue(makeResponse({ ok: true, status: 200, jsonBody: mockResponse }))
+
+      const promises = Array.from({ length: 5 }, () => client.listRulesets())
+      const results = await Promise.all(promises)
+
+      expect(results).toHaveLength(5)
+      expect(fetchMock).toHaveBeenCalledTimes(5)
+    })
+  })
+
+  describe('Credential Validation Edge Cases', () => {
+    it('should handle token with insufficient permissions', async () => {
+      const mockResponse: CloudflareAPIResponse<CloudflareRuleset[]> = {
+        success: false,
+        errors: [{ code: 10000, message: 'Insufficient permissions' }],
+        messages: [],
+        result: [],
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: false, status: 403, jsonBody: mockResponse }))
+
+      await expect(client.verifyCredentials()).rejects.toThrow()
+    })
+
+    it('should handle expired tokens', async () => {
+      const mockResponse: CloudflareAPIResponse<CloudflareRuleset[]> = {
+        success: false,
+        errors: [{ code: 10000, message: 'Token expired' }],
+        messages: [],
+        result: [],
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: false, status: 401, jsonBody: mockResponse }))
+
+      await expect(client.verifyCredentials()).rejects.toThrow()
+    })
+
+    it('should handle zone not found scenarios', async () => {
+      const mockResponse: CloudflareAPIResponse<any> = {
+        success: false,
+        errors: [{ code: 1001, message: 'Zone not found' }],
+        messages: [],
+        result: null,
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: false, status: 404, jsonBody: mockResponse }))
+
+      await expect(client.getZoneInfo()).rejects.toThrow()
+    })
+  })
+
+  describe('Lists API Edge Cases', () => {
+    it('should handle Lists API quota exceeded', async () => {
+      const mockResponse: CloudflareAPIResponse<CloudflareList> = {
+        success: false,
+        errors: [{ code: 10037, message: 'List quota exceeded' }],
+        messages: [],
+        result: {} as unknown,
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: false, status: 400, jsonBody: mockResponse }))
+
+      await expect(client.createList({
+        name: 'Test List',
+        description: 'Test',
+        kind: 'ip',
+      })).rejects.toThrow()
+    })
+
+    it('should handle duplicate list items', async () => {
+      const duplicateItems = [
+        { ip: '192.168.1.1', comment: 'Duplicate IP' },
+        { ip: '192.168.1.1', comment: 'Same IP again' },
+      ]
+
+      const mockResponse = {
+        success: true,
+        errors: [],
+        messages: ['Duplicate items were ignored'],
+        result: [
+          {
+            id: 'item-1',
+            ip: '192.168.1.1',
+            comment: 'Duplicate IP',
+            created_on: '2024-01-01T00:00:00Z',
+            modified_on: '2024-01-01T00:00:00Z',
+          },
+        ],
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: mockResponse }))
+
+      const result = await client.addListItems('test-list', { items: duplicateItems })
+      expect(result).toHaveLength(1) // Only one item should be returned
+    })
+
+    it('should handle list item validation errors', async () => {
+      const invalidItems = [
+        { ip: 'invalid-ip', comment: 'Bad IP format' },
+      ]
+
+      const mockResponse = {
+        success: false,
+        errors: [{ code: 10038, message: 'Invalid IP address format' }],
+        messages: [],
+        result: null,
+      }
+
+      fetchMock.mockResolvedValueOnce(makeResponse({ ok: false, status: 400, jsonBody: mockResponse }))
+
+      await expect(client.addListItems('test-list', { items: invalidItems })).rejects.toThrow()
     })
   })
 })

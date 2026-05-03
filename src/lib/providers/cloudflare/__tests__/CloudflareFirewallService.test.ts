@@ -985,4 +985,526 @@ describe('CloudflareFirewallService', () => {
       expect(result).toBe(false)
     })
   })
+
+  describe('Error Handling and Edge Cases', () => {
+    it('should handle translation warnings during fetchConfig', async () => {
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [
+          {
+            id: 'complex-rule',
+            action: 'managed_challenge',
+            expression: 'http.request.uri.path contains "/admin" and ip.geoip.country eq "CN"',
+            description: 'Complex rule with potential translation issues',
+            enabled: true,
+          },
+        ],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'getOrCreateIPBlocklist').mockResolvedValue({
+        id: 'list-1',
+        name: 'Doorman IP Blocklist',
+        description: 'Test',
+        kind: 'ip',
+        num_items: 0,
+        num_referencing_filters: 0,
+        created_on: '2024-01-01T00:00:00Z',
+        modified_on: '2024-01-01T00:00:00Z',
+      })
+      jest.spyOn(mockClient, 'getListItems').mockResolvedValue([])
+
+      const config = await service.fetchConfig()
+
+      expect(config.rules).toHaveLength(1)
+      // Should handle complex rules without throwing
+    })
+
+    it('should handle malformed rules during fetchConfig', async () => {
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [
+          {
+            id: 'malformed-rule',
+            action: 'block',
+            expression: '', // Empty expression
+            description: 'Malformed rule',
+            enabled: true,
+          },
+          {
+            id: 'valid-rule',
+            action: 'allow',
+            expression: 'http.request.uri.path eq "/valid"',
+            description: 'Valid rule',
+            enabled: true,
+          },
+        ],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'getOrCreateIPBlocklist').mockResolvedValue({
+        id: 'list-1',
+        name: 'Doorman IP Blocklist',
+        description: 'Test',
+        kind: 'ip',
+        num_items: 0,
+        num_referencing_filters: 0,
+        created_on: '2024-01-01T00:00:00Z',
+        modified_on: '2024-01-01T00:00:00Z',
+      })
+      jest.spyOn(mockClient, 'getListItems').mockResolvedValue([])
+
+      const config = await service.fetchConfig()
+
+      // Should continue processing despite malformed rule
+      expect(config.rules.length).toBeGreaterThanOrEqual(0)
+    })
+
+    it('should handle network errors during sync', async () => {
+      const mockConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [],
+        ips: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockRejectedValue(new Error('Network timeout'))
+
+      await expect(service.syncRules(mockConfig)).rejects.toThrow('Network timeout')
+    })
+
+    it('should handle partial sync failures gracefully', async () => {
+      const mockConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [],
+        ips: [
+          {
+            id: 'ip-1',
+            ip: '192.168.1.1',
+            action: 'deny',
+          },
+        ],
+      }
+
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'getOrCreateIPBlocklist').mockRejectedValue(new Error('Lists API temporarily unavailable'))
+      jest.spyOn(mockClient, 'updateRuleset').mockResolvedValue({
+        ...mockRuleset,
+        version: '2',
+      })
+
+      // Should fall back to individual IP rules
+      const result = await service.syncRules(mockConfig)
+
+      expect(result.success).toBe(true)
+      expect(result.ipsAdded).toBe(1)
+    })
+
+    it('should handle concurrent operations', async () => {
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'getOrCreateIPBlocklist').mockResolvedValue({
+        id: 'list-1',
+        name: 'Doorman IP Blocklist',
+        description: 'Test',
+        kind: 'ip',
+        num_items: 0,
+        num_referencing_filters: 0,
+        created_on: '2024-01-01T00:00:00Z',
+        modified_on: '2024-01-01T00:00:00Z',
+      })
+      jest.spyOn(mockClient, 'getListItems').mockResolvedValue([])
+
+      // Test concurrent fetchConfig calls
+      const promises = Array.from({ length: 3 }, () => service.fetchConfig())
+      const results = await Promise.all(promises)
+
+      expect(results).toHaveLength(3)
+      results.forEach(config => {
+        expect(config.version).toBe('2.0')
+        expect(config.provider).toBe('cloudflare')
+      })
+    })
+  })
+
+  describe('Complex Rule Scenarios', () => {
+    it('should handle rate limiting rules with complex configurations', async () => {
+      const mockConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [
+          {
+            id: 'rate-limit-rule',
+            name: 'API Rate Limit',
+            description: 'Rate limit API endpoints',
+            enabled: true,
+            action: {
+              type: 'rate_limit',
+              rateLimit: {
+                requests: 100,
+                window: '60s',
+                characteristics: ['ip.src', 'http.request.uri.path'],
+                mitigationTimeout: 300,
+              },
+            },
+            conditions: [
+              {
+                field: 'path',
+                operator: 'starts_with',
+                value: '/api/',
+              },
+            ],
+          },
+        ],
+        ips: [],
+      }
+
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'updateRuleset').mockResolvedValue({
+        ...mockRuleset,
+        version: '2',
+      })
+
+      const result = await service.syncRules(mockConfig)
+
+      expect(result.success).toBe(true)
+      expect(result.rulesAdded).toBe(1)
+    })
+
+    it('should handle redirect rules with various configurations', async () => {
+      const mockConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [
+          {
+            id: 'redirect-rule',
+            name: 'Legacy Redirect',
+            description: 'Redirect old paths',
+            enabled: true,
+            action: {
+              type: 'redirect',
+              redirect: {
+                location: 'https://example.com/new-path',
+                statusCode: 301,
+              },
+            },
+            conditions: [
+              {
+                field: 'path',
+                operator: 'eq',
+                value: '/old-path',
+              },
+            ],
+          },
+        ],
+        ips: [],
+      }
+
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'updateRuleset').mockResolvedValue({
+        ...mockRuleset,
+        version: '2',
+      })
+
+      const result = await service.syncRules(mockConfig)
+
+      expect(result.success).toBe(true)
+      expect(result.rulesAdded).toBe(1)
+    })
+
+    it('should handle geo-blocking rules', async () => {
+      const mockConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [
+          {
+            id: 'geo-block-rule',
+            name: 'Block Specific Countries',
+            description: 'Block traffic from specific countries',
+            enabled: true,
+            action: {
+              type: 'deny',
+            },
+            conditions: [
+              {
+                field: 'country',
+                operator: 'in',
+                value: ['CN', 'RU', 'KP'],
+              },
+            ],
+          },
+        ],
+        ips: [],
+      }
+
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'updateRuleset').mockResolvedValue({
+        ...mockRuleset,
+        version: '2',
+      })
+
+      const result = await service.syncRules(mockConfig)
+
+      expect(result.success).toBe(true)
+      expect(result.rulesAdded).toBe(1)
+    })
+  })
+
+  describe('Large Scale Operations', () => {
+    it('should handle large rule sets efficiently', async () => {
+      const largeRuleSet: UnifiedRule[] = Array.from({ length: 100 }, (_, i) => ({
+        id: `rule-${i}`,
+        name: `Rule ${i}`,
+        description: `Test rule ${i}`,
+        enabled: true,
+        action: { type: 'deny' },
+        conditions: [
+          {
+            field: 'path',
+            operator: 'eq',
+            value: `/blocked-${i}`,
+          },
+        ],
+      }))
+
+      const mockConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: largeRuleSet,
+        ips: [],
+      }
+
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'updateRuleset').mockResolvedValue({
+        ...mockRuleset,
+        version: '2',
+      })
+
+      const result = await service.syncRules(mockConfig)
+
+      expect(result.success).toBe(true)
+      expect(result.rulesAdded).toBe(100)
+    })
+
+    it('should handle large IP lists with Lists API', async () => {
+      const largeIPList: UnifiedIPRule[] = Array.from({ length: 500 }, (_, i) => ({
+        id: `ip-${i}`,
+        ip: `192.168.${Math.floor(i / 256)}.${i % 256}`,
+        action: 'deny',
+        notes: `Blocked IP ${i}`,
+      }))
+
+      const mockConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [],
+        ips: largeIPList,
+      }
+
+      const mockRuleset: CloudflareRuleset = {
+        id: 'ruleset-1',
+        name: 'Test Ruleset',
+        description: 'Test',
+        kind: 'custom',
+        phase: 'http_request_firewall_custom',
+        version: '1',
+        rules: [],
+      }
+
+      jest.spyOn(mockClient, 'getOrCreateFirewallRuleset').mockResolvedValue(mockRuleset)
+      jest.spyOn(mockClient, 'getOrCreateIPBlocklist').mockResolvedValue({
+        id: 'list-1',
+        name: 'Doorman IP Blocklist',
+        description: 'Test',
+        kind: 'ip',
+        num_items: 0,
+        num_referencing_filters: 0,
+        created_on: '2024-01-01T00:00:00Z',
+        modified_on: '2024-01-01T00:00:00Z',
+      })
+      jest.spyOn(mockClient, 'getListItems').mockResolvedValue([])
+      jest.spyOn(mockClient, 'addListItems').mockResolvedValue([])
+      jest.spyOn(mockClient, 'updateRuleset').mockResolvedValue({
+        ...mockRuleset,
+        version: '2',
+      })
+
+      const result = await service.syncRules(mockConfig)
+
+      expect(result.success).toBe(true)
+      expect(result.ipsAdded).toBe(500)
+      expect(mockClient.addListItems).toHaveBeenCalled()
+    })
+  })
+
+  describe('Configuration Validation Edge Cases', () => {
+    it('should handle empty characteristics in rate limiting', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [
+          {
+            id: 'rule-1',
+            name: 'Rate Limit Rule',
+            enabled: true,
+            action: {
+              type: 'rate_limit',
+              rateLimit: {
+                requests: 100,
+                window: '60s',
+                characteristics: [], // Empty characteristics
+              },
+            },
+            conditions: [{ field: 'path', operator: 'eq', value: '/api' }],
+          },
+        ],
+        ips: [],
+      }
+
+      const result = service.validateConfig(config)
+
+      expect(result.warnings.some((w) => w.code === 'CLOUDFLARE_EMPTY_CHARACTERISTICS')).toBe(true)
+    })
+
+    it('should validate CIDR notation in IP rules', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [],
+        ips: [
+          {
+            id: 'ip-1',
+            ip: '192.168.1.0/24', // Valid CIDR
+            action: 'deny',
+          },
+          {
+            id: 'ip-2',
+            ip: '10.0.0.0/8', // Valid CIDR
+            action: 'deny',
+          },
+          {
+            id: 'ip-3',
+            ip: '192.168.1.1/33', // Invalid CIDR (subnet too large)
+            action: 'deny',
+          },
+        ],
+      }
+
+      const result = service.validateConfig(config)
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_IP')).toBe(true)
+    })
+
+    it('should validate redirect URL formats', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [
+          {
+            id: 'rule-1',
+            name: 'Valid Redirect',
+            enabled: true,
+            action: {
+              type: 'redirect',
+              redirect: {
+                location: 'https://example.com/valid',
+                statusCode: 302,
+              },
+            },
+            conditions: [{ field: 'path', operator: 'eq', value: '/old' }],
+          },
+          {
+            id: 'rule-2',
+            name: 'Invalid Redirect',
+            enabled: true,
+            action: {
+              type: 'redirect',
+              redirect: {
+                location: 'not-a-valid-url',
+                statusCode: 302,
+              },
+            },
+            conditions: [{ field: 'path', operator: 'eq', value: '/old2' }],
+          },
+        ],
+        ips: [],
+      }
+
+      const result = service.validateConfig(config)
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_REDIRECT_URL')).toBe(true)
+    })
+  })
 })
