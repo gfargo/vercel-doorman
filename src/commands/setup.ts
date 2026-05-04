@@ -9,7 +9,7 @@ export const desc = 'Show setup instructions and helpful links for Vercel Doorma
 
 export const builder = {}
 
-export const handler = async (argv: Arguments<SetupOptions>) => {
+export const handler = async (_argv: Arguments<SetupOptions>) => {
   logger.log('')
   logger.log(chalk.bold.cyan('🚪 Vercel Doorman Setup Guide'))
   logger.log(chalk.dim('Everything you need to get started with firewall management\n'))

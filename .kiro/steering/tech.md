@@ -38,8 +38,9 @@ pnpm clean              # Clean dist directory
 
 ### Testing & Quality
 ```bash
-pnpm test               # Run test suite
+pnpm test               # Run full test suite (55 suites, 1100+ tests)
 pnpm test:watch         # Run tests in watch mode
+pnpm test -- <path>     # Run a single test file
 pnpm lint               # Check code style
 pnpm lint:fix           # Fix linting issues
 pnpm format             # Check formatting
