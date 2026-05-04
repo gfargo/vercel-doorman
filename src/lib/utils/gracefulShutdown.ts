@@ -19,7 +19,7 @@ export function setupGracefulShutdown(
   cleanupFn?: () => Promise<void>,
   options: ShutdownOptions = {},
 ): void {
-  const { timeout = 10000, saveProgress = true, cleanupMessage } = options
+  const { timeout = 10000, cleanupMessage } = options
   const resilienceManager = getNetworkResilienceManager()
 
   // Register command-specific cleanup

@@ -232,7 +232,7 @@ export class NetworkResilienceManager {
     logger.info(`\n🛑 Received ${signal}, shutting down gracefully...`)
 
     // Save progress states
-    for (const [progressId, state] of this.progressStates.entries()) {
+    for (const [, state] of this.progressStates.entries()) {
       logger.info(`💾 Saving progress for ${state.operation}: ${state.completed}/${state.total} completed`)
     }
 
@@ -398,7 +398,7 @@ export function withNetworkResilience(
   context: Omit<NetworkFailureContext, 'attempt' | 'totalAttempts'>,
   options?: Partial<RetryOptions>,
 ) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (_target: any, _propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value
 
     descriptor.value = async function (...args: any[]) {
