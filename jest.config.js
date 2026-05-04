@@ -2,7 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  modulePathIgnorePatterns: ['<rootDir>/dist/', '<rootDir>/.www/'],
   testPathIgnorePatterns: [
     '/node_modules/',
     // Temporarily skip Cloudflare provider tests with pre-existing failures
