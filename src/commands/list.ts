@@ -8,12 +8,17 @@ import { displayIPBlockingTable, displayRulesTable } from '../lib/ui/table'
 import { withCredentials } from '../lib/utils/withCredentials'
 
 interface ListOptions {
+  provider?: 'vercel' | 'cloudflare'
   projectId: string
   teamId: string
   token?: string
+  apiToken?: string
+  zoneId?: string
+  accountId?: string
   format?: 'json' | 'table'
   debug: boolean
   configVersion?: number
+  ci?: boolean
 }
 
 export const command = 'list [configVersion]'
@@ -24,6 +29,7 @@ export const builder = {
     type: 'number',
     description: 'Specific configuration version to fetch (defaults to latest)',
   },
+  provider: { type: 'string', choices: ['vercel', 'cloudflare'], description: 'Firewall provider (auto-detected)' },
   projectId: {
     alias: 'p',
     type: 'string',
@@ -38,6 +44,9 @@ export const builder = {
     type: 'string',
     description: 'Vercel API token (defaults to VERCEL_TOKEN env var)',
   },
+  apiToken: { type: 'string', description: 'Cloudflare API token (defaults to CLOUDFLARE_API_TOKEN env var)' },
+  zoneId: { type: 'string', description: 'Cloudflare Zone ID (defaults to CLOUDFLARE_ZONE_ID env var)' },
+  accountId: { type: 'string', description: 'Cloudflare Account ID (optional)' },
   format: {
     alias: 'f',
     type: 'string',
@@ -50,15 +59,21 @@ export const builder = {
     description: 'Enable debug logging',
     default: false,
   },
+  ci: { type: 'boolean', description: 'Run in CI mode (non-interactive)', default: false },
 }
 
 export const handler = async (argv: Arguments<ListOptions>) => {
   await withCredentials(
     {
+      provider: argv.provider,
       projectId: argv.projectId,
       teamId: argv.teamId,
       token: argv.token,
+      apiToken: argv.apiToken,
+      zoneId: argv.zoneId,
+      accountId: argv.accountId,
       debug: argv.debug,
+      ci: argv.ci,
       optionalConfig: true,
       skipValidation: true,
       errorContext: 'listing firewall rules',

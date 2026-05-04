@@ -119,3 +119,7 @@ export interface FirewallConfig extends ProjectConfig {
   ips?: IPBlockingRule[]
   updatedAt?: string
 }
+
+// Re-export unified types for multi-provider support
+export type { UnifiedConfig, UnifiedRule, UnifiedIPRule } from './types/unified'
+export { isUnifiedConfig, isUnifiedRule, isUnifiedIPRule } from './types/unified'
