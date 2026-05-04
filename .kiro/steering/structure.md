@@ -112,8 +112,9 @@ Each command uses `withCredentials()` middleware for config/credential setup:
 - Error tests in `src/lib/errors/__tests__/`
 
 ## Configuration Files
-- `vercel-firewall.config.json` - Main configuration file format
-- `vercel-firewall[project-name].config.json` - Project-specific configs
+- `.doorman.json` - Default configuration file (new in v2.0)
+- `vercel-firewall.config.json` - Legacy configuration file (still supported)
+- `vercel-firewall[project-name].config.json` - Legacy project-specific configs
 
 ## Naming Conventions
 - **Files**: kebab-case for directories, camelCase for TypeScript files

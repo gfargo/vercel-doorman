@@ -1,20 +1,31 @@
 import { existsSync } from 'fs'
 import { dirname, resolve } from 'path'
 
-const CONFIG_FILE_NAME = 'vercel-firewall.config.json'
+/**
+ * Config file names in priority order.
+ * `.doorman.json` is the new default; `vercel-firewall.config.json` is the legacy name.
+ */
+const CONFIG_FILE_NAMES = ['.doorman.json', 'vercel-firewall.config.json'] as const
+
+export const DEFAULT_CONFIG_FILE_NAME = CONFIG_FILE_NAMES[0]
+
 export class ConfigFinder {
   /**
    * Find the config file by looking in the current directory and walking up
-   * the directory tree until we find it or hit the root
+   * the directory tree until we find it or hit the root.
+   * Checks `.doorman.json` first, then falls back to `vercel-firewall.config.json`.
    */
   static async findConfig(startPath?: string): Promise<string | undefined> {
-    // Use dynamic import for ESM module
     const { findUp } = await import('find-up')
-    const configPath = await findUp(CONFIG_FILE_NAME, {
-      cwd: startPath || process.cwd(),
-    })
 
-    return configPath || undefined
+    for (const name of CONFIG_FILE_NAMES) {
+      const configPath = await findUp(name, {
+        cwd: startPath || process.cwd(),
+      })
+      if (configPath) return configPath
+    }
+
+    return undefined
   }
 
   /**
@@ -33,9 +44,17 @@ export class ConfigFinder {
   }
 
   /**
-   * Get the default config path relative to the current directory
+   * Get the default config path relative to the current directory.
+   * Returns `.doorman.json` for new projects.
    */
   static getDefaultConfigPath(): string {
-    return resolve(process.cwd(), CONFIG_FILE_NAME)
+    return resolve(process.cwd(), DEFAULT_CONFIG_FILE_NAME)
+  }
+
+  /**
+   * Get all supported config file names (for documentation/help text).
+   */
+  static getSupportedFileNames(): readonly string[] {
+    return CONFIG_FILE_NAMES
   }
 }

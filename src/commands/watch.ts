@@ -26,7 +26,7 @@ export const builder = {
   config: {
     alias: 'c',
     type: 'string',
-    description: 'Path to firewall config file (defaults to vercel-firewall.config.json)',
+    description: 'Path to firewall config file (defaults to .doorman.json)',
   },
   provider: { type: 'string', choices: ['vercel', 'cloudflare'], description: 'Firewall provider (auto-detected)' },
   projectId: {
@@ -61,7 +61,7 @@ export const builder = {
 }
 
 export const handler = async (argv: Arguments<WatchOptions>) => {
-  const configPath = argv.config || 'vercel-firewall.config.json'
+  const configPath = argv.config || '.doorman.json'
 
   await withCredentials(
     {

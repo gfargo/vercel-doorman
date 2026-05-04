@@ -30,7 +30,7 @@ export const builder = {
     alias: 'c',
     type: 'string',
     description: 'Path for the new config file',
-    default: 'vercel-firewall.config.json',
+    default: '.doorman.json',
   },
   force: {
     alias: 'f',
@@ -141,7 +141,7 @@ const promptForProjectDetails = async (argv: Arguments<InitOptions>) => {
 
 export const handler = async (argv: Arguments<InitOptions>) => {
   try {
-    const configPath = argv.config || 'vercel-firewall.config.json'
+    const configPath = argv.config || '.doorman.json'
 
     if (argv.interactive) {
       showWelcomeMessage()

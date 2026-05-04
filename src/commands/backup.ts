@@ -33,7 +33,7 @@ export const builder = {
   config: {
     alias: 'c',
     type: 'string',
-    description: 'Path to firewall config file (defaults to vercel-firewall.config.json)',
+    description: 'Path to firewall config file (defaults to .doorman.json)',
   },
   provider: { type: 'string', choices: ['vercel', 'cloudflare'], description: 'Firewall provider (auto-detected)' },
   projectId: {
@@ -131,7 +131,7 @@ export const handler = async (argv: Arguments<BackupOptions>) => {
       }
 
       const backupConfig = await getConfig(restorePath, 'raw')
-      const outputPath = argv.config || 'vercel-firewall.config.json'
+      const outputPath = argv.config || '.doorman.json'
 
       if (existsSync(outputPath)) {
         const overwrite = await prompt(`Config file ${outputPath} already exists. Do you want to overwrite it?`, {
