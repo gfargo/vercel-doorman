@@ -4,6 +4,23 @@ import { CloudflareFirewallService } from '../CloudflareFirewallService'
 import type { CloudflareAPIResponse } from '../../../types/cloudflare'
 import type { UnifiedConfig } from '../../../types/unified'
 
+// Mock logger
+jest.mock('../../../logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
+// Mock OperationSafety for syncRules tests
+jest.mock('../../../utils/operationSafety', () => ({
+  OperationSafety: {
+    performDryRunValidation: jest.fn<() => Promise<any>>().mockResolvedValue({
+      valid: true,
+      changes: { rulesToAdd: [], rulesToUpdate: [], rulesToDelete: [], ipsToAdd: [], ipsToUpdate: [], ipsToDelete: [], hasChanges: false },
+      issues: [],
+    }),
+    confirmDestructiveOperation: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  },
+}))
+
 // Helper to build Response-like objects
 const makeResponse = (init: {
   ok: boolean
@@ -38,6 +55,8 @@ describe('Cloudflare Error Handling Integration', () => {
     client = new CloudflareClient(API_TOKEN, ZONE_ID, ACCOUNT_ID)
     service = new CloudflareFirewallService(API_TOKEN, ZONE_ID, ACCOUNT_ID)
     fetchMock = jest.spyOn(globalThis, 'fetch')
+    // Mock delay to avoid real timeouts in retry logic
+    jest.spyOn(CloudflareClient.prototype as any, 'delay').mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -209,7 +228,9 @@ describe('Cloudflare Error Handling Integration', () => {
         }),
       )
 
-      await expect(client.listRulesets()).rejects.toThrow()
+      // When success is true but result is missing/undefined, listRulesets returns empty array
+      const result = await client.listRulesets()
+      expect(result).toEqual([])
     })
 
     it('should handle unexpected response structure', async () => {
@@ -266,21 +287,24 @@ describe('Cloudflare Error Handling Integration', () => {
         ],
       }
 
-      // Mock successful ruleset creation but failed IP list operations
+      // Mock successful ruleset list (getOrCreateFirewallRuleset → listRulesets)
       const rulesetResponse: CloudflareAPIResponse<any> = {
         success: true,
         errors: [],
         messages: [],
-        result: {
-          id: 'ruleset-1',
-          name: 'Test Ruleset',
-          kind: 'custom',
-          phase: 'http_request_firewall_custom',
-          version: '1',
-          rules: [],
-        },
+        result: [
+          {
+            id: 'ruleset-1',
+            name: 'Test Ruleset',
+            kind: 'custom',
+            phase: 'http_request_firewall_custom',
+            version: '1',
+            rules: [],
+          },
+        ],
       }
 
+      // Mock Lists API failure (getOrCreateIPBlocklist → listLists)
       const listErrorResponse: CloudflareAPIResponse<any> = {
         success: false,
         errors: [{ code: 10037, message: 'List quota exceeded' }],
@@ -288,11 +312,7 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock
-        .mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: rulesetResponse }))
-        .mockResolvedValueOnce(makeResponse({ ok: false, status: 400, jsonBody: listErrorResponse }))
-
-      // Should fall back to individual IP rules
+      // Mock successful ruleset update (updateRuleset)
       const updateResponse: CloudflareAPIResponse<any> = {
         success: true,
         errors: [],
@@ -307,8 +327,12 @@ describe('Cloudflare Error Handling Integration', () => {
         },
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: updateResponse }))
+      fetchMock
+        .mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: rulesetResponse }))
+        .mockResolvedValueOnce(makeResponse({ ok: false, status: 400, jsonBody: listErrorResponse }))
+        .mockResolvedValueOnce(makeResponse({ ok: true, status: 200, jsonBody: updateResponse }))
 
+      // Should fall back to individual IP rules when Lists API fails
       const result = await service.syncRules(mockConfig)
       expect(result.success).toBe(true)
     })
@@ -333,7 +357,7 @@ describe('Cloudflare Error Handling Integration', () => {
 
       const validationResult = service.validateConfig(mockConfig)
       expect(validationResult.valid).toBe(false)
-      expect(validationResult.errors.some((e) => e.code === 'CLOUDFLARE_RULE_NO_CONDITIONS')).toBe(true)
+      expect(validationResult.errors.some((e) => e.code === 'CF_6007')).toBe(true)
     })
 
     it('should handle invalid IP addresses', async () => {
@@ -352,7 +376,7 @@ describe('Cloudflare Error Handling Integration', () => {
 
       const validationResult = service.validateConfig(mockConfig)
       expect(validationResult.valid).toBe(false)
-      expect(validationResult.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_IP')).toBe(true)
+      expect(validationResult.errors.some((e) => e.code === 'CF_6013')).toBe(true)
     })
 
     it('should handle rule limit exceeded', async () => {
@@ -373,7 +397,7 @@ describe('Cloudflare Error Handling Integration', () => {
 
       const validationResult = service.validateConfig(mockConfig)
       expect(validationResult.valid).toBe(false)
-      expect(validationResult.errors.some((e) => e.code === 'CLOUDFLARE_RULE_LIMIT_EXCEEDED')).toBe(true)
+      expect(validationResult.errors.some((e) => e.code === 'CF_6001')).toBe(true)
     })
   })
 

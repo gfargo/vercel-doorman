@@ -107,19 +107,7 @@ describe('BackupGuidance', () => {
     })
 
     it('should list available backups', () => {
-      const mockFs = {
-        readdirSync: jest
-          .fn()
-          .mockReturnValue([
-            'config-backup-2023-01-01T00-00-00-000Z.json.meta.json',
-            'config-backup-2023-01-02T00-00-00-000Z.json.meta.json',
-            'other-file.txt',
-          ]),
-      }
-
-      // Mock require for fs
-      jest.doMock('fs', () => mockFs)
-
+      // Use the already-mocked fs functions
       mockExistsSync.mockImplementation((path) => {
         if (typeof path === 'string' && path.includes('.doorman-backups')) {
           return true
@@ -129,6 +117,14 @@ describe('BackupGuidance', () => {
         }
         return false
       })
+
+      // Mock readdirSync via require since listBackups uses require('fs').readdirSync
+      const fs = require('fs')
+      fs.readdirSync = jest.fn().mockReturnValue([
+        'config-backup-2023-01-01T00-00-00-000Z.json.meta.json',
+        'config-backup-2023-01-02T00-00-00-000Z.json.meta.json',
+        'other-file.txt',
+      ])
 
       mockReadFileSync.mockImplementation((path) => {
         if (typeof path === 'string' && path.includes('meta.json')) {
@@ -145,34 +141,27 @@ describe('BackupGuidance', () => {
         return ''
       })
 
-      // Re-require the module to get the mocked fs
-      jest.resetModules()
-      const { BackupGuidance: BackupGuidanceWithMock } = require('../backupGuidance')
-
-      const backups = BackupGuidanceWithMock.listBackups(configPath)
+      const backups = BackupGuidance.listBackups(configPath)
 
       expect(backups).toHaveLength(2)
-      expect(backups[0].operation).toBe('sync rules')
+      expect(backups[0]!.operation).toBe('sync rules')
     })
   })
 
   describe('showBackupRecommendations', () => {
     it('should not show recommendations for low-risk operations', () => {
-      const loggerInfo = require('../../logger').logger.info
-
       BackupGuidance.showBackupRecommendations('update rules', 'low')
 
-      expect(loggerInfo).not.toHaveBeenCalled()
+      const { logger } = require('../../logger')
+      expect(logger.info).not.toHaveBeenCalled()
     })
 
     it('should show recommendations for high-risk operations', () => {
-      const loggerInfo = require('../../logger').logger.info
-      const loggerWarn = require('../../logger').logger.warn
-
       BackupGuidance.showBackupRecommendations('delete ruleset', 'high')
 
-      expect(loggerInfo).toHaveBeenCalled()
-      expect(loggerWarn).toHaveBeenCalled()
+      const { logger } = require('../../logger')
+      expect(logger.info).toHaveBeenCalled()
+      expect(logger.warn).toHaveBeenCalled()
     })
   })
 })

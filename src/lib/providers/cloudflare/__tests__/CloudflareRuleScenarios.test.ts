@@ -4,6 +4,23 @@ import { CloudflareClient } from '../CloudflareClient'
 import type { UnifiedConfig, UnifiedRule, UnifiedIPRule } from '../../../types/unified'
 import type { CloudflareRuleset } from '../../../types/cloudflare'
 
+// Mock logger
+jest.mock('../../../logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
+// Mock OperationSafety for syncRules tests
+jest.mock('../../../utils/operationSafety', () => ({
+  OperationSafety: {
+    performDryRunValidation: jest.fn<() => Promise<any>>().mockResolvedValue({
+      valid: true,
+      changes: { rulesToAdd: [], rulesToUpdate: [], rulesToDelete: [], ipsToAdd: [], ipsToUpdate: [], ipsToDelete: [], hasChanges: false },
+      issues: [],
+    }),
+    confirmDestructiveOperation: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  },
+}))
+
 describe('Cloudflare Rule Scenarios', () => {
   const API_TOKEN = 'test-token'
   const ZONE_ID = 'test-zone-id'
@@ -86,10 +103,9 @@ describe('Cloudflare Rule Scenarios', () => {
           rules: expect.arrayContaining([
             expect.objectContaining({
               action: 'block',
-              action_parameters: expect.objectContaining({
-                response: expect.objectContaining({
-                  status_code: 429,
-                }),
+              ratelimit: expect.objectContaining({
+                requests_per_period: 100,
+                period: 60,
               }),
             }),
           ]),
@@ -306,7 +322,7 @@ describe('Cloudflare Rule Scenarios', () => {
           },
           {
             field: 'ip',
-            operator: 'not_eq',
+            operator: 'ne',
             value: '192.168.0.0/16',
           },
         ],
