@@ -231,7 +231,8 @@ export class CloudflareConfigValidator {
       result.warnings.push({
         field: 'providers.cloudflare.accountId',
         message: 'Account ID not provided - Lists API will not be available',
-        suggestion: 'Set CLOUDFLARE_ACCOUNT_ID environment variable or add accountId to config to enable bulk IP management',
+        suggestion:
+          'Set CLOUDFLARE_ACCOUNT_ID environment variable or add accountId to config to enable bulk IP management',
         docsUrl: 'https://docs.doorman.griffen.codes/cloudflare/setup#account-id',
         severity: 'info',
       })
@@ -295,7 +296,8 @@ export class CloudflareConfigValidator {
             result.warnings.push({
               field: `rules.${rule.name}.conditions`,
               message: `Condition field "${condition.field}" may have limited support in Cloudflare`,
-              suggestion: 'Review Cloudflare WAF documentation for supported fields and consider alternative approaches',
+              suggestion:
+                'Review Cloudflare WAF documentation for supported fields and consider alternative approaches',
               docsUrl: 'https://docs.doorman.griffen.codes/cloudflare/limitations',
               severity: 'warning',
             })
@@ -350,7 +352,8 @@ export class CloudflareConfigValidator {
         result.errors.push({
           field: 'providers.cloudflare.zoneId',
           message: 'Zone access validation failed',
-          suggestion: zoneValidation.suggestions.join('; ') || 'Verify the Zone ID is correct and your token has zone access',
+          suggestion:
+            zoneValidation.suggestions.join('; ') || 'Verify the Zone ID is correct and your token has zone access',
           docsUrl: 'https://docs.doorman.griffen.codes/cloudflare/setup#zone-id',
           severity: 'error',
         })
@@ -363,7 +366,9 @@ export class CloudflareConfigValidator {
           result.warnings.push({
             field: 'providers.cloudflare.accountId',
             message: 'Account access validation failed',
-            suggestion: accountValidation.suggestions.join('; ') || 'Lists API will not be available. Verify Account ID and permissions',
+            suggestion:
+              accountValidation.suggestions.join('; ') ||
+              'Lists API will not be available. Verify Account ID and permissions',
             docsUrl: 'https://docs.doorman.griffen.codes/cloudflare/setup#account-id',
             severity: 'warning',
           })
@@ -408,7 +413,8 @@ export class CloudflareConfigValidator {
           result.warnings.push({
             field: 'features.lists',
             message: 'Lists API is not available',
-            suggestion: 'IP rules will be created individually instead of using Lists. This may impact performance with many IPs',
+            suggestion:
+              'IP rules will be created individually instead of using Lists. This may impact performance with many IPs',
             severity: 'info',
           })
         }
@@ -432,9 +438,7 @@ export class CloudflareConfigValidator {
 
     // Environment variable suggestions
     if (result.environmentVariables.missing.length > 0) {
-      suggestions.push(
-        `Set missing environment variables: ${result.environmentVariables.missing.join(', ')}`,
-      )
+      suggestions.push(`Set missing environment variables: ${result.environmentVariables.missing.join(', ')}`)
     }
 
     if (result.environmentVariables.conflicts.length > 0) {
@@ -445,16 +449,12 @@ export class CloudflareConfigValidator {
 
     // Configuration suggestions
     if (!config.providers?.cloudflare?.accountId && !process.env.CLOUDFLARE_ACCOUNT_ID) {
-      suggestions.push(
-        'Consider adding Account ID to enable Lists API for better IP management performance',
-      )
+      suggestions.push('Consider adding Account ID to enable Lists API for better IP management performance')
     }
 
     // Rule optimization suggestions
     if (config.rules && config.rules.length > 10) {
-      suggestions.push(
-        'Consider grouping similar rules or using Lists for IP-based rules to improve performance',
-      )
+      suggestions.push('Consider grouping similar rules or using Lists for IP-based rules to improve performance')
     }
 
     // Add suggestions for common improvements

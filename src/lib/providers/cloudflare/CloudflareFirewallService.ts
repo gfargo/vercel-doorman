@@ -67,7 +67,9 @@ export class CloudflareFirewallService extends BaseFirewallService {
 
       for (let i = 0; i < totalRules; i += batchSize) {
         const batch = ruleset.rules.slice(i, i + batchSize)
-        logger.debug(`Processing rules batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalRules / batchSize)} (${batch.length} rules)`)
+        logger.debug(
+          `Processing rules batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalRules / batchSize)} (${batch.length} rules)`,
+        )
 
         for (const rule of batch) {
           try {
@@ -78,7 +80,9 @@ export class CloudflareFirewallService extends BaseFirewallService {
             }
 
             if (!rule.id || !rule.expression || !rule.action) {
-              processingErrors.push(`Skipped rule with missing required fields: ${JSON.stringify({ id: rule.id, expression: !!rule.expression, action: rule.action })}`)
+              processingErrors.push(
+                `Skipped rule with missing required fields: ${JSON.stringify({ id: rule.id, expression: !!rule.expression, action: rule.action })}`,
+              )
               continue
             }
 
@@ -113,14 +117,14 @@ export class CloudflareFirewallService extends BaseFirewallService {
 
         // Add small delay between batches for large rule sets to prevent overwhelming the system
         if (totalRules > 200 && i + batchSize < totalRules) {
-          await new Promise(resolve => setTimeout(resolve, 10))
+          await new Promise((resolve) => setTimeout(resolve, 10))
         }
       }
 
       // Report processing errors if any
       if (processingErrors.length > 0) {
         logger.warn(`Encountered ${processingErrors.length} rule processing errors:`)
-        processingErrors.slice(0, 5).forEach(error => logger.warn(`  - ${error}`))
+        processingErrors.slice(0, 5).forEach((error) => logger.warn(`  - ${error}`))
         if (processingErrors.length > 5) {
           logger.warn(`  ... and ${processingErrors.length - 5} more errors`)
         }
@@ -210,7 +214,7 @@ export class CloudflareFirewallService extends BaseFirewallService {
     const dryRunResult = await OperationSafety.performDryRunValidation(
       config,
       'sync rules',
-      async (cfg: UnifiedConfig) => await this.getChanges(cfg)
+      async (cfg: UnifiedConfig) => await this.getChanges(cfg),
     )
 
     if (!dryRunResult.valid) {
@@ -239,7 +243,7 @@ export class CloudflareFirewallService extends BaseFirewallService {
       changes: dryRunResult.changes,
       riskLevel,
       skipConfirmation: options?.force || false,
-      dryRun: options?.dryRun || false
+      dryRun: options?.dryRun || false,
     })
 
     if (!confirmed) {
@@ -742,11 +746,12 @@ export class CloudflareFirewallService extends BaseFirewallService {
     const totalRules = config.rules.length
     const totalIPs = config.ips?.length || 0
     const totalDeletions = (changes.rulesToDelete?.length || 0) + (changes.ipsToDelete?.length || 0)
-    const totalChanges = (changes.rulesToAdd?.length || 0) + 
-                        (changes.rulesToUpdate?.length || 0) + 
-                        (changes.ipsToAdd?.length || 0) + 
-                        (changes.ipsToUpdate?.length || 0) + 
-                        totalDeletions
+    const totalChanges =
+      (changes.rulesToAdd?.length || 0) +
+      (changes.rulesToUpdate?.length || 0) +
+      (changes.ipsToAdd?.length || 0) +
+      (changes.ipsToUpdate?.length || 0) +
+      totalDeletions
 
     // High risk conditions
     if (totalDeletions === totalRules && totalRules > 0) {
@@ -762,11 +767,12 @@ export class CloudflareFirewallService extends BaseFirewallService {
     }
 
     // Check for potentially dangerous rules
-    const hasDangerousRules = config.rules.some(rule => 
-      rule.action.type === 'deny' && 
-      rule.conditions.some(condition => 
-        condition.field === 'path' && (condition.value === '/' || condition.value === '*')
-      )
+    const hasDangerousRules = config.rules.some(
+      (rule) =>
+        rule.action.type === 'deny' &&
+        rule.conditions.some(
+          (condition) => condition.field === 'path' && (condition.value === '/' || condition.value === '*'),
+        ),
     )
 
     if (hasDangerousRules) {

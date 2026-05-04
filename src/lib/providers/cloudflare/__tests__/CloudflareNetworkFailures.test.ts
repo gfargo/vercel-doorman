@@ -77,7 +77,7 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should handle connection timeout during handshake', () => {
       const handshakeError = new Error('connect ETIMEDOUT 104.16.132.229:443')
       const result = CloudflareErrorHandler.handleNetworkError(handshakeError, 'connecting to API')
-      
+
       expect(result.code).toBe(NetworkErrorCode.HTTP_ERROR)
       expect(result.suggestion).toContain('internet connection')
     })
@@ -96,7 +96,7 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should handle SSL handshake failures', () => {
       const sslHandshakeError = new Error('SSL routines:ssl3_get_record:wrong version number')
       const result = CloudflareErrorHandler.handleNetworkError(sslHandshakeError, 'establishing secure connection')
-      
+
       expect(result.suggestion).toContain('internet connection')
       expect(result.docsUrl).toContain('troubleshooting')
     })
@@ -104,7 +104,7 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should handle certificate expiry errors', () => {
       const certExpiredError = new Error('certificate has expired')
       const result = CloudflareErrorHandler.handleNetworkError(certExpiredError, 'validating certificate')
-      
+
       expect(result.message).toContain('certificate has expired')
     })
   })
@@ -139,7 +139,7 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should handle read timeouts', () => {
       const readTimeoutError = new Error('read ETIMEDOUT')
       const result = CloudflareErrorHandler.handleNetworkError(readTimeoutError, 'reading response')
-      
+
       expect(result.code).toBe(NetworkErrorCode.HTTP_ERROR)
       expect(result.suggestion).toContain('internet connection')
     })
@@ -147,7 +147,7 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should handle write timeouts', () => {
       const writeTimeoutError = new Error('write ETIMEDOUT')
       const result = CloudflareErrorHandler.handleNetworkError(writeTimeoutError, 'sending request')
-      
+
       expect(result.message).toContain('write ETIMEDOUT')
     })
   })
@@ -156,7 +156,7 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should handle proxy connection failures', () => {
       const proxyError = new Error('tunneling socket could not be established, statusCode=407')
       const result = CloudflareErrorHandler.handleNetworkError(proxyError, 'connecting through proxy')
-      
+
       expect(result.message).toContain('tunneling socket could not be established')
       expect(result.suggestion).toContain('internet connection')
     })
@@ -164,14 +164,14 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should handle proxy authentication failures', () => {
       const proxyAuthError = new Error('Proxy Authentication Required')
       const result = CloudflareErrorHandler.handleNetworkError(proxyAuthError, 'authenticating with proxy')
-      
+
       expect(result.message).toContain('Proxy Authentication Required')
     })
 
     it('should handle corporate firewall blocks', () => {
       const firewallError = new Error('connect ECONNREFUSED 127.0.0.1:8080')
       const result = CloudflareErrorHandler.handleNetworkError(firewallError, 'bypassing firewall')
-      
+
       expect(result.suggestion).toContain('firewall settings')
       expect(result.details?.connectionRefused).toBe(true)
     })
@@ -216,12 +216,14 @@ describe('Cloudflare Network Failure Handling', () => {
         if (callCount === 2) {
           throw new Error('socket hang up')
         }
-        return new Response(JSON.stringify({
-          success: true,
-          errors: [],
-          messages: [],
-          result: {},
-        }))
+        return new Response(
+          JSON.stringify({
+            success: true,
+            errors: [],
+            messages: [],
+            result: {},
+          }),
+        )
       })
 
       await expect(service.syncRules(mockConfig)).rejects.toThrow()
@@ -251,7 +253,7 @@ describe('Cloudflare Network Failure Handling', () => {
 
       errorScenarios.forEach(({ error, expectedSuggestions }) => {
         const result = CloudflareErrorHandler.handleNetworkError(error, 'test operation')
-        expectedSuggestions.forEach(suggestion => {
+        expectedSuggestions.forEach((suggestion) => {
           expect(result.suggestion).toContain(suggestion)
         })
       })
@@ -268,7 +270,7 @@ describe('Cloudflare Network Failure Handling', () => {
 
       const networkError = new Error('Request timeout after 30000ms')
 
-      operations.forEach(operation => {
+      operations.forEach((operation) => {
         const result = CloudflareErrorHandler.handleNetworkError(networkError, operation)
         expect(result.message).toContain(operation)
         expect(result.suggestion).toContain('internet connection')
@@ -296,7 +298,7 @@ describe('Cloudflare Network Failure Handling', () => {
 
       contextualErrors.forEach(({ error, operation, expectedContext }) => {
         const result = CloudflareErrorHandler.handleNetworkError(error, operation)
-        expectedContext.forEach(context => {
+        expectedContext.forEach((context) => {
           expect(result.suggestion).toContain(context)
         })
       })
@@ -307,9 +309,9 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should preserve original error information for debugging', () => {
       const originalError = new Error('getaddrinfo ENOTFOUND api.cloudflare.com')
       originalError.stack = 'Original stack trace'
-      
+
       const result = CloudflareErrorHandler.handleNetworkError(originalError, 'test operation')
-      
+
       expect(result.cause).toBe(originalError)
       expect(result.details?.originalError).toBe(originalError.message)
       expect(result.details?.operation).toBe('test operation')
@@ -342,7 +344,7 @@ describe('Cloudflare Network Failure Handling', () => {
     it('should provide troubleshooting documentation links', () => {
       const networkError = new Error('Connection failed')
       const result = CloudflareErrorHandler.handleNetworkError(networkError, 'test operation')
-      
+
       expect(result.docsUrl).toContain('troubleshooting')
       expect(result.docsUrl).toContain('cloudflare')
     })
@@ -373,12 +375,14 @@ describe('Cloudflare Network Failure Handling', () => {
         if (callCount % 2 === 1) {
           throw new Error('Intermittent network failure')
         }
-        return new Response(JSON.stringify({
-          success: true,
-          errors: [],
-          messages: [],
-          result: [],
-        }))
+        return new Response(
+          JSON.stringify({
+            success: true,
+            errors: [],
+            messages: [],
+            result: [],
+          }),
+        )
       })
 
       // Should fail on first attempt

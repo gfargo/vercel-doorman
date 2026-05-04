@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 import { CloudflareClient } from '../CloudflareClient'
 import type {
-    CloudflareRuleset,
-    CloudflareAPIResponse,
-    CloudflareList,
-    CloudflareListItem,
-    CloudflareRule,
+  CloudflareRuleset,
+  CloudflareAPIResponse,
+  CloudflareList,
+  CloudflareListItem,
+  CloudflareRule,
 } from '../../../types/cloudflare'
 
 // Helper to build Response-like objects
@@ -726,11 +726,13 @@ describe('CloudflareClient', () => {
     })
 
     it('should handle malformed API responses', async () => {
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: true, 
-        status: 200, 
-        jsonBody: { invalid: 'response' } // Missing required fields
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: { invalid: 'response' }, // Missing required fields
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -743,12 +745,14 @@ describe('CloudflareClient', () => {
         result: [],
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 429, 
-        jsonBody: mockResponse,
-        headers: { 'Retry-After': '120' }
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 429,
+          jsonBody: mockResponse,
+          headers: { 'Retry-After': '120' },
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow('Rate limit exceeded')
     })
@@ -758,7 +762,7 @@ describe('CloudflareClient', () => {
         success: false,
         errors: [
           { code: 81044, message: 'Ruleset not found' },
-          { code: 81045, message: 'Rule limit exceeded' }
+          { code: 81045, message: 'Rule limit exceeded' },
         ],
         messages: [],
         result: [],
@@ -913,11 +917,13 @@ describe('CloudflareClient', () => {
 
       fetchMock.mockResolvedValueOnce(makeResponse({ ok: false, status: 400, jsonBody: mockResponse }))
 
-      await expect(client.createList({
-        name: 'Test List',
-        description: 'Test',
-        kind: 'ip',
-      })).rejects.toThrow()
+      await expect(
+        client.createList({
+          name: 'Test List',
+          description: 'Test',
+          kind: 'ip',
+        }),
+      ).rejects.toThrow()
     })
 
     it('should handle duplicate list items', async () => {
@@ -948,9 +954,7 @@ describe('CloudflareClient', () => {
     })
 
     it('should handle list item validation errors', async () => {
-      const invalidItems = [
-        { ip: 'invalid-ip', comment: 'Bad IP format' },
-      ]
+      const invalidItems = [{ ip: 'invalid-ip', comment: 'Bad IP format' }]
 
       const mockResponse = {
         success: false,

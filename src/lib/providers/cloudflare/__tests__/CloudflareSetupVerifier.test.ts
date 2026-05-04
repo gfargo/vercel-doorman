@@ -101,7 +101,7 @@ describe('CloudflareSetupVerifier', () => {
       expect(result.overall).toBe('healthy')
       expect(result.features.basicFirewallRules).toBe(true)
       expect(result.features.listsApi).toBe(true)
-      expect(result.checks.filter(c => c.status === 'pass')).toHaveLength(9) // All checks should pass
+      expect(result.checks.filter((c) => c.status === 'pass')).toHaveLength(9) // All checks should pass
     })
 
     it('should handle connectivity failures', async () => {
@@ -121,7 +121,7 @@ describe('CloudflareSetupVerifier', () => {
       const result = await verifier.verifySetup()
 
       expect(result.overall).toBe('unhealthy')
-      expect(result.checks.find(c => c.name === 'API Connectivity')?.status).toBe('fail')
+      expect(result.checks.find((c) => c.name === 'API Connectivity')?.status).toBe('fail')
     })
 
     it('should handle invalid API token', async () => {
@@ -148,7 +148,7 @@ describe('CloudflareSetupVerifier', () => {
       const result = await verifier.verifySetup()
 
       expect(result.overall).toBe('unhealthy')
-      expect(result.checks.find(c => c.name === 'API Token Validation')?.status).toBe('fail')
+      expect(result.checks.find((c) => c.name === 'API Token Validation')?.status).toBe('fail')
     })
 
     it('should handle zone access failures', async () => {
@@ -172,7 +172,7 @@ describe('CloudflareSetupVerifier', () => {
 
       expect(result.overall).toBe('unhealthy')
       expect(result.features.basicFirewallRules).toBe(false)
-      expect(result.checks.find(c => c.name === 'Zone Access')?.status).toBe('fail')
+      expect(result.checks.find((c) => c.name === 'Zone Access')?.status).toBe('fail')
     })
 
     it('should handle account access warnings gracefully', async () => {
@@ -205,7 +205,7 @@ describe('CloudflareSetupVerifier', () => {
 
       expect(result.overall).toBe('degraded') // Should be degraded, not unhealthy
       expect(result.features.listsApi).toBe(false)
-      expect(result.checks.find(c => c.name === 'Account Access')?.status).toBe('warning')
+      expect(result.checks.find((c) => c.name === 'Account Access')?.status).toBe('warning')
     })
 
     it('should skip account checks when no account ID provided', async () => {
@@ -225,8 +225,8 @@ describe('CloudflareSetupVerifier', () => {
 
       const result = await verifierWithoutAccount.verifySetup()
 
-      expect(result.checks.find(c => c.name === 'Account Access')).toBeUndefined()
-      expect(result.checks.find(c => c.name === 'Lists API')).toBeUndefined()
+      expect(result.checks.find((c) => c.name === 'Account Access')).toBeUndefined()
+      expect(result.checks.find((c) => c.name === 'Lists API')).toBeUndefined()
       expect(result.features.listsApi).toBe(false)
     })
 
@@ -246,7 +246,7 @@ describe('CloudflareSetupVerifier', () => {
       const result = await verifier.verifySetup()
 
       expect(result.overall).toBe('degraded')
-      expect(result.checks.find(c => c.name === 'Zone Information')?.message).toContain('pending')
+      expect(result.checks.find((c) => c.name === 'Zone Information')?.message).toContain('pending')
     })
 
     it('should measure API performance', async () => {
@@ -274,7 +274,7 @@ describe('CloudflareSetupVerifier', () => {
 
       const result = await verifier.verifySetup()
 
-      const performanceCheck = result.checks.find(c => c.name === 'API Performance')
+      const performanceCheck = result.checks.find((c) => c.name === 'API Performance')
       expect(performanceCheck).toBeDefined()
       expect(performanceCheck?.message).toContain('ms')
     })

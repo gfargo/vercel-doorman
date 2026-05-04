@@ -29,13 +29,11 @@ export function setupGracefulShutdown(
       if (cleanupMessage) {
         logger.info(cleanupMessage)
       }
-      
+
       try {
         await Promise.race([
           cleanupFn(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Cleanup timeout')), timeout)
-          ),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Cleanup timeout')), timeout)),
         ])
         logger.info(`✅ ${commandName} cleanup completed`)
       } catch (error) {
@@ -51,17 +49,14 @@ export function setupGracefulShutdown(
 /**
  * Handle operation interruption with user-friendly messaging
  */
-export function handleOperationInterruption(
-  operationName: string,
-  partialResults?: any,
-): void {
+export function handleOperationInterruption(operationName: string, partialResults?: any): void {
   logger.info(`\n⏸️  ${operationName} interrupted by user`)
-  
+
   if (partialResults) {
     logger.info(`💾 Partial results saved - you can resume this operation later`)
     logger.debug(`Partial results: ${JSON.stringify(partialResults, null, 2)}`)
   }
-  
+
   logger.info(`🔄 To resume, run the same command again`)
 }
 
@@ -82,7 +77,7 @@ export function createProgressCheckpoint(
     timestamp: new Date().toISOString(),
     progress,
   }
-  
+
   // In a real implementation, this could be saved to a file or database
   logger.debug(`📍 Progress checkpoint: ${JSON.stringify(checkpoint)}`)
 }
@@ -114,11 +109,11 @@ export async function withGracefulInterruption<T>(
 
   try {
     const result = await operation()
-    
+
     if (isInterrupted) {
       logger.info(`⚠️  ${operationName} completed despite interruption signal`)
     }
-    
+
     return result
   } catch (error) {
     if (isInterrupted) {

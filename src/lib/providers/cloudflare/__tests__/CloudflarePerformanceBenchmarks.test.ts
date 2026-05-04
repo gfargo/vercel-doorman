@@ -7,7 +7,7 @@ import type { CloudflareRuleset, CloudflareRule } from '../../../types/cloudflar
 
 /**
  * Performance benchmark utilities for measuring operation durations
- * 
+ *
  * This class provides utilities for measuring the performance of various operations
  * to ensure they meet the requirements specified in the production readiness spec.
  */
@@ -43,7 +43,7 @@ class PerformanceBenchmark {
 
 /**
  * Test data generators for creating various rule set sizes for performance testing
- * 
+ *
  * These generators create realistic test data that matches the structure expected
  * by the Cloudflare provider while allowing us to test with different scales.
  */
@@ -124,15 +124,15 @@ class TestDataGenerator {
 
 /**
  * Cloudflare Performance Benchmarks
- * 
+ *
  * This test suite validates that Cloudflare operations meet the performance requirements
  * specified in the production readiness specification:
- * 
+ *
  * - Requirement 5.1: Sync operations SHALL complete within 30 seconds for typical configurations (10-50 rules)
  * - Requirement 5.2: Fetch operations SHALL complete within 10 seconds for typical setups
  * - Requirement 5.4: Status checks SHALL complete within 5 seconds
  * - Requirement 5.5: Configuration validation SHALL complete within 3 seconds for typical configs
- * 
+ *
  * The benchmarks test various rule set sizes and operation types to ensure scalability
  * and identify potential performance regressions.
  */
@@ -167,22 +167,28 @@ describe('Cloudflare Performance Benchmarks', () => {
       // Mock API responses for sync operation
       fetchMock
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: [mockRuleset],
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: [mockRuleset],
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: mockRuleset,
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: mockRuleset,
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(10) },
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(10) },
+            }),
+          ),
         )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -203,22 +209,28 @@ describe('Cloudflare Performance Benchmarks', () => {
 
       fetchMock
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: [mockRuleset],
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: [mockRuleset],
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: mockRuleset,
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: mockRuleset,
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(25) },
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(25) },
+            }),
+          ),
         )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -239,22 +251,28 @@ describe('Cloudflare Performance Benchmarks', () => {
 
       fetchMock
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: [mockRuleset],
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: [mockRuleset],
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: mockRuleset,
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: mockRuleset,
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(50) },
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(50) },
+            }),
+          ),
         )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -275,22 +293,28 @@ describe('Cloudflare Performance Benchmarks', () => {
 
       fetchMock
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: [mockRuleset],
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: [mockRuleset],
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: mockRuleset,
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: mockRuleset,
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(100) },
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: { ...mockRuleset, rules: TestDataGenerator.generateCloudflareRules(100) },
+            }),
+          ),
         )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -312,10 +336,12 @@ describe('Cloudflare Performance Benchmarks', () => {
       const mockRuleset = TestDataGenerator.generateCloudflareRuleset(25)
 
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({
-          success: true,
-          result: [mockRuleset],
-        }))
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: [mockRuleset],
+          }),
+        ),
       )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -334,10 +360,12 @@ describe('Cloudflare Performance Benchmarks', () => {
       const mockRuleset = TestDataGenerator.generateCloudflareRuleset(100)
 
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({
-          success: true,
-          result: [mockRuleset],
-        }))
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: [mockRuleset],
+          }),
+        ),
       )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -356,12 +384,14 @@ describe('Cloudflare Performance Benchmarks', () => {
      */
     it('should complete status checks within 5 seconds', async () => {
       const testConfig = TestDataGenerator.generateUnifiedConfig(10, 5)
-      
+
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({
-          success: true,
-          result: [TestDataGenerator.generateCloudflareRuleset(10)],
-        }))
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: [TestDataGenerator.generateCloudflareRuleset(10)],
+          }),
+        ),
       )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -414,7 +444,7 @@ describe('Cloudflare Performance Benchmarks', () => {
       const cloudflareRules = TestDataGenerator.generateCloudflareRules(10)
 
       const { duration } = PerformanceBenchmark.measure(() => {
-        return cloudflareRules.map(rule => RuleTranslator.cloudflareToUnified(rule))
+        return cloudflareRules.map((rule) => RuleTranslator.cloudflareToUnified(rule))
       })
 
       expect(duration).toBeLessThan(1000) // 1 second for 10 rules
@@ -428,7 +458,7 @@ describe('Cloudflare Performance Benchmarks', () => {
       const cloudflareRules = TestDataGenerator.generateCloudflareRules(50)
 
       const { duration } = PerformanceBenchmark.measure(() => {
-        return cloudflareRules.map(rule => RuleTranslator.cloudflareToUnified(rule))
+        return cloudflareRules.map((rule) => RuleTranslator.cloudflareToUnified(rule))
       })
 
       expect(duration).toBeLessThan(3000) // 3 seconds for 50 rules
@@ -442,7 +472,7 @@ describe('Cloudflare Performance Benchmarks', () => {
       const cloudflareRules = TestDataGenerator.generateCloudflareRules(100)
 
       const { duration } = PerformanceBenchmark.measure(() => {
-        return cloudflareRules.map(rule => RuleTranslator.cloudflareToUnified(rule))
+        return cloudflareRules.map((rule) => RuleTranslator.cloudflareToUnified(rule))
       })
 
       expect(duration).toBeLessThan(5000) // 5 seconds for 100 rules
@@ -458,7 +488,7 @@ describe('Cloudflare Performance Benchmarks', () => {
 
       const { duration } = PerformanceBenchmark.measure(() => {
         // Translate to Cloudflare and back
-        return unifiedRules.map(rule => {
+        return unifiedRules.map((rule) => {
           const toCloudflare = RuleTranslator.unifiedToCloudflare(rule)
           return RuleTranslator.cloudflareToUnified(toCloudflare.result)
         })
@@ -476,13 +506,23 @@ describe('Cloudflare Performance Benchmarks', () => {
      */
     it('should handle API timeouts gracefully', async () => {
       // Mock a slow API response
-      fetchMock.mockImplementationOnce(() => 
-        new Promise(resolve => 
-          setTimeout(() => resolve(new Response(JSON.stringify({
-            success: true,
-            result: [],
-          }))), 15000) // 15 second delay
-        )
+      fetchMock.mockImplementationOnce(
+        () =>
+          new Promise(
+            (resolve) =>
+              setTimeout(
+                () =>
+                  resolve(
+                    new Response(
+                      JSON.stringify({
+                        success: true,
+                        result: [],
+                      }),
+                    ),
+                  ),
+                15000,
+              ), // 15 second delay
+          ),
       )
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
@@ -505,20 +545,24 @@ describe('Cloudflare Performance Benchmarks', () => {
      */
     it('should handle concurrent API operations efficiently', async () => {
       const mockRuleset = TestDataGenerator.generateCloudflareRuleset(10)
-      
+
       // Mock multiple successful responses
       for (let i = 0; i < 5; i++) {
         fetchMock.mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: [mockRuleset],
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: [mockRuleset],
+            }),
+          ),
         )
       }
 
       const { duration } = await PerformanceBenchmark.measureAsync(async () => {
         // Run 5 concurrent fetch operations
-        const promises = Array(5).fill(null).map(() => service.fetchConfig())
+        const promises = Array(5)
+          .fill(null)
+          .map(() => service.fetchConfig())
         return await Promise.all(promises)
       })
 
@@ -539,10 +583,12 @@ describe('Cloudflare Performance Benchmarks', () => {
       // Mock responses for multiple operations
       for (let i = 0; i < 10; i++) {
         fetchMock.mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: [mockRuleset],
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: [mockRuleset],
+            }),
+          ),
         )
       }
 
@@ -564,8 +610,10 @@ describe('Cloudflare Performance Benchmarks', () => {
 
       // Second half shouldn't be more than 50% slower than first half
       expect(secondHalfAvg).toBeLessThan(firstHalfAvg * 1.5)
-      
-      console.log(`Performance regression test - First half avg: ${firstHalfAvg.toFixed(2)}ms, Second half avg: ${secondHalfAvg.toFixed(2)}ms`)
+
+      console.log(
+        `Performance regression test - First half avg: ${firstHalfAvg.toFixed(2)}ms, Second half avg: ${secondHalfAvg.toFixed(2)}ms`,
+      )
     })
 
     /**
@@ -578,18 +626,20 @@ describe('Cloudflare Performance Benchmarks', () => {
 
       for (const count of ruleCounts) {
         const mockRuleset = TestDataGenerator.generateCloudflareRuleset(count)
-        
+
         fetchMock.mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: [mockRuleset],
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: [mockRuleset],
+            }),
+          ),
         )
 
         const { duration } = await PerformanceBenchmark.measureAsync(async () => {
           return await service.fetchConfig()
         })
-        
+
         durations.push(duration)
         console.log(`Fetch operation (${count} rules) completed in ${duration.toFixed(2)}ms`)
       }
@@ -613,16 +663,20 @@ describe('Cloudflare Performance Benchmarks', () => {
       // Mock successful credential validation
       fetchMock
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: { id: ZONE_ID, name: 'test-zone.com' },
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: { id: ZONE_ID, name: 'test-zone.com' },
+            }),
+          ),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({
-            success: true,
-            result: { id: ACCOUNT_ID, name: 'Test Account' },
-          }))
+          new Response(
+            JSON.stringify({
+              success: true,
+              result: { id: ACCOUNT_ID, name: 'Test Account' },
+            }),
+          ),
         )
 
       const credentials = {
@@ -677,9 +731,8 @@ describe('Cloudflare Performance Benchmarks', () => {
 
       // This test always passes but documents the baselines
       expect(baselines).toBeDefined()
-      
+
       console.log('Performance Baselines:')
-      
     })
   })
 })

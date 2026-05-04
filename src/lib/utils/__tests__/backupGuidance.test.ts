@@ -75,11 +75,7 @@ describe('BackupGuidance', () => {
       mockMkdirSync.mockImplementation(() => undefined)
       mockWriteFileSync.mockImplementation(() => undefined)
 
-      const metadata = await BackupGuidance.createBackup(
-        mockConfig,
-        'sync rules',
-        configPath
-      )
+      const metadata = await BackupGuidance.createBackup(mockConfig, 'sync rules', configPath)
 
       expect(metadata.operation).toBe('sync rules')
       expect(metadata.provider).toBe('cloudflare')
@@ -95,9 +91,9 @@ describe('BackupGuidance', () => {
         throw new Error('Write failed')
       })
 
-      await expect(
-        BackupGuidance.createBackup(mockConfig, 'sync rules', configPath)
-      ).rejects.toThrow('Failed to create backup: Write failed')
+      await expect(BackupGuidance.createBackup(mockConfig, 'sync rules', configPath)).rejects.toThrow(
+        'Failed to create backup: Write failed',
+      )
     })
   })
 
@@ -112,11 +108,13 @@ describe('BackupGuidance', () => {
 
     it('should list available backups', () => {
       const mockFs = {
-        readdirSync: jest.fn().mockReturnValue([
-          'config-backup-2023-01-01T00-00-00-000Z.json.meta.json',
-          'config-backup-2023-01-02T00-00-00-000Z.json.meta.json',
-          'other-file.txt',
-        ]),
+        readdirSync: jest
+          .fn()
+          .mockReturnValue([
+            'config-backup-2023-01-01T00-00-00-000Z.json.meta.json',
+            'config-backup-2023-01-02T00-00-00-000Z.json.meta.json',
+            'other-file.txt',
+          ]),
       }
 
       // Mock require for fs

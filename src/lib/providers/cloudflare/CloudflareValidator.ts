@@ -701,7 +701,7 @@ export class CloudflareValidator {
 
     try {
       const tokenVerification = await this.verifyTokenWithAPI(credentials.apiToken)
-      
+
       const result: ValidationResult = {
         valid: tokenVerification.valid,
         errors: [],
@@ -729,12 +729,14 @@ export class CloudflareValidator {
     } catch (error) {
       return {
         valid: false,
-        errors: [{
-          field: 'apiToken',
-          message: `Failed to validate API token: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          suggestion: 'Check your internet connection and ensure the API token is correct',
-          docsUrl: `${this.DOCS_BASE_URL}/troubleshooting#connectivity`,
-        }],
+        errors: [
+          {
+            field: 'apiToken',
+            message: `Failed to validate API token: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            suggestion: 'Check your internet connection and ensure the API token is correct',
+            docsUrl: `${this.DOCS_BASE_URL}/troubleshooting#connectivity`,
+          },
+        ],
         warnings: [],
         suggestions: [],
       }
@@ -765,12 +767,14 @@ export class CloudflareValidator {
       } else {
         return {
           valid: false,
-          errors: [{
-            field: 'connectivity',
-            message: `API connectivity test failed: ${response.status} ${response.statusText}`,
-            suggestion: 'Check your internet connection and Cloudflare API status',
-            docsUrl: `${this.DOCS_BASE_URL}/troubleshooting#connectivity`,
-          }],
+          errors: [
+            {
+              field: 'connectivity',
+              message: `API connectivity test failed: ${response.status} ${response.statusText}`,
+              suggestion: 'Check your internet connection and Cloudflare API status',
+              docsUrl: `${this.DOCS_BASE_URL}/troubleshooting#connectivity`,
+            },
+          ],
           warnings: [],
           suggestions: [],
         }
@@ -778,12 +782,14 @@ export class CloudflareValidator {
     } catch (error) {
       return {
         valid: false,
-        errors: [{
-          field: 'connectivity',
-          message: `Network connectivity test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          suggestion: 'Check your internet connection and firewall settings',
-          docsUrl: `${this.DOCS_BASE_URL}/troubleshooting#connectivity`,
-        }],
+        errors: [
+          {
+            field: 'connectivity',
+            message: `Network connectivity test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            suggestion: 'Check your internet connection and firewall settings',
+            docsUrl: `${this.DOCS_BASE_URL}/troubleshooting#connectivity`,
+          },
+        ],
         warnings: [],
         suggestions: [],
       }
@@ -797,12 +803,14 @@ export class CloudflareValidator {
     if (!this.accountId) {
       return {
         valid: false,
-        errors: [{
-          field: 'accountId',
-          message: 'Account ID is required for Lists API',
-          suggestion: 'Set CLOUDFLARE_ACCOUNT_ID environment variable to enable Lists API',
-          docsUrl: `${this.DOCS_BASE_URL}/setup#account-id`,
-        }],
+        errors: [
+          {
+            field: 'accountId',
+            message: 'Account ID is required for Lists API',
+            suggestion: 'Set CLOUDFLARE_ACCOUNT_ID environment variable to enable Lists API',
+            docsUrl: `${this.DOCS_BASE_URL}/setup#account-id`,
+          },
+        ],
         warnings: [],
         suggestions: [],
       }
@@ -821,12 +829,14 @@ export class CloudflareValidator {
     } catch (error) {
       return {
         valid: false,
-        errors: [{
-          field: 'listsApi',
-          message: `Lists API is not available: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          suggestion: 'Verify account ID and ensure your API token has Account:Read permissions',
-          docsUrl: `${this.DOCS_BASE_URL}/setup#account-id`,
-        }],
+        errors: [
+          {
+            field: 'listsApi',
+            message: `Lists API is not available: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            suggestion: 'Verify account ID and ensure your API token has Account:Read permissions',
+            docsUrl: `${this.DOCS_BASE_URL}/setup#account-id`,
+          },
+        ],
         warnings: [],
         suggestions: [],
       }

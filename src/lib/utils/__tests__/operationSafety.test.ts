@@ -66,11 +66,7 @@ describe('OperationSafety', () => {
     it('should validate configuration structure', async () => {
       const validateFn = jest.fn().mockResolvedValue(mockChanges)
 
-      const result = await OperationSafety.performDryRunValidation(
-        mockConfig,
-        'test operation',
-        validateFn
-      )
+      const result = await OperationSafety.performDryRunValidation(mockConfig, 'test operation', validateFn)
 
       expect(result.valid).toBe(true)
       expect(result.issues).toHaveLength(0)
@@ -86,11 +82,7 @@ describe('OperationSafety', () => {
 
       const validateFn = jest.fn().mockResolvedValue(mockChanges)
 
-      const result = await OperationSafety.performDryRunValidation(
-        invalidConfig,
-        'test operation',
-        validateFn
-      )
+      const result = await OperationSafety.performDryRunValidation(invalidConfig, 'test operation', validateFn)
 
       expect(result.valid).toBe(false)
       expect(result.issues.length).toBeGreaterThan(0)
@@ -101,11 +93,7 @@ describe('OperationSafety', () => {
     it('should handle validation function errors', async () => {
       const validateFn = jest.fn().mockRejectedValue(new Error('Validation failed'))
 
-      const result = await OperationSafety.performDryRunValidation(
-        mockConfig,
-        'test operation',
-        validateFn
-      )
+      const result = await OperationSafety.performDryRunValidation(mockConfig, 'test operation', validateFn)
 
       expect(result.valid).toBe(false)
       expect(result.issues).toContain('Dry-run validation failed: Validation failed')

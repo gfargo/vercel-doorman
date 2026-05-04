@@ -1150,7 +1150,7 @@ describe('CloudflareFirewallService', () => {
       const results = await Promise.all(promises)
 
       expect(results).toHaveLength(3)
-      results.forEach(config => {
+      results.forEach((config) => {
         expect(config.version).toBe('2.0')
         expect(config.provider).toBe('cloudflare')
       })

@@ -40,7 +40,7 @@ describe('TranslationWarningSystem', () => {
         'rule-789',
         'rateLimit',
         'Custom message',
-        'Custom suggestion'
+        'Custom suggestion',
       )
 
       expect(warning.message).toBe('Custom message')
@@ -55,7 +55,7 @@ describe('TranslationWarningSystem', () => {
         'vercel',
         'cloudflare',
         'rule-123',
-        'botManagement'
+        'botManagement',
       )
 
       expect(warning).toMatchObject({
@@ -78,7 +78,7 @@ describe('TranslationWarningSystem', () => {
         'complex_expression',
         'syntax differences between providers',
         'rule-456',
-        'expression'
+        'expression',
       )
 
       expect(warning).toMatchObject({
@@ -101,7 +101,7 @@ describe('TranslationWarningSystem', () => {
         'regex_pattern',
         'lookahead assertions not supported',
         'rule-789',
-        'pattern'
+        'pattern',
       )
 
       expect(warning).toMatchObject({
@@ -124,7 +124,7 @@ describe('TranslationWarningSystem', () => {
         'large_ip_list',
         'may slow down rule evaluation',
         'rule-101',
-        'ipList'
+        'ipList',
       )
 
       expect(warning).toMatchObject({

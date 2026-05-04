@@ -47,7 +47,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
     it('should implement exponential backoff correctly', async () => {
       const delays: number[] = []
       const originalSetTimeout = global.setTimeout
-      
+
       // Mock setTimeout to capture delays
       global.setTimeout = jest.fn().mockImplementation((callback: () => void, delay: number) => {
         delays.push(delay)
@@ -74,7 +74,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
     it('should use fixed delay when backoff is disabled', async () => {
       const delays: number[] = []
       const originalSetTimeout = global.setTimeout
-      
+
       global.setTimeout = jest.fn().mockImplementation((callback: () => void, delay: number) => {
         delays.push(delay)
         return originalSetTimeout(callback, 0)
@@ -104,25 +104,28 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
         throw new Error('Persistent failure')
       }
 
-      await expect(retry(operation, { maxAttempts: 2, delayMs: 100 }))
-        .rejects.toThrow('Operation failed after 2 attempts')
-      
+      await expect(retry(operation, { maxAttempts: 2, delayMs: 100 })).rejects.toThrow(
+        'Operation failed after 2 attempts',
+      )
+
       expect(attemptCount).toBe(2)
     })
   })
 
   describe('Client-Level Retry Behavior', () => {
     it('should not retry authentication errors', async () => {
-      fetchMock.mockResolvedValue(createMockResponse({
-        ok: false,
-        status: 401,
-        jsonBody: {
-          success: false,
-          errors: [{ code: 10000, message: 'Invalid API token' }],
-          messages: [],
-          result: null,
-        },
-      }))
+      fetchMock.mockResolvedValue(
+        createMockResponse({
+          ok: false,
+          status: 401,
+          jsonBody: {
+            success: false,
+            errors: [{ code: 10000, message: 'Invalid API token' }],
+            messages: [],
+            result: null,
+          },
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
       expect(fetchMock).toHaveBeenCalledTimes(1) // No retries
@@ -130,18 +133,20 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
 
     it('should not retry client errors (4xx except 429)', async () => {
       const clientErrors = [400, 403, 404, 422]
-      
+
       for (const status of clientErrors) {
-        fetchMock.mockResolvedValue(createMockResponse({
-          ok: false,
-          status,
-          jsonBody: {
-            success: false,
-            errors: [{ code: 0, message: `Client error ${status}` }],
-            messages: [],
-            result: null,
-          },
-        }))
+        fetchMock.mockResolvedValue(
+          createMockResponse({
+            ok: false,
+            status,
+            jsonBody: {
+              success: false,
+              errors: [{ code: 0, message: `Client error ${status}` }],
+              messages: [],
+              result: null,
+            },
+          }),
+        )
 
         await expect(client.listRulesets()).rejects.toThrow()
         expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -150,17 +155,19 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
     })
 
     it('should handle rate limit errors appropriately', async () => {
-      fetchMock.mockResolvedValue(createMockResponse({
-        ok: false,
-        status: 429,
-        jsonBody: {
-          success: false,
-          errors: [{ code: 10013, message: 'Rate limit exceeded' }],
-          messages: [],
-          result: null,
-        },
-        headers: { 'Retry-After': '60' },
-      }))
+      fetchMock.mockResolvedValue(
+        createMockResponse({
+          ok: false,
+          status: 429,
+          jsonBody: {
+            success: false,
+            errors: [{ code: 10013, message: 'Rate limit exceeded' }],
+            messages: [],
+            result: null,
+          },
+          headers: { 'Retry-After': '60' },
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
       expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -186,7 +193,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
 
       const validationResult = service.validateConfig(invalidConfig)
       expect(validationResult.valid).toBe(false)
-      
+
       // Validation errors should not trigger retries
       await expect(service.syncRules(invalidConfig)).rejects.toThrow()
     })
@@ -239,7 +246,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
       for (const strategy of strategies) {
         const delays: number[] = []
         const originalSetTimeout = global.setTimeout
-        
+
         global.setTimeout = jest.fn().mockImplementation((callback: () => void, delay: number) => {
           delays.push(delay)
           return originalSetTimeout(callback, 0)
@@ -269,7 +276,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
 
     it('should provide retry progress information', async () => {
       const progressUpdates: Array<{ attempt: number; maxAttempts: number; delay: number }> = []
-      
+
       // Mock a retry implementation that tracks progress
       const retryWithProgress = async (operation: () => Promise<any>, options: any = {}) => {
         const { maxAttempts = 3, delayMs = 1000, backoff = true } = options
@@ -284,7 +291,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
 
             const delay = backoff ? delayMs * attempt : delayMs
             progressUpdates.push({ attempt, maxAttempts, delay })
-            await new Promise(resolve => setTimeout(resolve, delay))
+            await new Promise((resolve) => setTimeout(resolve, delay))
           }
         }
 
@@ -311,7 +318,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
   describe('Error Recovery and Cleanup', () => {
     it('should handle cleanup after failed retries', async () => {
       const cleanupMock = jest.fn()
-      
+
       let attemptCount = 0
       const operation = async () => {
         attemptCount++
@@ -322,9 +329,10 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
         }
       }
 
-      await expect(retry(operation, { maxAttempts: 3, delayMs: 100 }))
-        .rejects.toThrow('Operation failed after 3 attempts')
-      
+      await expect(retry(operation, { maxAttempts: 3, delayMs: 100 })).rejects.toThrow(
+        'Operation failed after 3 attempts',
+      )
+
       expect(attemptCount).toBe(3)
       expect(cleanupMock).toHaveBeenCalledTimes(3)
     })
@@ -332,7 +340,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
     it('should preserve original error context through retries', async () => {
       const originalError = new Error('Original failure')
       originalError.stack = 'Original stack trace'
-      
+
       const operation = async () => {
         throw originalError
       }
@@ -347,8 +355,8 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
 
     it('should handle memory cleanup for long retry sequences', async () => {
       const largeData = new Array(1000000).fill('data')
-      let memoryUsage: number[] = []
-      
+      const memoryUsage: number[] = []
+
       const operation = async () => {
         // Simulate memory usage
         const data = [...largeData]
@@ -364,7 +372,7 @@ describe('Cloudflare Retry Logic and Backoff Behavior', () => {
 
       expect(memoryUsage).toHaveLength(3)
       // Verify that memory is not accumulating across retries
-      expect(memoryUsage.every(usage => usage === 1000000)).toBe(true)
+      expect(memoryUsage.every((usage) => usage === 1000000)).toBe(true)
     })
   })
 

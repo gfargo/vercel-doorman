@@ -97,7 +97,9 @@ export abstract class BaseFirewallClient {
           // Handle rate limiting with exponential backoff
           if (response.status === 429) {
             const waitTime = this.calculateRateLimitWait(attempt)
-            logger.warn(`Rate limit exceeded for ${this.providerName}. Waiting ${waitTime}ms before retry (attempt ${attempt + 1}/${retries + 1})...`)
+            logger.warn(
+              `Rate limit exceeded for ${this.providerName}. Waiting ${waitTime}ms before retry (attempt ${attempt + 1}/${retries + 1})...`,
+            )
             await this.delay(waitTime)
             continue
           }
@@ -120,7 +122,9 @@ export abstract class BaseFirewallClient {
             }
           } catch (parseError) {
             logger.error(`Failed to parse response from ${url}:`, parseError)
-            throw new Error(`Invalid JSON response from ${this.providerName} API: ${parseError instanceof Error ? parseError.message : String(parseError)}`)
+            throw new Error(
+              `Invalid JSON response from ${this.providerName} API: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+            )
           }
 
           // Validate response structure for large responses to prevent memory issues
@@ -156,7 +160,7 @@ export abstract class BaseFirewallClient {
 
           logger.debug(`Request failed (attempt ${attempt + 1}/${retries + 1}). Retrying in ${Math.round(delay)}ms...`)
           logger.debug(`Error details: ${error instanceof Error ? error.message : String(error)}`)
-          
+
           await this.delay(delay)
         }
       }
@@ -242,12 +246,12 @@ export abstract class BaseFirewallClient {
       const waitTime = (this.rateLimitInfo.reset - now) * 1000
       return Math.max(waitTime, 1000) // Minimum 1 second
     }
-    
+
     // Use exponential backoff for rate limits when reset time is not available
     const baseWait = 5000 // 5 seconds base
     const exponentialWait = baseWait * Math.pow(2, attempt)
     const maxWait = 60000 // Cap at 1 minute
-    
+
     return Math.min(exponentialWait, maxWait)
   }
 
@@ -360,20 +364,20 @@ export abstract class BaseFirewallClient {
       // Sample validate first few items to ensure structure consistency
       const sampleSize = Math.min(10, arr.length)
       const firstItem = arr[0]
-      
+
       if (firstItem && typeof firstItem === 'object') {
         const expectedKeys = Object.keys(firstItem)
-        
+
         for (let i = 1; i < sampleSize; i++) {
           const item = arr[i]
           if (!item || typeof item !== 'object') {
             logger.warn(`Inconsistent array structure at ${path}[${i}]: expected object, got ${typeof item}`)
             continue
           }
-          
+
           const itemKeys = Object.keys(item)
-          const missingKeys = expectedKeys.filter(key => !itemKeys.includes(key))
-          
+          const missingKeys = expectedKeys.filter((key) => !itemKeys.includes(key))
+
           if (missingKeys.length > 0) {
             logger.warn(`Inconsistent array structure at ${path}[${i}]: missing keys ${missingKeys.join(', ')}`)
           }
@@ -386,7 +390,7 @@ export abstract class BaseFirewallClient {
 
       for (const [currentKey, value] of Object.entries(obj as Record<string, unknown>)) {
         const currentPath = `${path}.${currentKey}`
-        
+
         if (Array.isArray(value)) {
           validateArray(value, currentPath)
         } else if (typeof value === 'object' && value !== null) {

@@ -6,19 +6,19 @@ import { ApiCache, CacheKeys, CacheTTL } from '../../utils/cache'
 import { CloudflareOptimizer } from './CloudflareOptimizer'
 import type { CacheStats } from '../../utils/cache'
 import type {
-    CloudflareRuleset,
-    CloudflareAPIResponse,
-    CloudflareCreateRulesetRequest,
-    CloudflareUpdateRulesetRequest,
-    CloudflareCreateRuleRequest,
-    CloudflareUpdateRuleRequest,
-    CloudflareList,
-    CloudflareListItem,
-    CloudflareCreateListRequest,
-    CloudflareUpdateListRequest,
-    CloudflareAddListItemsRequest,
-    CloudflareRemoveListItemsRequest,
-    CloudflareListItemsResponse,
+  CloudflareRuleset,
+  CloudflareAPIResponse,
+  CloudflareCreateRulesetRequest,
+  CloudflareUpdateRulesetRequest,
+  CloudflareCreateRuleRequest,
+  CloudflareUpdateRuleRequest,
+  CloudflareList,
+  CloudflareListItem,
+  CloudflareCreateListRequest,
+  CloudflareUpdateListRequest,
+  CloudflareAddListItemsRequest,
+  CloudflareRemoveListItemsRequest,
+  CloudflareListItemsResponse,
 } from '../../types/cloudflare'
 
 /**
@@ -180,12 +180,20 @@ export class CloudflareClient extends BaseFirewallClient {
 
         // Validate response structure
         if (!response.result || typeof response.result !== 'object') {
-          throw CloudflareErrorHandler.handleValidationError('ruleset', 'Invalid ruleset data received from API', response.result)
+          throw CloudflareErrorHandler.handleValidationError(
+            'ruleset',
+            'Invalid ruleset data received from API',
+            response.result,
+          )
         }
 
         const ruleset = response.result
         if (!ruleset.id || !ruleset.name) {
-          throw CloudflareErrorHandler.handleValidationError('ruleset', 'Ruleset missing required fields (id, name)', ruleset)
+          throw CloudflareErrorHandler.handleValidationError(
+            'ruleset',
+            'Ruleset missing required fields (id, name)',
+            ruleset,
+          )
         }
 
         // Ensure rules array exists and is valid
@@ -212,7 +220,9 @@ export class CloudflareClient extends BaseFirewallClient {
         })
 
         if (validRules.length !== ruleset.rules.length) {
-          logger.warn(`Filtered out ${ruleset.rules.length - validRules.length} malformed rules from ruleset ${rulesetId}`)
+          logger.warn(
+            `Filtered out ${ruleset.rules.length - validRules.length} malformed rules from ruleset ${rulesetId}`,
+          )
           ruleset.rules = validRules
         }
 
@@ -298,7 +308,8 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Deleted ruleset ${rulesetId}`)
-    this.invalidateRulesetCache()  }
+    this.invalidateRulesetCache()
+  }
 
   /**
    * Add a rule to a ruleset
@@ -461,12 +472,14 @@ export class CloudflareClient extends BaseFirewallClient {
       return cached
     }
 
-    const response = await this.get<CloudflareAPIResponse<{ 
-      id: string; 
-      name: string; 
-      status: string; 
-      plan?: { name: string } 
-    }>>(`/zones/${this.zoneId}`)
+    const response = await this.get<
+      CloudflareAPIResponse<{
+        id: string
+        name: string
+        status: string
+        plan?: { name: string }
+      }>
+    >(`/zones/${this.zoneId}`)
 
     if (!response.success) {
       const errorMessage = response.errors.map((e) => e.message).join(', ')
@@ -626,7 +639,8 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Deleted List ${listId}`)
-    this.invalidateListCache()  }
+    this.invalidateListCache()
+  }
 
   /**
    * Get all items in a List
@@ -725,7 +739,8 @@ export class CloudflareClient extends BaseFirewallClient {
     }
 
     logger.info(`Removed ${request.items.length} items from List ${listId}`)
-    this.invalidateListCache()  }
+    this.invalidateListCache()
+  }
 
   /**
    * Get or create a List for IP blocking

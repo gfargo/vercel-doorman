@@ -154,11 +154,10 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
 
     describe('Validation Errors', () => {
       it('should format rule validation errors with specific field guidance', () => {
-        const result = CloudflareErrorHandler.handleValidationError(
-          'rules',
-          'missing required field: action',
-          { field: 'action', ruleId: 'test-rule' }
-        )
+        const result = CloudflareErrorHandler.handleValidationError('rules', 'missing required field: action', {
+          field: 'action',
+          ruleId: 'test-rule',
+        })
 
         expect(result.code).toBe(CloudflareErrorCode.INVALID_RULESET)
         expect(result.message).toContain('Configuration validation failed for rules')
@@ -173,7 +172,7 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
         const result = CloudflareErrorHandler.handleValidationError(
           'expression',
           'invalid operator "contains"',
-          'ip.src contains "192.168"'
+          'ip.src contains "192.168"',
         )
 
         expect(result.code).toBe(CloudflareErrorCode.INVALID_EXPRESSION)
@@ -183,11 +182,7 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
       })
 
       it('should format IP validation errors with format examples', () => {
-        const result = CloudflareErrorHandler.handleValidationError(
-          'ip',
-          'invalid format',
-          '999.999.999.999'
-        )
+        const result = CloudflareErrorHandler.handleValidationError('ip', 'invalid format', '999.999.999.999')
 
         expect(result.code).toBe(CloudflareErrorCode.INVALID_IP)
         expect(result.suggestion).toContain('IPv4 or IPv6 address')
@@ -333,32 +328,36 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
 
   describe('Basic Retry Behavior Validation', () => {
     it('should not retry authentication errors', async () => {
-      fetchMock.mockResolvedValue(createMockResponse({
-        ok: false,
-        status: 401,
-        jsonBody: {
-          success: false,
-          errors: [{ code: 10000, message: 'Invalid API token' }],
-          messages: [],
-          result: null,
-        },
-      }))
+      fetchMock.mockResolvedValue(
+        createMockResponse({
+          ok: false,
+          status: 401,
+          jsonBody: {
+            success: false,
+            errors: [{ code: 10000, message: 'Invalid API token' }],
+            messages: [],
+            result: null,
+          },
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
       expect(fetchMock).toHaveBeenCalledTimes(1) // No retries for auth errors
     })
 
     it('should handle server errors appropriately', async () => {
-      fetchMock.mockResolvedValue(createMockResponse({
-        ok: false,
-        status: 500,
-        jsonBody: {
-          success: false,
-          errors: [{ code: 0, message: 'Internal server error' }],
-          messages: [],
-          result: null,
-        },
-      }))
+      fetchMock.mockResolvedValue(
+        createMockResponse({
+          ok: false,
+          status: 500,
+          jsonBody: {
+            success: false,
+            errors: [{ code: 0, message: 'Internal server error' }],
+            messages: [],
+            result: null,
+          },
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow(DoormanError)
     })
@@ -367,21 +366,25 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
   describe('Graceful Error Handling', () => {
     describe('Malformed Response Handling', () => {
       it('should handle malformed JSON responses gracefully', async () => {
-        fetchMock.mockResolvedValue(createMockResponse({
-          ok: true,
-          status: 200,
-          jsonBody: 'invalid json{',
-        }))
+        fetchMock.mockResolvedValue(
+          createMockResponse({
+            ok: true,
+            status: 200,
+            jsonBody: 'invalid json{',
+          }),
+        )
 
         await expect(client.listRulesets()).rejects.toThrow(DoormanError)
       })
 
       it('should handle missing required fields in API responses', async () => {
-        fetchMock.mockResolvedValue(createMockResponse({
-          ok: true,
-          status: 200,
-          jsonBody: { success: true }, // Missing errors, messages, result
-        }))
+        fetchMock.mockResolvedValue(
+          createMockResponse({
+            ok: true,
+            status: 200,
+            jsonBody: { success: true }, // Missing errors, messages, result
+          }),
+        )
 
         await expect(client.listRulesets()).rejects.toThrow()
       })
@@ -442,7 +445,7 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
           'lists_api',
           'Account ID not provided',
           'Using individual IP rules instead',
-          'May be slower for large IP lists'
+          'May be slower for large IP lists',
         )
 
         expect(result.code).toBe(CloudflareErrorCode.ACCOUNT_ID_REQUIRED)
@@ -457,7 +460,7 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
           'managed_rules',
           'Not supported in Cloudflare',
           'Use custom rules with equivalent conditions',
-          'Manual rule creation required'
+          'Manual rule creation required',
         )
 
         expect(result.code).toBe(CloudflareErrorCode.FEATURE_UNSUPPORTED)
@@ -527,11 +530,9 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
       ]
 
       testCases.forEach(({ operation, error, expectedContext }) => {
-        const message = CloudflareErrorHandler.createUserFriendlyMessage(
-          operation,
-          error as CloudflareApiError,
-          { zoneId: 'test-zone' }
-        )
+        const message = CloudflareErrorHandler.createUserFriendlyMessage(operation, error as CloudflareApiError, {
+          zoneId: 'test-zone',
+        })
 
         expect(message).toContain(`Failed to ${operation}`)
         expect(message).toContain('zoneId: test-zone')
@@ -548,10 +549,10 @@ describe('Comprehensive Cloudflare Error Handling Tests', () => {
         'updating rules',
       ]
 
-      operations.forEach(operation => {
+      operations.forEach((operation) => {
         const error = new Error('Test error')
         const result = CloudflareErrorHandler.handleNetworkError(error, operation)
-        
+
         expect(result.suggestion).toContain('internet connection')
         // Each operation should have specific additional guidance
         expect((result.suggestion || '').length).toBeGreaterThan(50)

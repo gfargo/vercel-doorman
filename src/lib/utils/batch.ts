@@ -61,9 +61,7 @@ export async function executeBatch<T>(
     return { results: [], succeeded: 0, failed: 0, totalDuration: 0 }
   }
 
-  logger.debug(
-    `Starting batch execution: ${operations.length} operations, concurrency=${config.concurrency}`,
-  )
+  logger.debug(`Starting batch execution: ${operations.length} operations, concurrency=${config.concurrency}`)
 
   // Split into chunks of `concurrency` size
   for (let i = 0; i < operations.length; i += config.concurrency) {
@@ -114,9 +112,7 @@ export async function executeBatch<T>(
   const succeeded = results.filter((r) => r.success).length
   const failed = results.filter((r) => !r.success).length
 
-  logger.debug(
-    `Batch execution complete: ${succeeded} succeeded, ${failed} failed in ${totalDuration}ms`,
-  )
+  logger.debug(`Batch execution complete: ${succeeded} succeeded, ${failed} failed in ${totalDuration}ms`)
 
   return { results, succeeded, failed, totalDuration }
 }

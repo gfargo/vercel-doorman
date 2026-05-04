@@ -6,7 +6,7 @@ config()
 
 async function main() {
   const chalk = (await import('chalk')).default
-  
+
   const run = yargs(process.argv.slice(2))
   run.usage(`${chalk.bold('▲ Doorman')}\n\n${chalk.dim('Manage Vercel Firewall rules via code')}`)
 

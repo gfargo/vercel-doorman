@@ -8,15 +8,15 @@ import { omitId } from '../../utils/omitId'
 import { retry } from '../../utils/retry'
 import { firewallConfigSchema } from '../../schemas/firewallSchemas'
 import type {
-    IFirewallProvider,
-    ProviderType,
-    SyncOptions,
-    SyncResult,
-    ChangeSet,
-    FeatureSet,
-    HealthScore,
-    HealthIssue,
-    ValidationResult,
+  IFirewallProvider,
+  ProviderType,
+  SyncOptions,
+  SyncResult,
+  ChangeSet,
+  FeatureSet,
+  HealthScore,
+  HealthIssue,
+  ValidationResult,
 } from '../IFirewallProvider'
 import type { UnifiedConfig, UnifiedRule, UnifiedIPRule } from '../../types/unified'
 import type { CustomRule, IPBlockingRule } from '../../types/vercel'

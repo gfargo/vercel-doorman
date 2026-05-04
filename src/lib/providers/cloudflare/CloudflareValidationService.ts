@@ -71,12 +71,14 @@ export class CloudflareValidationService {
         // Don't fail the entire validation if setup verification fails
         setupVerification = {
           overall: 'unhealthy',
-          checks: [{
-            name: 'Setup Verification',
-            status: 'fail',
-            message: 'Setup verification could not be completed',
-            details: error instanceof Error ? error.message : 'Unknown error',
-          }],
+          checks: [
+            {
+              name: 'Setup Verification',
+              status: 'fail',
+              message: 'Setup verification could not be completed',
+              details: error instanceof Error ? error.message : 'Unknown error',
+            },
+          ],
           features: {
             basicFirewallRules: false,
             ipBlocking: false,
@@ -213,14 +215,24 @@ export class CloudflareValidationService {
     // Configuration validation results
     lines.push('📋 Configuration Validation:')
     const configLines = CloudflareConfigValidator.formatValidationResults(result.configValidation)
-    lines.push(configLines.split('\n').map(line => `  ${line}`).join('\n'))
+    lines.push(
+      configLines
+        .split('\n')
+        .map((line) => `  ${line}`)
+        .join('\n'),
+    )
 
     // Setup verification results (if available)
     if (result.setupVerification) {
       lines.push('')
       lines.push('🔧 Setup Verification:')
       const setupLines = CloudflareSetupVerifier.formatVerificationResults(result.setupVerification)
-      lines.push(setupLines.split('\n').map(line => `  ${line}`).join('\n'))
+      lines.push(
+        setupLines
+          .split('\n')
+          .map((line) => `  ${line}`)
+          .join('\n'),
+      )
     }
 
     // Overall recommendations

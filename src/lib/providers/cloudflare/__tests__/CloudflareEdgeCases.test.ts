@@ -55,7 +55,7 @@ describe('CloudflareClient - Edge Cases', () => {
       try {
         await client.listRulesets()
         // Should not reach here
-        // eslint-disable-next-line no-undef
+
         fail('Expected listRulesets to throw')
       } catch (error) {
         expect(DoormanError.isDoormanError(error)).toBe(true)

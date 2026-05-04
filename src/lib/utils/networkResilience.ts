@@ -100,16 +100,16 @@ export class NetworkResilienceManager {
         }
 
         const result = await operation()
-        
+
         // Log successful retry if this wasn't the first attempt
         if (attempt > 1) {
           logger.info(`✅ ${context.operation} succeeded on attempt ${attempt}`)
         }
-        
+
         return result
       } catch (error) {
         lastError = error as Error
-        
+
         // Don't retry on the last attempt
         if (attempt > config.maxRetries) {
           break
@@ -122,14 +122,11 @@ export class NetworkResilienceManager {
         }
 
         // Calculate delay with exponential backoff
-        const delay = Math.min(
-          config.baseDelay * Math.pow(config.backoffFactor, attempt - 1),
-          config.maxDelay,
-        )
+        const delay = Math.min(config.baseDelay * Math.pow(config.backoffFactor, attempt - 1), config.maxDelay)
 
         logger.warn(
           `🔄 ${context.operation} failed (attempt ${attempt}/${config.maxRetries + 1}): ${lastError.message}. ` +
-          `Retrying in ${delay / 1000}s...`
+            `Retrying in ${delay / 1000}s...`,
         )
 
         // Call retry callback if provided
@@ -159,7 +156,7 @@ export class NetworkResilienceManager {
       startTime: Date.now(),
       lastUpdate: Date.now(),
     })
-    
+
     logger.info(`🚀 Starting ${operation} (${total} items)`)
     return progressId
   }
@@ -183,11 +180,11 @@ export class NetworkResilienceManager {
     if (progressPercent % 10 === 0 || timeSinceLastUpdate > 10000) {
       const rate = completed / (timeSinceStart / 1000)
       const eta = state.total > completed ? (state.total - completed) / rate : 0
-      
+
       logger.info(
         `📊 ${state.operation}: ${completed}/${state.total} (${progressPercent}%) ` +
-        `${failed > 0 ? `[${failed} failed] ` : ''}` +
-        `[${rate.toFixed(1)}/s] ${eta > 0 ? `ETA: ${Math.ceil(eta)}s` : ''}`
+          `${failed > 0 ? `[${failed} failed] ` : ''}` +
+          `[${rate.toFixed(1)}/s] ${eta > 0 ? `ETA: ${Math.ceil(eta)}s` : ''}`,
       )
     }
   }
@@ -204,8 +201,8 @@ export class NetworkResilienceManager {
 
     logger.info(
       `✅ ${state.operation} completed: ${state.completed}/${state.total} ` +
-      `${state.failed > 0 ? `(${state.failed} failed) ` : ''}` +
-      `in ${duration.toFixed(1)}s [${rate.toFixed(1)}/s]`
+        `${state.failed > 0 ? `(${state.failed} failed) ` : ''}` +
+        `in ${duration.toFixed(1)}s [${rate.toFixed(1)}/s]`,
     )
 
     this.progressStates.delete(progressId)
@@ -236,9 +233,7 @@ export class NetworkResilienceManager {
 
     // Save progress states
     for (const [progressId, state] of this.progressStates.entries()) {
-      logger.info(
-        `💾 Saving progress for ${state.operation}: ${state.completed}/${state.total} completed`
-      )
+      logger.info(`💾 Saving progress for ${state.operation}: ${state.completed}/${state.total} completed`)
     }
 
     // Execute cleanup handlers
@@ -252,7 +247,7 @@ export class NetworkResilienceManager {
 
     await Promise.allSettled(cleanupPromises)
     logger.info('🏁 Graceful shutdown completed')
-    
+
     // Exit after cleanup
     process.exit(0)
   }
@@ -262,7 +257,7 @@ export class NetworkResilienceManager {
    */
   private setupInterruptHandlers(): void {
     const signals = ['SIGINT', 'SIGTERM', 'SIGQUIT']
-    
+
     signals.forEach((signal) => {
       process.on(signal, () => {
         this.handleShutdown(signal).catch((error) => {
@@ -295,18 +290,14 @@ export class NetworkResilienceManager {
   private isRetryableError(error: Error, retryableErrors?: string[]): boolean {
     const patterns = retryableErrors || DEFAULT_RETRY_OPTIONS.retryableErrors!
     const errorMessage = error.message.toLowerCase()
-    
+
     return patterns.some((pattern) => errorMessage.includes(pattern.toLowerCase()))
   }
 
   /**
    * Enhance network error with context and suggestions
    */
-  private enhanceNetworkError(
-    error: Error,
-    context: NetworkFailureContext,
-    maxRetries: number,
-  ): DoormanError {
+  private enhanceNetworkError(error: Error, context: NetworkFailureContext, maxRetries: number): DoormanError {
     const errorMessage = error.message.toLowerCase()
 
     if (errorMessage.includes('timeout')) {
@@ -418,11 +409,7 @@ export function withNetworkResilience(
         totalAttempts: (options?.maxRetries || DEFAULT_RETRY_OPTIONS.maxRetries) + 1,
       }
 
-      return manager.executeWithRetry(
-        () => originalMethod.apply(this, args),
-        fullContext,
-        options,
-      )
+      return manager.executeWithRetry(() => originalMethod.apply(this, args), fullContext, options)
     }
 
     return descriptor

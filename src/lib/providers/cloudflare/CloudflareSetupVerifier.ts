@@ -121,7 +121,7 @@ export class CloudflareSetupVerifier {
 
     // Generate result
     const result = this.generateVerificationResult(checks, features)
-    
+
     logger.info(`Setup verification completed in ${Date.now() - startTime}ms`)
     logger.info(`Overall status: ${result.overall}`)
 
@@ -133,14 +133,14 @@ export class CloudflareSetupVerifier {
    */
   private async checkConnectivity(checks: VerificationCheck[]): Promise<void> {
     const startTime = Date.now()
-    
+
     try {
       const connectivityResult = await this.validator!.testConnectivity()
-      
+
       checks.push({
         name: 'API Connectivity',
         status: connectivityResult.valid ? 'pass' : 'fail',
-        message: connectivityResult.valid 
+        message: connectivityResult.valid
           ? 'Successfully connected to Cloudflare API'
           : 'Failed to connect to Cloudflare API',
         details: connectivityResult.suggestions.join('; ') || undefined,
@@ -165,13 +165,11 @@ export class CloudflareSetupVerifier {
 
     try {
       const tokenResult = await this.validator!.validateApiToken()
-      
+
       checks.push({
         name: 'API Token Validation',
         status: tokenResult.valid ? 'pass' : 'fail',
-        message: tokenResult.valid 
-          ? 'API token is valid and has required permissions'
-          : 'API token validation failed',
+        message: tokenResult.valid ? 'API token is valid and has required permissions' : 'API token validation failed',
         details: tokenResult.suggestions.join('; ') || undefined,
         duration: Date.now() - startTime,
       })
@@ -194,7 +192,7 @@ export class CloudflareSetupVerifier {
 
     try {
       const zoneResult = await this.validator!.validateZoneAccess(this.zoneId, this.apiToken)
-      
+
       if (zoneResult.valid) {
         features.basicFirewallRules = true
         features.ipBlocking = true
@@ -206,9 +204,7 @@ export class CloudflareSetupVerifier {
       checks.push({
         name: 'Zone Access',
         status: zoneResult.valid ? 'pass' : 'fail',
-        message: zoneResult.valid 
-          ? 'Zone access verified - firewall features available'
-          : 'Zone access failed',
+        message: zoneResult.valid ? 'Zone access verified - firewall features available' : 'Zone access failed',
         details: zoneResult.suggestions.join('; ') || undefined,
         duration: Date.now() - startTime,
       })
@@ -253,13 +249,11 @@ export class CloudflareSetupVerifier {
 
     try {
       const accountResult = await this.validator!.validateAccountAccess(this.accountId!, this.apiToken)
-      
+
       checks.push({
         name: 'Account Access',
         status: accountResult.valid ? 'pass' : 'warning',
-        message: accountResult.valid 
-          ? 'Account access verified'
-          : 'Account access limited or unavailable',
+        message: accountResult.valid ? 'Account access verified' : 'Account access limited or unavailable',
         details: accountResult.suggestions.join('; ') || undefined,
         duration: Date.now() - startTime,
       })
@@ -273,7 +267,7 @@ export class CloudflareSetupVerifier {
           checks.push({
             name: 'Lists API',
             status: listsResult.valid ? 'pass' : 'warning',
-            message: listsResult.valid 
+            message: listsResult.valid
               ? 'Lists API available for bulk IP management'
               : 'Lists API not available - will use individual IP rules',
             details: listsResult.suggestions.join('; ') || undefined,
@@ -309,17 +303,17 @@ export class CloudflareSetupVerifier {
     try {
       // Test ruleset access
       const rulesets = await this.client!.getRulesets()
-      
+
       checks.push({
         name: 'Ruleset Access',
         status: 'pass',
         message: `Found ${rulesets.length} existing rulesets`,
-        details: rulesets.length > 0 ? `Phases: ${rulesets.map(r => r.phase).join(', ')}` : 'No existing rulesets',
+        details: rulesets.length > 0 ? `Phases: ${rulesets.map((r) => r.phase).join(', ')}` : 'No existing rulesets',
         duration: Date.now() - startTime,
       })
 
       // Test if we can create/modify rules (dry run check)
-      const customRulesets = rulesets.filter(r => r.kind === 'custom')
+      const customRulesets = rulesets.filter((r) => r.kind === 'custom')
       if (customRulesets.length > 0) {
         checks.push({
           name: 'Rule Management',
@@ -362,7 +356,7 @@ export class CloudflareSetupVerifier {
 
       let status: 'pass' | 'warning' | 'fail' = 'pass'
       let message = `API response time: ${responseTime}ms`
-      
+
       if (responseTime > 5000) {
         status = 'fail'
         message += ' (Very slow - may impact operations)'
@@ -394,20 +388,21 @@ export class CloudflareSetupVerifier {
   /**
    * Generate final verification result
    */
-  private generateVerificationResult(checks: VerificationCheck[], features: FeatureAvailability): SetupVerificationResult {
-    const failedChecks = checks.filter(c => c.status === 'fail')
-    const warningChecks = checks.filter(c => c.status === 'warning')
-    const passedChecks = checks.filter(c => c.status === 'pass')
+  private generateVerificationResult(
+    checks: VerificationCheck[],
+    features: FeatureAvailability,
+  ): SetupVerificationResult {
+    const failedChecks = checks.filter((c) => c.status === 'fail')
+    const warningChecks = checks.filter((c) => c.status === 'warning')
+    const passedChecks = checks.filter((c) => c.status === 'pass')
 
     let overall: 'healthy' | 'degraded' | 'unhealthy'
     let summary: string
     const recommendations: string[] = []
 
     // Determine overall status - account access failures should be warnings, not failures
-    const criticalFailures = failedChecks.filter(c => 
-      !c.name.includes('Account') && !c.name.includes('Lists API')
-    )
-    
+    const criticalFailures = failedChecks.filter((c) => !c.name.includes('Account') && !c.name.includes('Lists API'))
+
     if (criticalFailures.length === 0) {
       if (warningChecks.length === 0 && failedChecks.length === 0) {
         overall = 'healthy'
@@ -428,14 +423,16 @@ export class CloudflareSetupVerifier {
     }
 
     if (!features.basicFirewallRules) {
-      recommendations.push('Basic firewall functionality is not available. Check zone access and API token permissions.')
+      recommendations.push(
+        'Basic firewall functionality is not available. Check zone access and API token permissions.',
+      )
     }
 
-    if (failedChecks.some(c => c.name.includes('Connectivity'))) {
+    if (failedChecks.some((c) => c.name.includes('Connectivity'))) {
       recommendations.push('Network connectivity issues detected. Check internet connection and firewall settings.')
     }
 
-    if (warningChecks.some(c => c.name.includes('Performance'))) {
+    if (warningChecks.some((c) => c.name.includes('Performance'))) {
       recommendations.push('API performance is slow. Consider checking network conditions or trying again later.')
     }
 
@@ -484,7 +481,7 @@ export class CloudflareSetupVerifier {
 
     // Feature availability
     lines.push('🔧 Feature Availability:')
-    const featureStatus = (available: boolean) => available ? '✅' : '❌'
+    const featureStatus = (available: boolean) => (available ? '✅' : '❌')
     lines.push(`  ${featureStatus(result.features.basicFirewallRules)} Basic Firewall Rules`)
     lines.push(`  ${featureStatus(result.features.ipBlocking)} IP Blocking`)
     lines.push(`  ${featureStatus(result.features.listsApi)} Lists API (Bulk IP Management)`)
@@ -496,7 +493,8 @@ export class CloudflareSetupVerifier {
     // Detailed check results
     lines.push('🔍 Detailed Results:')
     for (const check of result.checks) {
-      const statusEmoji = check.status === 'pass' ? '✅' : check.status === 'warning' ? '⚠️' : check.status === 'fail' ? '❌' : '⏭️'
+      const statusEmoji =
+        check.status === 'pass' ? '✅' : check.status === 'warning' ? '⚠️' : check.status === 'fail' ? '❌' : '⏭️'
       const duration = check.duration ? ` (${check.duration}ms)` : ''
       lines.push(`  ${statusEmoji} ${check.name}: ${check.message}${duration}`)
       if (check.details) {

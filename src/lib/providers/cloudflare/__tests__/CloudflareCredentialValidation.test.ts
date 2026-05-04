@@ -61,43 +61,47 @@ describe('Cloudflare Credential Validation', () => {
 
       for (const token of validTokens) {
         // Mock successful token verification
-        mockFetch.mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'token123',
-              status: 'active',
-              policies: [{
-                id: 'policy1',
-                effect: 'allow',
-                resources: { 'com.cloudflare.api.account.zone': 'zone123' },
-                permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-              }],
+        mockFetch.mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'token123',
+                status: 'active',
+                policies: [
+                  {
+                    id: 'policy1',
+                    effect: 'allow',
+                    resources: { 'com.cloudflare.api.account.zone': 'zone123' },
+                    permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                  },
+                ],
+              },
             },
-          },
-        }))
+          }),
+        )
 
         // Mock zone validation
-        mockFetch.mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: { id: 'zone123', name: 'example.com', status: 'active' },
-          },
-        }))
+        mockFetch.mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: { id: 'zone123', name: 'example.com', status: 'active' },
+            },
+          }),
+        )
 
         const result = await validator.validateCredentials({
           apiToken: token,
           zoneId: 'zone123',
         })
 
-        const formatErrors = result.errors.filter(e => 
-          e.message.includes('format') || 
-          e.message.includes('Bearer') || 
-          e.message.includes('too short')
+        const formatErrors = result.errors.filter(
+          (e) => e.message.includes('format') || e.message.includes('Bearer') || e.message.includes('too short'),
         )
         expect(formatErrors).toHaveLength(0)
       }
@@ -119,7 +123,7 @@ describe('Cloudflare Credential Validation', () => {
         })
 
         expect(result.valid).toBe(false)
-        const hasExpectedError = result.errors.some(e => e.message.includes(expectedError))
+        const hasExpectedError = result.errors.some((e) => e.message.includes(expectedError))
         expect(hasExpectedError).toBe(true)
       }
     })
@@ -149,16 +153,18 @@ describe('Cloudflare Credential Validation', () => {
       ]
 
       for (const scenario of errorScenarios) {
-        mockFetch.mockResolvedValueOnce(makeResponse({
-          ok: false,
-          status: scenario.status,
-          jsonBody: scenario.response,
-        }))
+        mockFetch.mockResolvedValueOnce(
+          makeResponse({
+            ok: false,
+            status: scenario.status,
+            jsonBody: scenario.response,
+          }),
+        )
 
         const result = await validator.validateCredentials(credentials)
 
         expect(result.valid).toBe(false)
-        expect(result.errors.some(e => e.message.includes(scenario.expectedError))).toBe(true)
+        expect(result.errors.some((e) => e.message.includes(scenario.expectedError))).toBe(true)
       }
     })
 
@@ -181,7 +187,7 @@ describe('Cloudflare Credential Validation', () => {
         const result = await validator.validateCredentials(credentials)
 
         expect(result.valid).toBe(false)
-        expect(result.errors.some(e => e.message.includes('Failed to verify API token'))).toBe(true)
+        expect(result.errors.some((e) => e.message.includes('Failed to verify API token'))).toBe(true)
       }
     })
   })
@@ -194,38 +200,44 @@ describe('Cloudflare Credential Validation', () => {
       }
 
       // Mock successful token verification
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'token123',
-            status: 'active',
-            policies: [{
-              id: 'policy1',
-              effect: 'allow',
-              resources: { 'com.cloudflare.api.account.zone': 'valid-zone-123' },
-              permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-            }],
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'token123',
+              status: 'active',
+              policies: [
+                {
+                  id: 'policy1',
+                  effect: 'allow',
+                  resources: { 'com.cloudflare.api.account.zone': 'valid-zone-123' },
+                  permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                },
+              ],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       // Mock successful zone info
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'valid-zone-123',
-            name: 'example.com',
-            status: 'active',
-            permissions: ['zone:edit'],
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'valid-zone-123',
+              name: 'example.com',
+              status: 'active',
+              permissions: ['zone:edit'],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
@@ -240,38 +252,44 @@ describe('Cloudflare Credential Validation', () => {
       }
 
       // Mock successful token verification
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'token123',
-            status: 'active',
-            policies: [{
-              id: 'policy1',
-              effect: 'allow',
-              resources: { 'com.cloudflare.api.account.zone': '*' },
-              permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-            }],
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'token123',
+              status: 'active',
+              policies: [
+                {
+                  id: 'policy1',
+                  effect: 'allow',
+                  resources: { 'com.cloudflare.api.account.zone': '*' },
+                  permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                },
+              ],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       // Mock zone not found
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: false,
-        status: 404,
-        jsonBody: {
-          success: false,
-          errors: [{ code: 1001, message: 'Zone not found' }],
-        },
-      }))
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 404,
+          jsonBody: {
+            success: false,
+            errors: [{ code: 1001, message: 'Zone not found' }],
+          },
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some(e => e.message.includes('Zone not found'))).toBe(true)
+      expect(result.errors.some((e) => e.message.includes('Zone not found'))).toBe(true)
     })
 
     it('should handle zone access permission errors', async () => {
@@ -281,43 +299,49 @@ describe('Cloudflare Credential Validation', () => {
       }
 
       // Mock successful token verification
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'token123',
-            status: 'active',
-            policies: [{
-              id: 'policy1',
-              effect: 'allow',
-              resources: { 'com.cloudflare.api.account.zone': 'other-zone' },
-              permission_groups: [{ id: 'zone_read', name: 'Zone:Read' }],
-            }],
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'token123',
+              status: 'active',
+              policies: [
+                {
+                  id: 'policy1',
+                  effect: 'allow',
+                  resources: { 'com.cloudflare.api.account.zone': 'other-zone' },
+                  permission_groups: [{ id: 'zone_read', name: 'Zone:Read' }],
+                },
+              ],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       // Mock zone info success but insufficient permissions
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'restricted-zone',
-            name: 'restricted.com',
-            status: 'active',
-            permissions: ['zone:read'], // Missing zone:edit
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'restricted-zone',
+              name: 'restricted.com',
+              status: 'active',
+              permissions: ['zone:read'], // Missing zone:edit
+            },
           },
-        },
-      }))
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some(e => e.message.includes('not accessible'))).toBe(true)
+      expect(result.errors.some((e) => e.message.includes('not accessible'))).toBe(true)
     })
 
     it('should warn about inactive zone status', async () => {
@@ -327,43 +351,49 @@ describe('Cloudflare Credential Validation', () => {
       }
 
       // Mock successful token verification
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'token123',
-            status: 'active',
-            policies: [{
-              id: 'policy1',
-              effect: 'allow',
-              resources: { 'com.cloudflare.api.account.zone': 'pending-zone' },
-              permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-            }],
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'token123',
+              status: 'active',
+              policies: [
+                {
+                  id: 'policy1',
+                  effect: 'allow',
+                  resources: { 'com.cloudflare.api.account.zone': 'pending-zone' },
+                  permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                },
+              ],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       // Mock zone with pending status
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'pending-zone',
-            name: 'pending.com',
-            status: 'pending',
-            permissions: ['zone:edit'],
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'pending-zone',
+              name: 'pending.com',
+              status: 'pending',
+              permissions: ['zone:edit'],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(true)
-      expect(result.warnings.some(w => w.message.includes("status is 'pending'"))).toBe(true)
+      expect(result.warnings.some((w) => w.message.includes("status is 'pending'"))).toBe(true)
     })
   })
 
@@ -376,54 +406,62 @@ describe('Cloudflare Credential Validation', () => {
       }
 
       // Mock successful token verification
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: {
-            id: 'token123',
-            status: 'active',
-            policies: [{
-              id: 'policy1',
-              effect: 'allow',
-              resources: {
-                'com.cloudflare.api.account.zone': 'zone123',
-                'com.cloudflare.api.account': 'account123',
-              },
-              permission_groups: [
-                { id: 'zone_edit', name: 'Zone:Edit' },
-                { id: 'account_read', name: 'Account:Read' },
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: {
+              id: 'token123',
+              status: 'active',
+              policies: [
+                {
+                  id: 'policy1',
+                  effect: 'allow',
+                  resources: {
+                    'com.cloudflare.api.account.zone': 'zone123',
+                    'com.cloudflare.api.account': 'account123',
+                  },
+                  permission_groups: [
+                    { id: 'zone_edit', name: 'Zone:Edit' },
+                    { id: 'account_read', name: 'Account:Read' },
+                  ],
+                },
               ],
-            }],
+            },
           },
-        },
-      }))
+        }),
+      )
 
       // Mock successful zone info
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: { id: 'zone123', name: 'example.com', status: 'active' },
-        },
-      }))
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: { id: 'zone123', name: 'example.com', status: 'active' },
+          },
+        }),
+      )
 
       // Mock successful account info
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          success: true,
-          result: { id: 'account123', name: 'Test Account' },
-        },
-      }))
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            success: true,
+            result: { id: 'account123', name: 'Test Account' },
+          },
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(true)
-      expect(result.suggestions.some(s => s.includes('Lists API is available'))).toBe(true)
+      expect(result.suggestions.some((s) => s.includes('Lists API is available'))).toBe(true)
     })
 
     it('should handle account not found errors', async () => {
@@ -435,46 +473,54 @@ describe('Cloudflare Credential Validation', () => {
 
       // Mock successful token and zone verification
       mockFetch
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'token123',
-              status: 'active',
-              policies: [{
-                id: 'policy1',
-                effect: 'allow',
-                resources: { 'com.cloudflare.api.account.zone': 'zone123' },
-                permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-              }],
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'token123',
+                status: 'active',
+                policies: [
+                  {
+                    id: 'policy1',
+                    effect: 'allow',
+                    resources: { 'com.cloudflare.api.account.zone': 'zone123' },
+                    permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                  },
+                ],
+              },
             },
-          },
-        }))
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: { id: 'zone123', name: 'example.com', status: 'active' },
-          },
-        }))
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: { id: 'zone123', name: 'example.com', status: 'active' },
+            },
+          }),
+        )
 
       // Mock account not found
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: false,
-        status: 404,
-        jsonBody: {
-          success: false,
-          errors: [{ code: 1003, message: 'Account not found' }],
-        },
-      }))
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 404,
+          jsonBody: {
+            success: false,
+            errors: [{ code: 1003, message: 'Account not found' }],
+          },
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some(e => e.message.includes('Account not found'))).toBe(true)
+      expect(result.errors.some((e) => e.message.includes('Account not found'))).toBe(true)
     })
 
     it('should warn when account ID is not provided', async () => {
@@ -486,37 +532,43 @@ describe('Cloudflare Credential Validation', () => {
 
       // Mock successful token and zone verification
       mockFetch
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'token123',
-              status: 'active',
-              policies: [{
-                id: 'policy1',
-                effect: 'allow',
-                resources: { 'com.cloudflare.api.account.zone': 'zone123' },
-                permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-              }],
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'token123',
+                status: 'active',
+                policies: [
+                  {
+                    id: 'policy1',
+                    effect: 'allow',
+                    resources: { 'com.cloudflare.api.account.zone': 'zone123' },
+                    permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                  },
+                ],
+              },
             },
-          },
-        }))
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: { id: 'zone123', name: 'example.com', status: 'active' },
-          },
-        }))
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: { id: 'zone123', name: 'example.com', status: 'active' },
+            },
+          }),
+        )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(true)
-      expect(result.warnings.some(w => w.message.includes('Account ID not provided'))).toBe(true)
-      expect(result.suggestions.some(s => s.includes('CLOUDFLARE_ACCOUNT_ID'))).toBe(true)
+      expect(result.warnings.some((w) => w.message.includes('Account ID not provided'))).toBe(true)
+      expect(result.suggestions.some((s) => s.includes('CLOUDFLARE_ACCOUNT_ID'))).toBe(true)
     })
 
     it('should handle insufficient account permissions', async () => {
@@ -528,47 +580,55 @@ describe('Cloudflare Credential Validation', () => {
 
       // Mock successful token and zone verification
       mockFetch
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'token123',
-              status: 'active',
-              policies: [{
-                id: 'policy1',
-                effect: 'allow',
-                resources: { 'com.cloudflare.api.account.zone': 'zone123' },
-                permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-                // Missing account permissions
-              }],
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'token123',
+                status: 'active',
+                policies: [
+                  {
+                    id: 'policy1',
+                    effect: 'allow',
+                    resources: { 'com.cloudflare.api.account.zone': 'zone123' },
+                    permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                    // Missing account permissions
+                  },
+                ],
+              },
             },
-          },
-        }))
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: { id: 'zone123', name: 'example.com', status: 'active' },
-          },
-        }))
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: { id: 'zone123', name: 'example.com', status: 'active' },
+            },
+          }),
+        )
 
       // Mock account access denied
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: false,
-        status: 403,
-        jsonBody: {
-          success: false,
-          errors: [{ code: 10001, message: 'Insufficient permissions for account' }],
-        },
-      }))
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 403,
+          jsonBody: {
+            success: false,
+            errors: [{ code: 10001, message: 'Insufficient permissions for account' }],
+          },
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some(e => e.message.includes('Account not found or not accessible'))).toBe(true)
+      expect(result.errors.some((e) => e.message.includes('Account not found or not accessible'))).toBe(true)
     })
   })
 
@@ -599,38 +659,44 @@ describe('Cloudflare Credential Validation', () => {
 
       for (const scenario of permissionScenarios) {
         // Mock token verification with specific permissions
-        mockFetch.mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'token123',
-              status: 'active',
-              policies: [{
-                id: 'policy1',
-                effect: 'allow',
-                resources: { 'com.cloudflare.api.account.zone': 'zone123' },
-                permission_groups: scenario.permissions,
-              }],
+        mockFetch.mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'token123',
+                status: 'active',
+                policies: [
+                  {
+                    id: 'policy1',
+                    effect: 'allow',
+                    resources: { 'com.cloudflare.api.account.zone': 'zone123' },
+                    permission_groups: scenario.permissions,
+                  },
+                ],
+              },
             },
-          },
-        }))
+          }),
+        )
 
         // Mock zone info
-        mockFetch.mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'zone123',
-              name: 'example.com',
-              status: 'active',
-              permissions: scenario.permissions.map(p => p.id.replace('_', ':')),
+        mockFetch.mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'zone123',
+                name: 'example.com',
+                status: 'active',
+                permissions: scenario.permissions.map((p) => p.id.replace('_', ':')),
+              },
             },
-          },
-        }))
+          }),
+        )
 
         const result = await validator.validateCredentials(credentials)
 
@@ -638,10 +704,11 @@ describe('Cloudflare Credential Validation', () => {
           expect(result.valid).toBe(true)
         } else {
           expect(result.valid).toBe(false)
-          expect(result.errors.some(e => 
-            e.message.includes('not accessible') || 
-            e.message.includes('Insufficient permissions')
-          )).toBe(true)
+          expect(
+            result.errors.some(
+              (e) => e.message.includes('not accessible') || e.message.includes('Insufficient permissions'),
+            ),
+          ).toBe(true)
         }
       }
     })
@@ -655,50 +722,58 @@ describe('Cloudflare Credential Validation', () => {
 
       // Mock successful token and zone verification
       mockFetch
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'token123',
-              status: 'active',
-              policies: [{
-                id: 'policy1',
-                effect: 'allow',
-                resources: {
-                  'com.cloudflare.api.account.zone': 'zone123',
-                  'com.cloudflare.api.account': 'account123',
-                },
-                permission_groups: [
-                  { id: 'zone_edit', name: 'Zone:Edit' },
-                  { id: 'account_read', name: 'Account:Read' },
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'token123',
+                status: 'active',
+                policies: [
+                  {
+                    id: 'policy1',
+                    effect: 'allow',
+                    resources: {
+                      'com.cloudflare.api.account.zone': 'zone123',
+                      'com.cloudflare.api.account': 'account123',
+                    },
+                    permission_groups: [
+                      { id: 'zone_edit', name: 'Zone:Edit' },
+                      { id: 'account_read', name: 'Account:Read' },
+                    ],
+                  },
                 ],
-              }],
+              },
             },
-          },
-        }))
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: { id: 'zone123', name: 'example.com', status: 'active' },
-          },
-        }))
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: { id: 'account123', name: 'Test Account' },
-          },
-        }))
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: { id: 'zone123', name: 'example.com', status: 'active' },
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: { id: 'account123', name: 'Test Account' },
+            },
+          }),
+        )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(true)
-      expect(result.suggestions.some(s => s.includes('Lists API is available'))).toBe(true)
+      expect(result.suggestions.some((s) => s.includes('Lists API is available'))).toBe(true)
     })
   })
 
@@ -710,19 +785,21 @@ describe('Cloudflare Credential Validation', () => {
       }
 
       // Mock malformed response
-      mockFetch.mockResolvedValueOnce(makeResponse({
-        ok: true,
-        status: 200,
-        jsonBody: {
-          // Missing required fields
-          data: 'invalid structure',
-        },
-      }))
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: {
+            // Missing required fields
+            data: 'invalid structure',
+          },
+        }),
+      )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some(e => e.message.includes('Failed to verify API token'))).toBe(true)
+      expect(result.errors.some((e) => e.message.includes('Failed to verify API token'))).toBe(true)
     })
 
     it('should handle concurrent validation requests', async () => {
@@ -740,12 +817,14 @@ describe('Cloudflare Credential Validation', () => {
           result: {
             id: 'token123',
             status: 'active',
-            policies: [{
-              id: 'policy1',
-              effect: 'allow',
-              resources: { 'com.cloudflare.api.account.zone': 'zone123' },
-              permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-            }],
+            policies: [
+              {
+                id: 'policy1',
+                effect: 'allow',
+                resources: { 'com.cloudflare.api.account.zone': 'zone123' },
+                permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+              },
+            ],
           },
         },
       })
@@ -760,14 +839,12 @@ describe('Cloudflare Credential Validation', () => {
       })
 
       // Mock multiple concurrent calls
-      mockFetch
-        .mockResolvedValue(mockSuccessResponse)
-        .mockResolvedValue(mockZoneResponse)
+      mockFetch.mockResolvedValue(mockSuccessResponse).mockResolvedValue(mockZoneResponse)
 
       const promises = Array.from({ length: 3 }, () => validator.validateCredentials(credentials))
       const results = await Promise.all(promises)
 
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.valid).toBe(true)
       })
     })
@@ -780,38 +857,46 @@ describe('Cloudflare Credential Validation', () => {
 
       // Mock token verification success but zone access failure
       mockFetch
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: {
-              id: 'token123',
-              status: 'active',
-              policies: [{
-                id: 'policy1',
-                effect: 'allow',
-                resources: { 'com.cloudflare.api.account.zone': 'other-zone' },
-                permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
-              }],
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: {
+                id: 'token123',
+                status: 'active',
+                policies: [
+                  {
+                    id: 'policy1',
+                    effect: 'allow',
+                    resources: { 'com.cloudflare.api.account.zone': 'other-zone' },
+                    permission_groups: [{ id: 'zone_edit', name: 'Zone:Edit' }],
+                  },
+                ],
+              },
             },
-          },
-        }))
-        .mockResolvedValueOnce(makeResponse({
-          ok: true,
-          status: 200,
-          jsonBody: {
-            success: true,
-            result: { id: 'zone123', name: 'example.com', status: 'active' },
-          },
-        }))
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeResponse({
+            ok: true,
+            status: 200,
+            jsonBody: {
+              success: true,
+              result: { id: 'zone123', name: 'example.com', status: 'active' },
+            },
+          }),
+        )
 
       const result = await validator.validateCredentials(credentials)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some(e => 
-        e.suggestion && e.suggestion.includes('Ensure the API token has permissions for this zone')
-      )).toBe(true)
+      expect(
+        result.errors.some(
+          (e) => e.suggestion && e.suggestion.includes('Ensure the API token has permissions for this zone'),
+        ),
+      ).toBe(true)
     })
   })
 })

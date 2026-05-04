@@ -12,9 +12,9 @@ export type TranslationWarningSeverity = 'critical' | 'warning' | 'info'
 /**
  * Translation warning categories for better organization
  */
-export type TranslationWarningCategory = 
+export type TranslationWarningCategory =
   | 'feature_unsupported'
-  | 'lossy_conversion' 
+  | 'lossy_conversion'
   | 'syntax_limitation'
   | 'performance_impact'
   | 'security_consideration'
@@ -86,7 +86,7 @@ export class RuleTranslator {
         } else {
           // Default to 1 hour (3600 seconds) for rate limit blocks
           cloudflareRule.ratelimit.mitigation_timeout = 3600
-          
+
           // Import the warning system
           const { TranslationWarningSystem } = require('./TranslationWarningSystem')
           warnings.push(
@@ -95,8 +95,8 @@ export class RuleTranslator {
               rule.id,
               'rateLimit.mitigationTimeout',
               'No mitigation timeout specified, using default 1 hour (3600 seconds)',
-              'Specify mitigationTimeout in your rate limit configuration for precise control'
-            )
+              'Specify mitigationTimeout in your rate limit configuration for precise control',
+            ),
           )
         }
 
@@ -139,8 +139,8 @@ export class RuleTranslator {
         'Cloudflare expression',
         'Cloudflare expressions cannot be perfectly converted to Vercel structured conditions',
         rule.id,
-        'expression'
-      )
+        'expression',
+      ),
     )
 
     // For now, create a basic Vercel rule
@@ -186,8 +186,8 @@ export class RuleTranslator {
               rule.id,
               condition.type,
               `Regular expression pattern may need adjustment for target provider: ${condition.value}`,
-              'Test the regex pattern in the target provider and adjust syntax if needed'
-            )
+              'Test the regex pattern in the target provider and adjust syntax if needed',
+            ),
           )
         }
 
@@ -210,8 +210,8 @@ export class RuleTranslator {
           rule.id,
           undefined,
           `Rule has ${conditions.length} conditions which may impact performance`,
-          'Consider splitting complex rules into multiple simpler rules for better performance'
-        )
+          'Consider splitting complex rules into multiple simpler rules for better performance',
+        ),
       )
     }
 
@@ -263,8 +263,8 @@ export class RuleTranslator {
         rule.id,
         'expression',
         'Expression parsing not fully implemented. Using simplified translation.',
-        'Review the translated rule and add missing conditions manually if needed.'
-      )
+        'Review the translated rule and add missing conditions manually if needed.',
+      ),
     )
 
     const action: UnifiedAction = {

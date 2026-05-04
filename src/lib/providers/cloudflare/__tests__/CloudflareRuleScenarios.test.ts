@@ -93,7 +93,7 @@ describe('Cloudflare Rule Scenarios', () => {
               }),
             }),
           ]),
-        })
+        }),
       )
     })
 
@@ -824,16 +824,16 @@ describe('Cloudflare Rule Scenarios', () => {
 
       expect(config.rules).toHaveLength(2) // path-rule and geo-rule
       expect(config.ips).toHaveLength(2) // ip-rule and list item
-      
+
       // Check that rules are properly categorized
-      const pathRule = config.rules.find(r => r.id === 'path-rule')
-      const geoRule = config.rules.find(r => r.id === 'geo-rule')
+      const pathRule = config.rules.find((r) => r.id === 'path-rule')
+      const geoRule = config.rules.find((r) => r.id === 'geo-rule')
       expect(pathRule).toBeDefined()
       expect(geoRule).toBeDefined()
 
       // Check that IPs are properly extracted
-      const individualIP = config.ips?.find(ip => ip.ip === '192.168.1.100')
-      const listIP = config.ips?.find(ip => ip.ip === '10.0.0.1')
+      const individualIP = config.ips?.find((ip) => ip.ip === '192.168.1.100')
+      const listIP = config.ips?.find((ip) => ip.ip === '10.0.0.1')
       expect(individualIP).toBeDefined()
       expect(listIP).toBeDefined()
     })

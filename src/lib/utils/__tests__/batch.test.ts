@@ -3,11 +3,7 @@ import { executeBatch, executeParallel, optimizedDiff } from '../batch'
 
 describe('executeBatch', () => {
   it('should execute all operations successfully', async () => {
-    const operations = [
-      () => Promise.resolve('a'),
-      () => Promise.resolve('b'),
-      () => Promise.resolve('c'),
-    ]
+    const operations = [() => Promise.resolve('a'), () => Promise.resolve('b'), () => Promise.resolve('c')]
 
     const result = await executeBatch(operations)
 
@@ -44,10 +40,7 @@ describe('executeBatch', () => {
   })
 
   it('should stop on first failure with continueOnError=false', async () => {
-    const operations = [
-      () => Promise.reject(new Error('fail')),
-      () => Promise.resolve('should not run'),
-    ]
+    const operations = [() => Promise.reject(new Error('fail')), () => Promise.resolve('should not run')]
 
     const result = await executeBatch(operations, {
       continueOnError: false,
@@ -93,9 +86,7 @@ describe('executeBatch', () => {
   })
 
   it('should track duration per operation', async () => {
-    const operations = [
-      () => new Promise<string>((resolve) => setTimeout(() => resolve('ok'), 50)),
-    ]
+    const operations = [() => new Promise<string>((resolve) => setTimeout(() => resolve('ok'), 50))]
 
     const result = await executeBatch(operations)
 
@@ -121,11 +112,7 @@ describe('executeBatch', () => {
   })
 
   it('should preserve operation indices in results', async () => {
-    const operations = [
-      () => Promise.resolve('zero'),
-      () => Promise.resolve('one'),
-      () => Promise.resolve('two'),
-    ]
+    const operations = [() => Promise.resolve('zero'), () => Promise.resolve('one'), () => Promise.resolve('two')]
 
     const result = await executeBatch(operations)
 
@@ -191,8 +178,7 @@ describe('optimizedDiff', () => {
     value: number
   }
 
-  const equalFn = (a: TestItem, b: TestItem) =>
-    a.id === b.id && a.name === b.name && a.value === b.value
+  const equalFn = (a: TestItem, b: TestItem) => a.id === b.id && a.name === b.name && a.value === b.value
 
   it('should detect items to add', () => {
     const local: TestItem[] = [

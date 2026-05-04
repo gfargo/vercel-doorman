@@ -28,19 +28,22 @@ export class TranslationWarningSystem {
     managed_rules: {
       category: 'feature_unsupported',
       severity: 'critical',
-      explanation: 'Managed rules are provider-specific security rules that cannot be directly translated between platforms.',
+      explanation:
+        'Managed rules are provider-specific security rules that cannot be directly translated between platforms.',
       suggestion: 'Replace with custom rules using equivalent conditions and actions.',
-      alternativeApproach: 'Create custom rules that match the same traffic patterns using standard conditions like IP, country, user agent, or request headers.',
+      alternativeApproach:
+        'Create custom rules that match the same traffic patterns using standard conditions like IP, country, user agent, or request headers.',
       impact: 'Security coverage may be reduced until equivalent custom rules are implemented.',
       docsUrl: `${TranslationWarningSystem.DOCS_BASE_URL}/migration/managed-rules`,
     },
 
     bot_management: {
-      category: 'feature_unsupported', 
+      category: 'feature_unsupported',
       severity: 'critical',
       explanation: 'Bot management features use provider-specific detection algorithms that cannot be translated.',
       suggestion: 'Configure bot management separately in the target provider.',
-      alternativeApproach: 'Use user agent filtering, rate limiting, and challenge actions to implement basic bot protection.',
+      alternativeApproach:
+        'Use user agent filtering, rate limiting, and challenge actions to implement basic bot protection.',
       impact: 'Bot protection effectiveness may vary between providers.',
       docsUrl: `${TranslationWarningSystem.DOCS_BASE_URL}/migration/bot-management`,
     },
@@ -49,7 +52,8 @@ export class TranslationWarningSystem {
     complex_expressions: {
       category: 'lossy_conversion',
       severity: 'warning',
-      explanation: 'Complex expressions may not translate perfectly due to differences in syntax and supported operators between providers.',
+      explanation:
+        'Complex expressions may not translate perfectly due to differences in syntax and supported operators between providers.',
       suggestion: 'Review translated expressions and test thoroughly before deploying.',
       alternativeApproach: 'Break complex expressions into simpler, more portable conditions.',
       impact: 'Rule behavior may differ slightly from the original configuration.',
@@ -58,7 +62,7 @@ export class TranslationWarningSystem {
 
     geo_blocking: {
       category: 'lossy_conversion',
-      severity: 'warning', 
+      severity: 'warning',
       explanation: 'Geographic blocking may use different country codes or geographic databases between providers.',
       suggestion: 'Verify country codes and geographic targeting after translation.',
       alternativeApproach: 'Use ISO country codes when possible for better compatibility.',
@@ -69,7 +73,8 @@ export class TranslationWarningSystem {
     rate_limiting_precision: {
       category: 'lossy_conversion',
       severity: 'info',
-      explanation: 'Rate limiting configurations may be adjusted to match the target provider\'s supported time windows and request thresholds.',
+      explanation:
+        "Rate limiting configurations may be adjusted to match the target provider's supported time windows and request thresholds.",
       suggestion: 'Review rate limiting settings and adjust if necessary.',
       alternativeApproach: 'Use the closest supported time window and request threshold values.',
       impact: 'Rate limiting may be slightly more or less restrictive than the original configuration.',
@@ -80,7 +85,8 @@ export class TranslationWarningSystem {
     regex_patterns: {
       category: 'syntax_limitation',
       severity: 'warning',
-      explanation: 'Regular expression patterns may have different syntax requirements or feature support between providers.',
+      explanation:
+        'Regular expression patterns may have different syntax requirements or feature support between providers.',
       suggestion: 'Test regex patterns in the target provider and adjust syntax if needed.',
       alternativeApproach: 'Use simpler string matching operations (contains, starts_with, ends_with) when possible.',
       impact: 'Pattern matching may behave differently or fail to match intended traffic.',
@@ -90,7 +96,8 @@ export class TranslationWarningSystem {
     header_manipulation: {
       category: 'syntax_limitation',
       severity: 'warning',
-      explanation: 'Header manipulation capabilities vary between providers in terms of supported headers and modification types.',
+      explanation:
+        'Header manipulation capabilities vary between providers in terms of supported headers and modification types.',
       suggestion: 'Verify header modification support in the target provider.',
       alternativeApproach: 'Use redirect rules or custom error pages to achieve similar functionality.',
       impact: 'Header modifications may not work as expected or may be ignored.',
@@ -103,7 +110,8 @@ export class TranslationWarningSystem {
       severity: 'info',
       explanation: 'Large IP lists may impact rule evaluation performance differently between providers.',
       suggestion: 'Consider using provider-specific IP list features for better performance.',
-      alternativeApproach: 'Break large IP lists into smaller, more targeted rules or use CIDR notation to reduce list size.',
+      alternativeApproach:
+        'Break large IP lists into smaller, more targeted rules or use CIDR notation to reduce list size.',
       impact: 'Rule evaluation may be slower with large IP lists, potentially affecting site performance.',
       docsUrl: `${TranslationWarningSystem.DOCS_BASE_URL}/migration/ip-lists`,
     },
@@ -122,7 +130,8 @@ export class TranslationWarningSystem {
     action_differences: {
       category: 'security_consideration',
       severity: 'warning',
-      explanation: 'Security actions (block, challenge, etc.) may behave differently between providers in terms of user experience and effectiveness.',
+      explanation:
+        'Security actions (block, challenge, etc.) may behave differently between providers in terms of user experience and effectiveness.',
       suggestion: 'Test security actions thoroughly and adjust based on provider capabilities.',
       alternativeApproach: 'Use the most appropriate equivalent action available in the target provider.',
       impact: 'Security effectiveness and user experience may differ from the original configuration.',
@@ -134,7 +143,7 @@ export class TranslationWarningSystem {
       severity: 'info',
       explanation: 'Challenge types (CAPTCHA, JavaScript, etc.) vary between providers and may affect user experience.',
       suggestion: 'Choose challenge types that balance security and user experience for your use case.',
-      alternativeApproach: 'Use the provider\'s recommended challenge type for your security requirements.',
+      alternativeApproach: "Use the provider's recommended challenge type for your security requirements.",
       impact: 'User experience during security challenges may vary.',
       docsUrl: `${TranslationWarningSystem.DOCS_BASE_URL}/migration/challenges`,
     },
@@ -172,7 +181,7 @@ export class TranslationWarningSystem {
     customSuggestion?: string,
   ): TranslationWarning {
     const config = this.WARNING_CONFIGS[key]
-    
+
     if (!config) {
       // Fallback for unknown warning types
       return {
@@ -305,23 +314,25 @@ export class TranslationWarningSystem {
     }
 
     const icon = severityIcons[warning.severity]
-    const ruleContext = warning.rule ? ` (Rule: ${warning.rule}${warning.field ? `, Field: ${warning.field}` : ''})` : ''
-    
+    const ruleContext = warning.rule
+      ? ` (Rule: ${warning.rule}${warning.field ? `, Field: ${warning.field}` : ''})`
+      : ''
+
     let formatted = `${icon} ${warning.severity.toUpperCase()}: ${warning.message}${ruleContext}\n`
     formatted += `   ${warning.explanation}\n`
-    
+
     if (warning.suggestion) {
       formatted += `   💡 Suggestion: ${warning.suggestion}\n`
     }
-    
+
     if (warning.alternativeApproach) {
       formatted += `   🔄 Alternative: ${warning.alternativeApproach}\n`
     }
-    
+
     if (warning.impact) {
       formatted += `   📊 Impact: ${warning.impact}\n`
     }
-    
+
     if (warning.docsUrl) {
       formatted += `   📖 Documentation: ${warning.docsUrl}\n`
     }
@@ -338,9 +349,9 @@ export class TranslationWarningSystem {
     info: TranslationWarning[]
   } {
     return {
-      critical: warnings.filter(w => w.severity === 'critical'),
-      warning: warnings.filter(w => w.severity === 'warning'),
-      info: warnings.filter(w => w.severity === 'info'),
+      critical: warnings.filter((w) => w.severity === 'critical'),
+      warning: warnings.filter((w) => w.severity === 'warning'),
+      info: warnings.filter((w) => w.severity === 'info'),
     }
   }
 
@@ -368,7 +379,7 @@ export class TranslationWarningSystem {
       compatibility_issue: 0,
     }
 
-    warnings.forEach(warning => {
+    warnings.forEach((warning) => {
       bySeverity[warning.severity]++
       byCategory[warning.category]++
     })

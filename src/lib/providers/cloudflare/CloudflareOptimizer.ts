@@ -98,10 +98,7 @@ export class CloudflareOptimizer {
   private activeConnections = 0
   private connectionQueue: Array<() => void> = []
 
-  constructor(
-    poolOptions: Partial<ConnectionPoolOptions> = {},
-    dedupOptions: Partial<DeduplicationOptions> = {},
-  ) {
+  constructor(poolOptions: Partial<ConnectionPoolOptions> = {}, dedupOptions: Partial<DeduplicationOptions> = {}) {
     this.poolOptions = { ...DEFAULT_POOL_OPTIONS, ...poolOptions }
     this.dedupOptions = { ...DEFAULT_DEDUP_OPTIONS, ...dedupOptions }
   }
@@ -134,10 +131,7 @@ export class CloudflareOptimizer {
    * - Hash-based equality check avoids deep JSON.stringify comparison
    * - Tracks unchanged count for reporting
    */
-  public diffRules(
-    local: UnifiedRule[],
-    remote: UnifiedRule[],
-  ): OptimizedDiffResult<UnifiedRule> {
+  public diffRules(local: UnifiedRule[], remote: UnifiedRule[]): OptimizedDiffResult<UnifiedRule> {
     const start = performance.now()
     this.stats.diffOperations++
 
@@ -214,10 +208,7 @@ export class CloudflareOptimizer {
   /**
    * Optimized diff for IP rules with hash-based comparison.
    */
-  public diffIPRules(
-    local: UnifiedIPRule[],
-    remote: UnifiedIPRule[],
-  ): OptimizedDiffResult<UnifiedIPRule> {
+  public diffIPRules(local: UnifiedIPRule[], remote: UnifiedIPRule[]): OptimizedDiffResult<UnifiedIPRule> {
     const start = performance.now()
 
     // Early exit: both empty
@@ -360,10 +351,7 @@ export class CloudflareOptimizer {
    * If an identical request is already in-flight, returns the same promise
    * instead of making a duplicate API call.
    */
-  public async deduplicateRequest<T>(
-    key: string,
-    operation: () => Promise<T>,
-  ): Promise<T> {
+  public async deduplicateRequest<T>(key: string, operation: () => Promise<T>): Promise<T> {
     // Clean up expired entries
     this.cleanupExpiredRequests()
 

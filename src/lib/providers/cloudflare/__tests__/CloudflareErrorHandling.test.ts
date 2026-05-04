@@ -53,11 +53,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 401, 
-        jsonBody: mockResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 401,
+          jsonBody: mockResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -70,11 +72,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 403, 
-        jsonBody: mockResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 403,
+          jsonBody: mockResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -87,11 +91,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 401, 
-        jsonBody: mockResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 401,
+          jsonBody: mockResponse,
+        }),
+      )
 
       await expect(client.verifyCredentials()).resolves.toBe(false)
     })
@@ -106,12 +112,14 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 429, 
-        jsonBody: mockResponse,
-        headers: { 'Retry-After': '120' }
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 429,
+          jsonBody: mockResponse,
+          headers: { 'Retry-After': '120' },
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -124,19 +132,23 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 429, 
-        jsonBody: mockResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 429,
+          jsonBody: mockResponse,
+        }),
+      )
 
-      await expect(client.createRuleset({
-        name: 'Test Ruleset',
-        kind: 'custom',
-        phase: 'http_request_firewall_custom',
-        description: 'Test',
-        rules: [],
-      })).rejects.toThrow()
+      await expect(
+        client.createRuleset({
+          name: 'Test Ruleset',
+          kind: 'custom',
+          phase: 'http_request_firewall_custom',
+          description: 'Test',
+          rules: [],
+        }),
+      ).rejects.toThrow()
     })
   })
 
@@ -172,11 +184,13 @@ describe('Cloudflare Error Handling Integration', () => {
 
   describe('API Response Error Scenarios', () => {
     it('should handle malformed JSON responses', async () => {
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: true, 
-        status: 200, 
-        jsonBody: 'invalid json{' 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: 'invalid json{',
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -187,11 +201,13 @@ describe('Cloudflare Error Handling Integration', () => {
         // Missing errors, messages, result fields
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: true, 
-        status: 200, 
-        jsonBody: incompleteResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: incompleteResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -202,11 +218,13 @@ describe('Cloudflare Error Handling Integration', () => {
         status: 'ok',
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: true, 
-        status: 200, 
-        jsonBody: unexpectedResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: true,
+          status: 200,
+          jsonBody: unexpectedResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -315,7 +333,7 @@ describe('Cloudflare Error Handling Integration', () => {
 
       const validationResult = service.validateConfig(mockConfig)
       expect(validationResult.valid).toBe(false)
-      expect(validationResult.errors.some(e => e.code === 'CLOUDFLARE_RULE_NO_CONDITIONS')).toBe(true)
+      expect(validationResult.errors.some((e) => e.code === 'CLOUDFLARE_RULE_NO_CONDITIONS')).toBe(true)
     })
 
     it('should handle invalid IP addresses', async () => {
@@ -334,7 +352,7 @@ describe('Cloudflare Error Handling Integration', () => {
 
       const validationResult = service.validateConfig(mockConfig)
       expect(validationResult.valid).toBe(false)
-      expect(validationResult.errors.some(e => e.code === 'CLOUDFLARE_INVALID_IP')).toBe(true)
+      expect(validationResult.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_IP')).toBe(true)
     })
 
     it('should handle rule limit exceeded', async () => {
@@ -355,7 +373,7 @@ describe('Cloudflare Error Handling Integration', () => {
 
       const validationResult = service.validateConfig(mockConfig)
       expect(validationResult.valid).toBe(false)
-      expect(validationResult.errors.some(e => e.code === 'CLOUDFLARE_RULE_LIMIT_EXCEEDED')).toBe(true)
+      expect(validationResult.errors.some((e) => e.code === 'CLOUDFLARE_RULE_LIMIT_EXCEEDED')).toBe(true)
     })
   })
 
@@ -368,11 +386,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 500, 
-        jsonBody: serverErrorResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 500,
+          jsonBody: serverErrorResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -385,11 +405,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 503, 
-        jsonBody: serviceUnavailableResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 503,
+          jsonBody: serviceUnavailableResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -402,11 +424,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 504, 
-        jsonBody: timeoutResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 504,
+          jsonBody: timeoutResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -421,11 +445,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 400, 
-        jsonBody: emptyErrorResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 400,
+          jsonBody: emptyErrorResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -442,11 +468,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 403, 
-        jsonBody: multiErrorResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 403,
+          jsonBody: multiErrorResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -462,11 +490,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 400, 
-        jsonBody: nullMessageResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 400,
+          jsonBody: nullMessageResponse,
+        }),
+      )
 
       await expect(client.listRulesets()).rejects.toThrow()
     })
@@ -481,17 +511,21 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 400, 
-        jsonBody: quotaErrorResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 400,
+          jsonBody: quotaErrorResponse,
+        }),
+      )
 
-      await expect(client.createList({
-        name: 'Test List',
-        description: 'Test',
-        kind: 'ip',
-      })).rejects.toThrow()
+      await expect(
+        client.createList({
+          name: 'Test List',
+          description: 'Test',
+          kind: 'ip',
+        }),
+      ).rejects.toThrow()
     })
 
     it('should handle invalid list item formats', async () => {
@@ -502,15 +536,19 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 400, 
-        jsonBody: invalidItemResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 400,
+          jsonBody: invalidItemResponse,
+        }),
+      )
 
-      await expect(client.addListItems('test-list', {
-        items: [{ ip: 'invalid-ip', comment: 'Bad IP' }],
-      })).rejects.toThrow()
+      await expect(
+        client.addListItems('test-list', {
+          items: [{ ip: 'invalid-ip', comment: 'Bad IP' }],
+        }),
+      ).rejects.toThrow()
     })
 
     it('should handle list not found errors', async () => {
@@ -521,11 +559,13 @@ describe('Cloudflare Error Handling Integration', () => {
         result: null,
       }
 
-      fetchMock.mockResolvedValueOnce(makeResponse({ 
-        ok: false, 
-        status: 404, 
-        jsonBody: notFoundResponse 
-      }))
+      fetchMock.mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 404,
+          jsonBody: notFoundResponse,
+        }),
+      )
 
       await expect(client.getList('non-existent-list')).rejects.toThrow()
     })
