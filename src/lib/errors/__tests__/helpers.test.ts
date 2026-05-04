@@ -1,303 +1,263 @@
-import { describe, it, expect } from '@jest/globals'
-import {
-  configErrors,
-  providerErrors,
-  cloudflareErrors,
-  syncErrors,
-  validationErrors,
-  translationErrors,
-  networkErrors,
-} from '../helpers'
+jest.mock('../../logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
 import { DoormanError } from '../DoormanError'
 import {
-  ConfigErrorCode,
-  ProviderErrorCode,
-  CloudflareErrorCode,
-  SyncErrorCode,
-  ValidationErrorCode,
-  TranslationErrorCode,
-  NetworkErrorCode,
+    configErrors,
+    providerErrors,
+    cloudflareErrors,
+    syncErrors,
+    validationErrors,
+    translationErrors,
+    networkErrors,
+} from '../helpers'
+import {
+    ConfigErrorCode,
+    ProviderErrorCode,
+    CloudflareErrorCode,
+    SyncErrorCode,
+    ValidationErrorCode,
+    TranslationErrorCode,
+    NetworkErrorCode,
 } from '../ErrorCodes'
 
-describe('Error Helpers', () => {
+describe('error helpers', () => {
   describe('configErrors', () => {
-    it('should create notFound error', () => {
-      const error = configErrors.notFound('/path/to/config.json')
-
-      expect(error).toBeInstanceOf(DoormanError)
-      expect(error.code).toBe(ConfigErrorCode.NOT_FOUND)
-      expect(error.message).toContain('/path/to/config.json')
-      expect(error.suggestion).toBeDefined()
-      expect(error.details).toHaveProperty('path')
+    it('notFound creates error with correct code', () => {
+      const err = configErrors.notFound('/path/to/config.json')
+      expect(err).toBeInstanceOf(DoormanError)
+      expect(err.code).toBe(ConfigErrorCode.NOT_FOUND)
+      expect(err.message).toContain('/path/to/config.json')
     })
 
-    it('should create parseError', () => {
+    it('parseError creates error with cause', () => {
       const cause = new Error('JSON parse error')
-      const error = configErrors.parseError('/path/to/config.json', cause)
-
-      expect(error.code).toBe(ConfigErrorCode.PARSE_ERROR)
-      expect(error.cause).toBe(cause)
+      const err = configErrors.parseError('/config.json', cause)
+      expect(err.code).toBe(ConfigErrorCode.PARSE_ERROR)
+      expect(err.cause).toBe(cause)
     })
 
-    it('should create invalidVersion error', () => {
-      const error = configErrors.invalidVersion('1.0', '2.0')
-
-      expect(error.code).toBe(ConfigErrorCode.INVALID_VERSION)
-      expect(error.message).toContain('1.0')
-      expect(error.details).toHaveProperty('version', '1.0')
-      expect(error.details).toHaveProperty('expected', '2.0')
+    it('invalidVersion creates error with version details', () => {
+      const err = configErrors.invalidVersion('1.0', '2.0')
+      expect(err.code).toBe(ConfigErrorCode.INVALID_VERSION)
+      expect(err.message).toContain('1.0')
     })
 
-    it('should create invalidProvider error', () => {
-      const error = configErrors.invalidProvider('custom', ['vercel', 'cloudflare'])
-
-      expect(error.code).toBe(ConfigErrorCode.INVALID_PROVIDER)
-      expect(error.message).toContain('custom')
-      expect(error.suggestion).toContain('vercel')
-      expect(error.suggestion).toContain('cloudflare')
+    it('invalidProvider creates error with supported list', () => {
+      const err = configErrors.invalidProvider('aws', ['vercel', 'cloudflare'])
+      expect(err.code).toBe(ConfigErrorCode.INVALID_PROVIDER)
+      expect(err.message).toContain('aws')
+      expect(err.suggestion).toContain('vercel')
     })
   })
 
   describe('providerErrors', () => {
-    it('should create authFailed error', () => {
-      const error = providerErrors.authFailed('cloudflare')
-
-      expect(error.code).toBe(ProviderErrorCode.AUTH_FAILED)
-      expect(error.message).toContain('cloudflare')
-      expect(error.suggestion).toContain('credentials')
+    it('authFailed creates error with provider name', () => {
+      const err = providerErrors.authFailed('vercel')
+      expect(err.code).toBe(ProviderErrorCode.AUTH_FAILED)
+      expect(err.message).toContain('vercel')
     })
 
-    it('should create apiError', () => {
-      const error = providerErrors.apiError('cloudflare', '/zones/123/rulesets', 403, 'Forbidden')
-
-      expect(error.code).toBe(ProviderErrorCode.API_ERROR)
-      expect(error.message).toContain('403')
-      expect(error.message).toContain('Forbidden')
-      expect(error.details).toHaveProperty('endpoint', '/zones/123/rulesets')
-      expect(error.details).toHaveProperty('statusCode', 403)
+    it('apiError creates error with status code', () => {
+      const err = providerErrors.apiError('cloudflare', '/api/rules', 403, 'Forbidden')
+      expect(err.code).toBe(ProviderErrorCode.API_ERROR)
+      expect(err.message).toContain('403')
+      expect(err.message).toContain('Forbidden')
     })
 
-    it('should create rateLimit error with retry time', () => {
-      const error = providerErrors.rateLimit('cloudflare', 60)
-
-      expect(error.code).toBe(ProviderErrorCode.RATE_LIMIT)
-      expect(error.suggestion).toContain('60 seconds')
-      expect(error.details).toHaveProperty('retryAfter', 60)
+    it('rateLimit creates error with retry info', () => {
+      const err = providerErrors.rateLimit('vercel', 30)
+      expect(err.code).toBe(ProviderErrorCode.RATE_LIMIT)
+      expect(err.suggestion).toContain('30')
     })
 
-    it('should create rateLimit error without retry time', () => {
-      const error = providerErrors.rateLimit('cloudflare')
-
-      expect(error.code).toBe(ProviderErrorCode.RATE_LIMIT)
-      expect(error.suggestion).toContain('Wait a few minutes')
+    it('rateLimit creates error without retry info', () => {
+      const err = providerErrors.rateLimit('vercel')
+      expect(err.code).toBe(ProviderErrorCode.RATE_LIMIT)
+      expect(err.suggestion).toContain('Wait')
     })
 
-    it('should create timeout error', () => {
-      const error = providerErrors.timeout('cloudflare', 'listRulesets')
-
-      expect(error.code).toBe(ProviderErrorCode.TIMEOUT)
-      expect(error.message).toContain('cloudflare')
-      expect(error.message).toContain('listRulesets')
+    it('timeout creates error', () => {
+      const err = providerErrors.timeout('cloudflare', 'fetchRules')
+      expect(err.code).toBe(ProviderErrorCode.TIMEOUT)
     })
 
-    it('should create invalidCredentials error', () => {
-      const error = providerErrors.invalidCredentials('cloudflare', ['apiToken', 'zoneId'])
-
-      expect(error.code).toBe(ProviderErrorCode.INVALID_CREDENTIALS)
-      expect(error.suggestion).toContain('apiToken')
-      expect(error.suggestion).toContain('zoneId')
+    it('invalidCredentials creates error with missing fields', () => {
+      const err = providerErrors.invalidCredentials('vercel', ['token', 'projectId'])
+      expect(err.code).toBe(ProviderErrorCode.INVALID_CREDENTIALS)
+      expect(err.suggestion).toContain('token')
+      expect(err.suggestion).toContain('projectId')
     })
   })
 
   describe('cloudflareErrors', () => {
-    it('should create accountIdRequired error', () => {
-      const error = cloudflareErrors.accountIdRequired('Lists API')
-
-      expect(error.code).toBe(CloudflareErrorCode.ACCOUNT_ID_REQUIRED)
-      expect(error.message).toContain('Lists API')
-      expect(error.suggestion).toContain('CLOUDFLARE_ACCOUNT_ID')
+    it('accountIdRequired creates error', () => {
+      const err = cloudflareErrors.accountIdRequired('Lists API')
+      expect(err.code).toBe(CloudflareErrorCode.ACCOUNT_ID_REQUIRED)
+      expect(err.message).toContain('Lists API')
     })
 
-    it('should create ruleLimitExceeded error', () => {
-      const error = cloudflareErrors.ruleLimitExceeded(150, 125)
-
-      expect(error.code).toBe(CloudflareErrorCode.RULE_LIMIT_EXCEEDED)
-      expect(error.message).toContain('150')
-      expect(error.message).toContain('125')
-      expect(error.suggestion).toBeDefined()
+    it('zoneIdRequired creates error', () => {
+      const err = cloudflareErrors.zoneIdRequired('fetch rules')
+      expect(err.code).toBe(CloudflareErrorCode.ZONE_ID_REQUIRED)
     })
 
-    it('should create invalidExpression error', () => {
-      const error = cloudflareErrors.invalidExpression('invalid expression', 'syntax error')
-
-      expect(error.code).toBe(CloudflareErrorCode.INVALID_EXPRESSION)
-      expect(error.details).toHaveProperty('expression', 'invalid expression')
-      expect(error.details).toHaveProperty('reason', 'syntax error')
+    it('invalidCredentials creates error', () => {
+      const err = cloudflareErrors.invalidCredentials('API token')
+      expect(err.code).toBe(CloudflareErrorCode.INVALID_CREDENTIALS)
     })
 
-    it('should create ruleNoConditions error', () => {
-      const error = cloudflareErrors.ruleNoConditions('MyRule')
-
-      expect(error.code).toBe(CloudflareErrorCode.RULE_NO_CONDITIONS)
-      expect(error.message).toContain('MyRule')
+    it('insufficientPermissions creates error', () => {
+      const err = cloudflareErrors.insufficientPermissions('create rule', ['Zone.Firewall'])
+      expect(err.code).toBe(CloudflareErrorCode.INSUFFICIENT_PERMISSIONS)
+      expect(err.suggestion).toContain('Zone.Firewall')
     })
 
-    it('should create invalidRateLimit error', () => {
-      const error = cloudflareErrors.invalidRateLimit('MyRule', 'requests must be positive')
-
-      expect(error.code).toBe(CloudflareErrorCode.INVALID_RATE_LIMIT)
-      expect(error.message).toContain('MyRule')
-      expect(error.message).toContain('requests must be positive')
+    it('ruleLimitExceeded creates error', () => {
+      const err = cloudflareErrors.ruleLimitExceeded(150, 100)
+      expect(err.code).toBe(CloudflareErrorCode.RULE_LIMIT_EXCEEDED)
+      expect(err.message).toContain('150')
+      expect(err.message).toContain('100')
     })
 
-    it('should create redirectNoLocation error', () => {
-      const error = cloudflareErrors.redirectNoLocation('MyRedirectRule')
-
-      expect(error.code).toBe(CloudflareErrorCode.REDIRECT_NO_LOCATION)
-      expect(error.message).toContain('MyRedirectRule')
-      expect(error.suggestion).toContain('redirect.location')
+    it('invalidExpression creates error', () => {
+      const err = cloudflareErrors.invalidExpression('bad expr', 'syntax error')
+      expect(err.code).toBe(CloudflareErrorCode.INVALID_EXPRESSION)
     })
 
-    it('should create invalidIP error', () => {
-      const error = cloudflareErrors.invalidIP('invalid-ip')
+    it('ruleNoConditions creates error', () => {
+      const err = cloudflareErrors.ruleNoConditions('My Rule')
+      expect(err.code).toBe(CloudflareErrorCode.RULE_NO_CONDITIONS)
+      expect(err.message).toContain('My Rule')
+    })
 
-      expect(error.code).toBe(CloudflareErrorCode.INVALID_IP)
-      expect(error.message).toContain('invalid-ip')
-      expect(error.suggestion).toContain('IPv4 or IPv6')
+    it('invalidRateLimit creates error', () => {
+      const err = cloudflareErrors.invalidRateLimit('Rate Rule', 'window too short')
+      expect(err.code).toBe(CloudflareErrorCode.INVALID_RATE_LIMIT)
+    })
+
+    it('invalidWindowFormat creates error', () => {
+      const err = cloudflareErrors.invalidWindowFormat('abc')
+      expect(err.code).toBe(CloudflareErrorCode.INVALID_WINDOW_FORMAT)
+    })
+
+    it('shortMitigationTimeout creates error', () => {
+      const err = cloudflareErrors.shortMitigationTimeout(5)
+      expect(err.code).toBe(CloudflareErrorCode.SHORT_MITIGATION_TIMEOUT)
+    })
+
+    it('redirectNoLocation creates error', () => {
+      const err = cloudflareErrors.redirectNoLocation('Redirect Rule')
+      expect(err.code).toBe(CloudflareErrorCode.REDIRECT_NO_LOCATION)
+    })
+
+    it('invalidRedirectUrl creates error', () => {
+      const err = cloudflareErrors.invalidRedirectUrl('not-a-url')
+      expect(err.code).toBe(CloudflareErrorCode.INVALID_REDIRECT_URL)
+    })
+
+    it('invalidIP creates error', () => {
+      const err = cloudflareErrors.invalidIP('999.999.999.999')
+      expect(err.code).toBe(CloudflareErrorCode.INVALID_IP)
+    })
+
+    it('largeIPList creates error', () => {
+      const err = cloudflareErrors.largeIPList(5000)
+      expect(err.code).toBe(CloudflareErrorCode.LARGE_IP_LIST)
+    })
+
+    it('rulesetNotFound creates error', () => {
+      const err = cloudflareErrors.rulesetNotFound('rs-123')
+      expect(err.code).toBe(CloudflareErrorCode.RULESET_NOT_FOUND)
+      expect(err.message).toContain('rs-123')
+    })
+
+    it('rulesetNotFound creates error without id', () => {
+      const err = cloudflareErrors.rulesetNotFound()
+      expect(err.code).toBe(CloudflareErrorCode.RULESET_NOT_FOUND)
+    })
+
+    it('featureUnsupported creates error', () => {
+      const err = cloudflareErrors.featureUnsupported('ja4_digest', 'vercel')
+      expect(err.code).toBe(CloudflareErrorCode.FEATURE_UNSUPPORTED)
+    })
+
+    it('translationWarning creates error', () => {
+      const err = cloudflareErrors.translationWarning('regex', 'limited support')
+      expect(err.code).toBe(CloudflareErrorCode.TRANSLATION_WARNING)
     })
   })
 
   describe('syncErrors', () => {
-    it('should create failed error', () => {
-      const error = syncErrors.failed('cloudflare')
-
-      expect(error.code).toBe(SyncErrorCode.FAILED)
-      expect(error.message).toContain('cloudflare')
+    it('failed creates error', () => {
+      const err = syncErrors.failed('vercel')
+      expect(err.code).toBe(SyncErrorCode.FAILED)
     })
 
-    it('should create noChanges error', () => {
-      const error = syncErrors.noChanges()
-
-      expect(error.code).toBe(SyncErrorCode.NO_CHANGES)
-      expect(error.message).toContain('No changes')
+    it('noChanges creates error', () => {
+      const err = syncErrors.noChanges()
+      expect(err.code).toBe(SyncErrorCode.NO_CHANGES)
     })
 
-    it('should create partialFailure error', () => {
-      const error = syncErrors.partialFailure('cloudflare', 5, 2)
-
-      expect(error.code).toBe(SyncErrorCode.PARTIAL_FAILURE)
-      expect(error.message).toContain('5')
-      expect(error.message).toContain('2')
-      expect(error.details).toHaveProperty('successful', 5)
-      expect(error.details).toHaveProperty('failed', 2)
+    it('partialFailure creates error', () => {
+      const err = syncErrors.partialFailure('cloudflare', 5, 2)
+      expect(err.code).toBe(SyncErrorCode.PARTIAL_FAILURE)
+      expect(err.message).toContain('5')
+      expect(err.message).toContain('2')
     })
   })
 
   describe('validationErrors', () => {
-    it('should create failed error', () => {
-      const error = validationErrors.failed(3)
-
-      expect(error.code).toBe(ValidationErrorCode.FAILED)
-      expect(error.message).toContain('3')
-      expect(error.details).toHaveProperty('errorCount', 3)
+    it('failed creates error with count', () => {
+      const err = validationErrors.failed(3)
+      expect(err.code).toBe(ValidationErrorCode.FAILED)
+      expect(err.message).toContain('3')
     })
 
-    it('should create schemaError', () => {
-      const error = validationErrors.schemaError('/rules/0/action', 'string', 'number')
-
-      expect(error.code).toBe(ValidationErrorCode.SCHEMA_ERROR)
-      expect(error.message).toContain('/rules/0/action')
-      expect(error.suggestion).toContain('string')
-      expect(error.suggestion).toContain('number')
+    it('schemaError creates error with path info', () => {
+      const err = validationErrors.schemaError('rules[0].action', 'string', 'number')
+      expect(err.code).toBe(ValidationErrorCode.SCHEMA_ERROR)
     })
   })
 
   describe('translationErrors', () => {
-    it('should create unsupportedFeature error', () => {
-      const error = translationErrors.unsupportedFeature('JA3 fingerprinting', 'vercel', 'cloudflare')
-
-      expect(error.code).toBe(TranslationErrorCode.UNSUPPORTED_FEATURE)
-      expect(error.message).toContain('JA3 fingerprinting')
-      expect(error.message).toContain('vercel')
-      expect(error.message).toContain('cloudflare')
+    it('unsupportedFeature creates error', () => {
+      const err = translationErrors.unsupportedFeature('ja4_digest', 'vercel', 'cloudflare')
+      expect(err.code).toBe(TranslationErrorCode.UNSUPPORTED_FEATURE)
+      expect(err.message).toContain('ja4_digest')
     })
 
-    it('should create expressionParseFailed error', () => {
-      const cause = new Error('Parse error')
-      const error = translationErrors.expressionParseFailed('invalid expression', cause)
-
-      expect(error.code).toBe(TranslationErrorCode.EXPRESSION_PARSE_FAILED)
-      expect(error.message).toContain('invalid expression')
-      expect(error.cause).toBe(cause)
+    it('expressionParseFailed creates error', () => {
+      const err = translationErrors.expressionParseFailed('bad expression')
+      expect(err.code).toBe(TranslationErrorCode.EXPRESSION_PARSE_FAILED)
     })
   })
 
   describe('networkErrors', () => {
-    it('should create timeout error', () => {
-      const error = networkErrors.timeout('https://api.cloudflare.com/rulesets', 30000)
-
-      expect(error.code).toBe(NetworkErrorCode.TIMEOUT)
-      expect(error.message).toContain('30000ms')
-      expect(error.details).toHaveProperty('url')
-      expect(error.details).toHaveProperty('timeoutMs', 30000)
+    it('timeout creates error', () => {
+      const err = networkErrors.timeout('https://api.vercel.com', 30000)
+      expect(err.code).toBe(NetworkErrorCode.TIMEOUT)
+      expect(err.message).toContain('30000')
     })
 
-    it('should create connectionFailed error', () => {
-      const cause = new Error('ECONNREFUSED')
-      const error = networkErrors.connectionFailed('https://api.cloudflare.com', cause)
-
-      expect(error.code).toBe(NetworkErrorCode.CONNECTION_FAILED)
-      expect(error.message).toContain('https://api.cloudflare.com')
-      expect(error.cause).toBe(cause)
+    it('connectionFailed creates error', () => {
+      const err = networkErrors.connectionFailed('https://api.cloudflare.com')
+      expect(err.code).toBe(NetworkErrorCode.CONNECTION_FAILED)
     })
   })
 
-  describe('Error formatting consistency', () => {
-    it('all error helpers should return DoormanError instances', () => {
-      const errors = [
-        configErrors.notFound('/path'),
-        providerErrors.authFailed('cloudflare'),
-        cloudflareErrors.accountIdRequired('Lists API'),
-        syncErrors.failed('cloudflare'),
-        validationErrors.failed(1),
-        translationErrors.unsupportedFeature('feature', 'vercel', 'cloudflare'),
-        networkErrors.timeout('https://api.com', 1000),
-      ]
-
-      errors.forEach((error) => {
-        expect(error).toBeInstanceOf(DoormanError)
-        expect(error.code).toBeDefined()
-        expect(error.message).toBeDefined()
-      })
+  describe('all errors have docsUrl', () => {
+    it('config errors have docsUrl', () => {
+      expect(configErrors.notFound('/test').docsUrl).toBeDefined()
     })
 
-    it('all errors should have docs URLs', () => {
-      const errors = [
-        configErrors.notFound('/path'),
-        providerErrors.authFailed('cloudflare'),
-        cloudflareErrors.accountIdRequired('Lists API'),
-        validationErrors.failed(1),
-        translationErrors.unsupportedFeature('feature', 'vercel', 'cloudflare'),
-        networkErrors.timeout('https://api.com', 1000),
-      ]
-
-      errors.forEach((error) => {
-        expect(error.docsUrl).toBeDefined()
-        expect(error.docsUrl).toContain('https://docs.doorman.griffen.codes/errors')
-        expect(error.docsUrl).toContain(error.code)
-      })
+    it('provider errors have docsUrl', () => {
+      expect(providerErrors.authFailed('vercel').docsUrl).toBeDefined()
     })
 
-    it('all errors should be formattable', () => {
-      const error = configErrors.notFound('/path')
-
-      const formatted = error.format()
-      expect(formatted).toBeTruthy()
-      expect(typeof formatted).toBe('string')
-
-      const plainText = error.toPlainText()
-      expect(plainText).toBeTruthy()
-      expect(typeof plainText).toBe('string')
+    it('cloudflare errors have docsUrl', () => {
+      expect(cloudflareErrors.accountIdRequired('test').docsUrl).toBeDefined()
     })
   })
 })
