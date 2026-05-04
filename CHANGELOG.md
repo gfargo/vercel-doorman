@@ -1,3 +1,10 @@
+# [1.6.0-beta.1](https://github.com/gfargo/vercel-doorman/compare/v1.5.10...v1.6.0-beta.1) (2026-05-04)
+
+
+### Features
+
+* integrate Cloudflare provider with provider-aware middleware (v2.0.0-beta) ([2b86134](https://github.com/gfargo/vercel-doorman/commit/2b86134b4f19ea1aed7a3faf6a63709c052cb667))
+
 ## [1.5.10](https://github.com/gfargo/vercel-doorman/compare/v1.5.9...v1.5.10) (2026-05-03)
 
 
