@@ -11,8 +11,17 @@
   },
   "files": [
     "dist",
-    "bin"
+    "bin",
+    "skills"
   ],
+  "agents": {
+    "skills": [
+      {
+        "name": "vercel-doorman",
+        "path": "./skills/vercel-doorman"
+      }
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/gfargo/vercel-doorman.git"
