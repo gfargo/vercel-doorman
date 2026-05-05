@@ -21,7 +21,7 @@ Doorman enables Infrastructure as Code (IaC) for Vercel's security layer, bringi
 - 🔍 **Detailed Diff Analysis** - See exactly what will change with color-coded output
 - ✅ **Advanced Validation** - Syntax checking plus configuration health scoring
 
-> 🚧 **Coming Soon:** Cloudflare Firewall support is in active development! Manage both Vercel and Cloudflare firewall rules from a single tool.
+> ✅ **New in 2.0:** Cloudflare WAF support is here! Manage both Vercel and Cloudflare firewall rules from a single tool with `--provider cloudflare`.
 
 ### Developer Experience
 
