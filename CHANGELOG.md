@@ -1,3 +1,30 @@
+# [2.0.0](https://github.com/gfargo/vercel-doorman/compare/v1.5.10...v2.0.0) (2026-05-05)
+
+
+* feat!: pre-2.0 cleanup — tests, dead code removal, .doorman.json config rename ([3d2bd96](https://github.com/gfargo/vercel-doorman/commit/3d2bd96fb6e5ecd7b66c1f870a7174ff9deb3a51))
+
+
+### Bug Fixes
+
+* enable all 12 skipped Cloudflare test suites (286 new passing tests) ([0ff56f3](https://github.com/gfargo/vercel-doorman/commit/0ff56f3d81f2591e0f1af42212d4eba78b29503c))
+* exclude .www from jest module paths ([4a5beae](https://github.com/gfargo/vercel-doorman/commit/4a5beae3fa3312ac55f138f12f090acf5daea7eb))
+* remove dead code in schemaVersion/gracefulShutdown/networkResilience, add remaining tests ([b6f410a](https://github.com/gfargo/vercel-doorman/commit/b6f410a245d7142bfcad2d776d7e809af11e6975))
+* resolve all lint errors for CI release ([49efd29](https://github.com/gfargo/vercel-doorman/commit/49efd29caa6765596c7188205e8261441d123104))
+* strip Vercel API validation metadata from downloaded rules ([6916e59](https://github.com/gfargo/vercel-doorman/commit/6916e59b0c34c2200da06762378f9369f3836775))
+
+
+### Features
+
+* add agent SKILL.md for 2.0 with multi-provider support ([93ad696](https://github.com/gfargo/vercel-doorman/commit/93ad696b998d619029492ccc33c5a3b3dfe0d688))
+* add agents.skills entry to package.json for skill discovery ([90753e2](https://github.com/gfargo/vercel-doorman/commit/90753e289c4f6f94a3194ecb48710851056ff929))
+* integrate Cloudflare provider with provider-aware middleware (v2.0.0-beta) ([2b86134](https://github.com/gfargo/vercel-doorman/commit/2b86134b4f19ea1aed7a3faf6a63709c052cb667))
+* use .doorman.json as default config filename ([d608307](https://github.com/gfargo/vercel-doorman/commit/d608307d98515c97dbbc417de673a0e2e77b2f7f))
+
+
+### BREAKING CHANGES
+
+* Default config filename changed from vercel-firewall.config.json to .doorman.json. Existing configs are still auto-detected and work without changes.
+
 # [2.0.0-beta.3](https://github.com/gfargo/vercel-doorman/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-05-05)
 
 
