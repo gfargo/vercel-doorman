@@ -1,3 +1,10 @@
+# [2.0.0-beta.3](https://github.com/gfargo/vercel-doorman/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-05-05)
+
+
+### Features
+
+* add agent SKILL.md for 2.0 with multi-provider support ([93ad696](https://github.com/gfargo/vercel-doorman/commit/93ad696b998d619029492ccc33c5a3b3dfe0d688))
+
 # [2.0.0-beta.2](https://github.com/gfargo/vercel-doorman/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-05-05)
 
 
