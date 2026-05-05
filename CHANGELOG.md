@@ -1,3 +1,10 @@
+# [2.0.0-beta.2](https://github.com/gfargo/vercel-doorman/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-05-05)
+
+
+### Bug Fixes
+
+* strip Vercel API validation metadata from downloaded rules ([6916e59](https://github.com/gfargo/vercel-doorman/commit/6916e59b0c34c2200da06762378f9369f3836775))
+
 # [2.0.0-beta.1](https://github.com/gfargo/vercel-doorman/compare/v1.6.0-beta.1...v2.0.0-beta.1) (2026-05-05)
 
 
