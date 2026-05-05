@@ -1,10 +1,6 @@
 import { CloudflareValidator } from '../CloudflareValidator'
 import type { CloudflareCredentials } from '../CloudflareValidator'
 
-// Mock fetch globally
-const mockFetch = jest.fn()
-global.fetch = mockFetch
-
 // Mock logger
 jest.mock('../../../logger', () => ({
   logger: {
@@ -23,12 +19,16 @@ jest.mock('../CloudflareClient', () => ({
   })),
 }))
 
+// Mock fetch globally
+const mockFetch = jest.fn() as jest.Mock
+global.fetch = mockFetch as any
+
 describe('CloudflareValidator', () => {
   let validator: CloudflareValidator
-  let mockClient: unknown
+  let mockClient: any
 
   beforeEach(() => {
-    validator = new CloudflareValidator()
+    validator = new CloudflareValidator('test-token', 'zone123', 'account123')
     mockFetch.mockClear()
 
     // Get the mocked CloudflareClient constructor
@@ -38,6 +38,10 @@ describe('CloudflareValidator', () => {
       listLists: jest.fn(),
     }
     CloudflareClient.mockImplementation(() => mockClient)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   describe('validateCredentials', () => {

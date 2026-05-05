@@ -82,3 +82,12 @@ AGENTS.md
 # Test scripts
 test-sync-fix.js
 test-sync-fix.config.json
+
+# Internal docs (planning, roadmaps, references — not published)
+docs/
+
+# Public Nextjs marketing website `doorman.griffen.codes`
+.www
+
+# GitHub Wiki checkout (separate git repo)
+.wiki

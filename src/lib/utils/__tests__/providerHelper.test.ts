@@ -1,0 +1,194 @@
+jest.mock('../../logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
+jest.mock('../../ui/prompt', () => ({
+  prompt: jest.fn(),
+}))
+
+// Mock the providers
+jest.mock('../../providers/vercel', () => ({
+  VercelProvider: {
+    fromConfig: jest.fn().mockReturnValue({ name: 'vercel' }),
+  },
+}))
+
+jest.mock('../../providers/cloudflare', () => ({
+  CloudflareProvider: {
+    fromConfig: jest.fn().mockReturnValue({ name: 'cloudflare' }),
+  },
+}))
+
+jest.mock('../../providers/ProviderDetector', () => ({
+  ProviderDetector: {
+    detect: jest.fn().mockReturnValue({ provider: null, confidence: 'low', reasons: [] }),
+  },
+}))
+
+import { getProviderInstance, getProviderDisplayName, verifyProviderCredentials } from '../providerHelper'
+import { VercelProvider } from '../../providers/vercel'
+import { CloudflareProvider } from '../../providers/cloudflare'
+import { ProviderDetector } from '../../providers/ProviderDetector'
+import type { IFirewallProvider } from '../../providers/IFirewallProvider'
+
+describe('providerHelper', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    process.env = { ...originalEnv }
+    delete process.env.VERCEL_TOKEN
+    delete process.env.VERCEL_PROJECT_ID
+    delete process.env.VERCEL_TEAM_ID
+    delete process.env.CLOUDFLARE_API_TOKEN
+    delete process.env.CLOUDFLARE_ZONE_ID
+    delete process.env.CLOUDFLARE_ACCOUNT_ID
+  })
+
+  afterAll(() => {
+    process.env = originalEnv
+  })
+
+  describe('getProviderInstance', () => {
+    it('uses explicit provider when specified', async () => {
+      process.env.VERCEL_TOKEN = 'token'
+      process.env.VERCEL_PROJECT_ID = 'proj'
+      process.env.VERCEL_TEAM_ID = 'team'
+
+      const provider = await getProviderInstance({
+        provider: 'vercel',
+        interactive: false,
+      })
+      expect(provider.name).toBe('vercel')
+      expect(VercelProvider.fromConfig).toHaveBeenCalled()
+    })
+
+    it('uses explicit Cloudflare provider', async () => {
+      process.env.CLOUDFLARE_API_TOKEN = 'token'
+      process.env.CLOUDFLARE_ZONE_ID = 'zone'
+
+      const provider = await getProviderInstance({
+        provider: 'cloudflare',
+        interactive: false,
+      })
+      expect(provider.name).toBe('cloudflare')
+      expect(CloudflareProvider.fromConfig).toHaveBeenCalled()
+    })
+
+    it('auto-detects provider from config when not explicit', async () => {
+      ;(ProviderDetector.detect as jest.Mock).mockReturnValue({
+        provider: 'vercel',
+        confidence: 'high',
+        reasons: ['Vercel project ID found'],
+      })
+      process.env.VERCEL_TOKEN = 'token'
+      process.env.VERCEL_PROJECT_ID = 'proj'
+      process.env.VERCEL_TEAM_ID = 'team'
+
+      const provider = await getProviderInstance({ interactive: false })
+      expect(provider.name).toBe('vercel')
+    })
+
+    it('defaults to vercel when detection fails and non-interactive', async () => {
+      ;(ProviderDetector.detect as jest.Mock).mockReturnValue({
+        provider: null,
+        confidence: 'low',
+        reasons: [],
+      })
+      process.env.VERCEL_TOKEN = 'token'
+      process.env.VERCEL_PROJECT_ID = 'proj'
+      process.env.VERCEL_TEAM_ID = 'team'
+
+      const provider = await getProviderInstance({ interactive: false })
+      expect(provider.name).toBe('vercel')
+    })
+
+    it('passes explicit credentials to Vercel provider', async () => {
+      await getProviderInstance({
+        provider: 'vercel',
+        token: 'my-token',
+        projectId: 'my-project',
+        teamId: 'my-team',
+        interactive: false,
+      })
+      expect(VercelProvider.fromConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          token: 'my-token',
+          projectId: 'my-project',
+          teamId: 'my-team',
+        }),
+      )
+    })
+
+    it('passes explicit credentials to Cloudflare provider', async () => {
+      await getProviderInstance({
+        provider: 'cloudflare',
+        apiToken: 'cf-token',
+        zoneId: 'cf-zone',
+        accountId: 'cf-account',
+        interactive: false,
+      })
+      expect(CloudflareProvider.fromConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiToken: 'cf-token',
+          zoneId: 'cf-zone',
+          accountId: 'cf-account',
+        }),
+      )
+    })
+
+    it('throws for Vercel when credentials missing and non-interactive', async () => {
+      await expect(
+        getProviderInstance({ provider: 'vercel', interactive: false }),
+      ).rejects.toThrow(/credentials missing/)
+    })
+
+    it('throws for Cloudflare when credentials missing and non-interactive', async () => {
+      await expect(
+        getProviderInstance({ provider: 'cloudflare', interactive: false }),
+      ).rejects.toThrow(/credentials missing/)
+    })
+  })
+
+  describe('getProviderDisplayName', () => {
+    it('returns "Vercel Firewall" for vercel', () => {
+      expect(getProviderDisplayName('vercel')).toBe('Vercel Firewall')
+    })
+
+    it('returns "Cloudflare WAF" for cloudflare', () => {
+      expect(getProviderDisplayName('cloudflare')).toBe('Cloudflare WAF')
+    })
+  })
+
+  describe('verifyProviderCredentials', () => {
+    it('returns true when credentials are valid', async () => {
+      const mockProvider: IFirewallProvider = {
+        name: 'vercel',
+        verifyCredentials: jest.fn().mockResolvedValue(true),
+      } as unknown as IFirewallProvider
+
+      const result = await verifyProviderCredentials(mockProvider)
+      expect(result).toBe(true)
+    })
+
+    it('returns false when credentials are invalid', async () => {
+      const mockProvider: IFirewallProvider = {
+        name: 'vercel',
+        verifyCredentials: jest.fn().mockResolvedValue(false),
+      } as unknown as IFirewallProvider
+
+      const result = await verifyProviderCredentials(mockProvider)
+      expect(result).toBe(false)
+    })
+
+    it('returns false when verification throws', async () => {
+      const mockProvider: IFirewallProvider = {
+        name: 'vercel',
+        verifyCredentials: jest.fn().mockRejectedValue(new Error('Network error')),
+      } as unknown as IFirewallProvider
+
+      const result = await verifyProviderCredentials(mockProvider)
+      expect(result).toBe(false)
+    })
+  })
+})

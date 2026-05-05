@@ -19,7 +19,7 @@ export const builder = {
   config: {
     alias: 'c',
     type: 'string',
-    description: 'Path to firewall config file (defaults to vercel-firewall.config.json)',
+    description: 'Path to firewall config file (defaults to .doorman.json)',
   },
   verbose: {
     alias: 'v',

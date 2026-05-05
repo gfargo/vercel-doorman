@@ -30,15 +30,7 @@ export function detectSchemaVersion(config: unknown): string {
   }
 
   // Check for v2 characteristics (multi-provider support)
-  if (config.provider || config.providers) {
-    return '2.0'
-  }
-
-  // Check for v1 Vercel-only characteristics
-  if (config.projectId || config.teamId) {
-    return '1.0'
-  }
-
+  // Note: unreachable — the object check above handles all object configs.
   // Default to current version if new config
   return CURRENT_SCHEMA_VERSION
 }
@@ -115,6 +107,7 @@ export function migrateV1ToV2(v1Config: FirewallConfig): UnifiedConfig {
  * This needs to be flattened for unified format
  */
 import type { UnifiedCondition } from '../types/unified'
+import type { Operator } from '../types/common'
 import type { VercelCustomRule } from '../types/vercel'
 
 function convertV1ConditionsToUnified(rule: VercelCustomRule): UnifiedCondition[] {
@@ -162,8 +155,8 @@ function mapVercelTypeToField(type: string): string {
 /**
  * Map Vercel operators to unified operators
  */
-function mapVercelOperatorToUnified(op: string): string {
-  const mapping: Record<string, string> = {
+function mapVercelOperatorToUnified(op: string): Operator {
+  const mapping: Record<string, Operator> = {
     eq: 'eq',
     pre: 'starts_with',
     suf: 'ends_with',
@@ -174,7 +167,7 @@ function mapVercelOperatorToUnified(op: string): string {
     nex: 'not_exists',
   }
 
-  return mapping[op] || op
+  return mapping[op] || (op as Operator)
 }
 
 /**

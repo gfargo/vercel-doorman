@@ -3,10 +3,10 @@
 ## Root Level
 - **bin/**: CLI entry point with shebang for executable
 - **dist/**: Built output (CJS and ESM bundles)
-- **docs/**: Documentation for Cloudflare integration, phases, and guides
+- **docs/**: Internal planning docs, roadmaps, and references (git-ignored, not published)
 - **examples/**: Sample configuration files demonstrating various rule patterns
 - **schema/**: JSON schema generation and validation files
-- **prompts/**: Documentation and guidance files
+- **.wiki/**: GitHub Wiki checkout — source of truth for user-facing documentation (separate git repo, git-ignored)
 
 ## Source Organization (`src/`)
 
@@ -34,7 +34,7 @@ Each command uses `withCredentials()` middleware for config/credential setup:
 - `BaseFirewallService.ts` - Base class for firewall services
 - `initProviders.ts` - Provider initialization
 - `vercel/` - Vercel provider (VercelProvider, VercelClient, VercelFirewallService)
-- `cloudflare/` - Cloudflare provider (CloudflareProvider, CloudflareClient, CloudflareFirewallService, etc.)
+- `cloudflare/` - Cloudflare provider (CloudflareProvider, CloudflareClient, CloudflareFirewallService, CloudflareErrorHandler, CloudflareOptimizer, CloudflareConfigValidator, CloudflareSetupVerifier, CloudflareValidator)
 
 ### Core Library (`src/lib/`)
 
@@ -65,6 +65,7 @@ Each command uses `withCredentials()` middleware for config/credential setup:
 - `cloudflareSchemas.ts` - Zod schemas for Cloudflare configuration
 - `unifiedSchemas.ts` - Zod schemas for unified configuration
 - `commonSchemas.ts` - Shared schema definitions
+- `schemaVersion.ts` - Version detection and v1→v2 migration
 
 #### Templates (`src/lib/templates/`)
 - `index.ts` - Template registry
@@ -104,10 +105,16 @@ Each command uses `withCredentials()` middleware for config/credential setup:
 ### Testing (`src/tests/`)
 - `__mocks__/` - Test mocks (e.g., chalk mock)
 - `*.test.ts` - Integration and validation tests
+- Provider tests in `src/lib/providers/cloudflare/__tests__/` and `src/lib/providers/vercel/__tests__/`
+- Translator tests in `src/lib/translators/__tests__/`
+- Schema tests in `src/lib/schemas/__tests__/`
+- Utility tests in `src/lib/utils/__tests__/`
+- Error tests in `src/lib/errors/__tests__/`
 
 ## Configuration Files
-- `vercel-firewall.config.json` - Main configuration file format
-- `vercel-firewall[project-name].config.json` - Project-specific configs
+- `.doorman.json` - Default configuration file (new in v2.0)
+- `vercel-firewall.config.json` - Legacy configuration file (still supported)
+- `vercel-firewall[project-name].config.json` - Legacy project-specific configs
 
 ## Naming Conventions
 - **Files**: kebab-case for directories, camelCase for TypeScript files

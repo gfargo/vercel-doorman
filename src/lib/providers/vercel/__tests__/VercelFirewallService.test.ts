@@ -1,0 +1,469 @@
+import { VercelFirewallService } from '../VercelFirewallService'
+import { VercelClient } from '../VercelClient'
+import type { UnifiedConfig } from '../../../types/unified'
+
+// Mock the logger
+jest.mock('../../../logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}))
+
+// Mock the retry utility to execute immediately
+jest.mock('../../../utils/retry', () => ({
+  retry: (fn: () => Promise<unknown>) => fn(),
+}))
+
+describe('VercelFirewallService', () => {
+  let service: VercelFirewallService
+  let client: VercelClient
+
+  const mockVercelConfig = {
+    version: 1,
+    id: 'config_1',
+    firewallEnabled: true,
+    crs: {},
+    rules: [
+      {
+        id: 'rule_1',
+        name: 'Block bots',
+        description: 'Block bad bots',
+        active: true,
+        conditionGroup: [
+          {
+            conditions: [
+              { type: 'user_agent' as const, op: 'sub' as const, value: 'BadBot' },
+            ],
+          },
+        ],
+        action: {
+          mitigate: {
+            action: 'deny' as const,
+            rateLimit: null,
+            redirect: null,
+            actionDuration: null,
+          },
+        },
+      },
+    ],
+    ips: [
+      {
+        id: 'ip_1',
+        ip: '1.2.3.4',
+        hostname: 'example.com',
+        action: 'deny' as const,
+        notes: 'Blocked IP',
+      },
+    ],
+    projectKey: 'pk_123',
+    ownerId: 'owner_1',
+    updatedAt: '2024-01-01T00:00:00Z',
+  }
+
+  beforeEach(() => {
+    client = new VercelClient('proj_123', 'team_456', 'test-token')
+    service = new VercelFirewallService(client)
+    jest.clearAllMocks()
+  })
+
+  describe('name', () => {
+    it('should be "vercel"', () => {
+      expect(service.name).toBe('vercel')
+    })
+  })
+
+  describe('fetchConfig', () => {
+    it('should fetch and convert to UnifiedConfig', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue(mockVercelConfig)
+
+      const result = await service.fetchConfig()
+
+      expect(result.version).toBe('2.0')
+      expect(result.provider).toBe('vercel')
+      expect(result.rules).toHaveLength(1)
+      expect(result.rules[0]!.name).toBe('Block bots')
+      expect(result.rules[0]!.enabled).toBe(true)
+    })
+
+    it('should convert IP rules to unified format', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue(mockVercelConfig)
+
+      const result = await service.fetchConfig()
+
+      expect(result.ips).toHaveLength(1)
+      expect(result.ips![0]!.ip).toBe('1.2.3.4')
+      expect(result.ips![0]!.action).toBe('deny')
+    })
+
+    it('should include metadata', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue(mockVercelConfig)
+
+      const result = await service.fetchConfig()
+
+      expect(result.metadata).toBeDefined()
+      expect(result.metadata!.version).toBe(1)
+      expect(result.metadata!.updatedAt).toBe('2024-01-01T00:00:00Z')
+    })
+
+    it('should pass version parameter to client', async () => {
+      const spy = jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue(mockVercelConfig)
+
+      await service.fetchConfig(5)
+
+      expect(spy).toHaveBeenCalledWith(5)
+    })
+
+    it('should throw on error', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockRejectedValue(new Error('API error'))
+
+      await expect(service.fetchConfig()).rejects.toThrow('Failed to fetch Vercel firewall configuration')
+    })
+  })
+
+  describe('syncRules', () => {
+    const unifiedConfig: UnifiedConfig = {
+      version: '2.0',
+      provider: 'vercel',
+      rules: [
+        {
+          id: 'rule_1',
+          name: 'Block bots',
+          description: 'Block bad bots',
+          enabled: true,
+          conditions: [
+            { field: 'user_agent', operator: 'contains', value: 'BadBot' },
+          ],
+          action: { type: 'deny' },
+        },
+      ],
+      ips: [
+        { id: 'ip_1', ip: '1.2.3.4', hostname: 'example.com', action: 'deny', notes: 'Blocked' },
+      ],
+    }
+
+    it('should return dry run result without making changes', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue(mockVercelConfig)
+
+      const result = await service.syncRules(unifiedConfig, { dryRun: true })
+
+      expect(result.success).toBe(true)
+      expect(result.rulesAdded).toBe(0)
+      expect(result.rulesUpdated).toBe(0)
+      expect(result.rulesDeleted).toBe(0)
+      expect(result.ipsAdded).toBe(0)
+      expect(result.ipsUpdated).toBe(0)
+      expect(result.ipsDeleted).toBe(0)
+    })
+
+    it('should sync rules and return counts', async () => {
+      // First call for getChanges, second for final version
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue({
+        ...mockVercelConfig,
+        rules: [],
+        ips: [],
+      })
+      jest.spyOn(client, 'createFirewallRule').mockResolvedValue({
+        id: 'new_rule_1',
+        name: 'Block bots',
+        active: true,
+        conditionGroup: [],
+        action: { mitigate: { action: 'deny', rateLimit: null, redirect: null, actionDuration: null } },
+      })
+      jest.spyOn(client, 'createIPBlockingRule').mockResolvedValue({
+        id: 'new_ip_1',
+        ip: '1.2.3.4',
+        hostname: 'example.com',
+        action: 'deny',
+      })
+
+      const result = await service.syncRules(unifiedConfig)
+
+      expect(result.success).toBe(true)
+      expect(result.rulesAdded).toBe(1)
+      expect(result.ipsAdded).toBe(1)
+    })
+
+    it('should throw on error', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockRejectedValue(new Error('API error'))
+
+      await expect(service.syncRules(unifiedConfig)).rejects.toThrow('Failed to synchronize firewall rules')
+    })
+  })
+
+  describe('getChanges', () => {
+    const unifiedConfig: UnifiedConfig = {
+      version: '2.0',
+      provider: 'vercel',
+      rules: [
+        {
+          id: 'rule_1',
+          name: 'Block bots',
+          description: 'Block bad bots',
+          enabled: true,
+          conditions: [
+            { field: 'user_agent', operator: 'contains', value: 'BadBot' },
+          ],
+          action: { type: 'deny' },
+        },
+        {
+          name: 'New rule',
+          enabled: true,
+          conditions: [
+            { field: 'path', operator: 'eq', value: '/admin' },
+          ],
+          action: { type: 'deny' },
+        },
+      ],
+      ips: [],
+    }
+
+    it('should detect additions', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue({
+        ...mockVercelConfig,
+        rules: [mockVercelConfig.rules[0]!],
+        ips: [],
+      })
+
+      const changes = await service.getChanges(unifiedConfig)
+
+      expect(changes.rulesToAdd.length).toBeGreaterThanOrEqual(1)
+      expect(changes.hasChanges).toBe(true)
+    })
+
+    it('should detect deletions', async () => {
+      const configWithNoRules: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [],
+        ips: [],
+      }
+
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue(mockVercelConfig)
+
+      const changes = await service.getChanges(configWithNoRules)
+
+      expect(changes.rulesToDelete.length).toBeGreaterThanOrEqual(1)
+      expect(changes.hasChanges).toBe(true)
+    })
+
+    it('should detect no changes when configs match', async () => {
+      // Create a config that matches the remote exactly
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue({
+        ...mockVercelConfig,
+        rules: [],
+        ips: [],
+      })
+
+      const emptyConfig: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [],
+        ips: [],
+      }
+
+      const changes = await service.getChanges(emptyConfig)
+
+      expect(changes.hasChanges).toBe(false)
+    })
+
+    it('should include version from remote config', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockResolvedValue(mockVercelConfig)
+
+      const changes = await service.getChanges(unifiedConfig)
+
+      expect(changes.version).toBe(mockVercelConfig.version)
+    })
+
+    it('should throw on error', async () => {
+      jest.spyOn(client, 'fetchFirewallConfig').mockRejectedValue(new Error('API error'))
+
+      await expect(service.getChanges(unifiedConfig)).rejects.toThrow(
+        'Failed to fetch existing firewall configuration',
+      )
+    })
+  })
+
+  describe('validateConfig', () => {
+    it('should return a validation result object', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [
+          {
+            name: 'Test rule',
+            enabled: true,
+            conditions: [{ field: 'path', operator: 'eq', value: '/test' }],
+            action: { type: 'deny' },
+          },
+        ],
+      }
+
+      const result = service.validateConfig(config)
+
+      // The unified format doesn't match the Vercel-specific firewallConfigSchema,
+      // so schema validation will add errors, but the result structure is correct
+      expect(result).toHaveProperty('valid')
+      expect(result).toHaveProperty('errors')
+      expect(result).toHaveProperty('warnings')
+      expect(Array.isArray(result.errors)).toBe(true)
+      expect(Array.isArray(result.warnings)).toBe(true)
+    })
+
+    it('should pass base validation for config with rules array', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [],
+      }
+
+      const result = service.validateConfig(config)
+
+      // No base validation errors (rules array exists), but schema validation may add errors
+      const baseErrors = result.errors.filter(
+        (e) => e.code === 'CONFIG_REQUIRED' || e.code === 'RULES_REQUIRED' || e.code === 'RULES_INVALID_TYPE',
+      )
+      expect(baseErrors).toHaveLength(0)
+    })
+
+    it('should report error for wrong provider', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'cloudflare',
+        rules: [],
+      }
+
+      const result = service.validateConfig(config)
+
+      expect(result.errors.some((e) => e.code === 'INVALID_PROVIDER')).toBe(true)
+    })
+
+    it('should report error for missing rules', () => {
+      const config = {
+        version: '2.0',
+        provider: 'vercel',
+      } as unknown as UnifiedConfig
+
+      const result = service.validateConfig(config)
+
+      expect(result.valid).toBe(false)
+    })
+  })
+
+  describe('getHealthScore', () => {
+    it('should return a health score', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [
+          {
+            name: 'Test rule',
+            description: 'A test rule',
+            enabled: true,
+            conditions: [{ field: 'path', operator: 'eq', value: '/test' }],
+            action: { type: 'rate_limit', rateLimit: { requests: 100, window: '60s' } },
+          },
+        ],
+        ips: [{ ip: '1.2.3.4', action: 'deny' }],
+      }
+
+      const score = service.getHealthScore(config)
+
+      expect(score.score).toBeGreaterThanOrEqual(0)
+      expect(score.score).toBeLessThanOrEqual(100)
+      expect(score.grade).toBeDefined()
+      expect(score.issues).toBeDefined()
+      expect(score.recommendations).toBeDefined()
+    })
+
+    it('should flag missing rate limiting rules', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [
+          {
+            name: 'Test rule',
+            description: 'A test rule',
+            enabled: true,
+            conditions: [{ field: 'path', operator: 'eq', value: '/test' }],
+            action: { type: 'deny' },
+          },
+        ],
+        ips: [{ ip: '1.2.3.4', action: 'deny' }],
+      }
+
+      const score = service.getHealthScore(config)
+
+      expect(score.issues.some((i) => i.message.includes('rate limiting'))).toBe(true)
+    })
+
+    it('should flag missing IP blocking rules', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [
+          {
+            name: 'Test rule',
+            description: 'A test rule',
+            enabled: true,
+            conditions: [{ field: 'path', operator: 'eq', value: '/test' }],
+            action: { type: 'rate_limit', rateLimit: { requests: 100, window: '60s' } },
+          },
+        ],
+        ips: [],
+      }
+
+      const score = service.getHealthScore(config)
+
+      expect(score.issues.some((i) => i.message.includes('IP blocking'))).toBe(true)
+    })
+
+    it('should return score >= 0', () => {
+      const config: UnifiedConfig = {
+        version: '2.0',
+        provider: 'vercel',
+        rules: [],
+        ips: [],
+      }
+
+      const score = service.getHealthScore(config)
+
+      expect(score.score).toBeGreaterThanOrEqual(0)
+    })
+  })
+
+  describe('getSupportedFeatures', () => {
+    it('should return Vercel feature set', () => {
+      const features = service.getSupportedFeatures()
+
+      expect(features.supportsCustomRules).toBe(true)
+      expect(features.supportsIPBlocking).toBe(true)
+      expect(features.supportsRateLimiting).toBe(true)
+      expect(features.supportsGeoBlocking).toBe(true)
+      expect(features.supportsManagedRules).toBe(false)
+      expect(features.supportsRedirect).toBe(true)
+      expect(features.supportsChallenge).toBe(true)
+    })
+  })
+
+  describe('verifyCredentials', () => {
+    it('should delegate to client.verifyCredentials', async () => {
+      const spy = jest.spyOn(client, 'verifyCredentials').mockResolvedValue(true)
+
+      const result = await service.verifyCredentials()
+
+      expect(result).toBe(true)
+      expect(spy).toHaveBeenCalled()
+    })
+
+    it('should return false when client returns false', async () => {
+      jest.spyOn(client, 'verifyCredentials').mockResolvedValue(false)
+
+      const result = await service.verifyCredentials()
+
+      expect(result).toBe(false)
+    })
+  })
+})

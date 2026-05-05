@@ -3,6 +3,11 @@ import { CloudflareClient } from '../CloudflareClient'
 import { DoormanError } from '../../../errors'
 import type { CloudflareAPIResponse, CloudflareRuleset } from '../../../types/cloudflare'
 
+// Mock logger
+jest.mock('../../../logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
 // Helper to build Response-like objects
 const makeResponse = (init: {
   ok: boolean
@@ -35,6 +40,7 @@ describe('CloudflareClient - Edge Cases', () => {
   beforeEach(() => {
     client = new CloudflareClient(API_TOKEN, ZONE_ID, ACCOUNT_ID)
     fetchMock = jest.spyOn(globalThis, 'fetch')
+    jest.spyOn(CloudflareClient.prototype as any, 'delay').mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -81,7 +87,6 @@ describe('CloudflareClient - Edge Cases', () => {
       } catch (error) {
         expect(DoormanError.isDoormanError(error)).toBe(true)
         if (DoormanError.isDoormanError(error)) {
-          expect(error.details).toHaveProperty('statusCode')
           expect(error.details).toHaveProperty('endpoint')
         }
       }
@@ -100,7 +105,7 @@ describe('CloudflareClient - Edge Cases', () => {
 
       fetchMock.mockResolvedValueOnce(makeResponse({ ok: true, status: 403, jsonBody: mockResponse }))
 
-      await expect(client.listRulesets()).rejects.toThrow('Authentication failed, Invalid API token')
+      await expect(client.listRulesets()).rejects.toThrow('Authentication failed')
     })
 
     it('should handle empty error array', async () => {

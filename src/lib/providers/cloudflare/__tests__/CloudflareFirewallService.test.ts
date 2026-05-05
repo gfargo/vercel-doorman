@@ -4,6 +4,23 @@ import { CloudflareClient } from '../CloudflareClient'
 import type { UnifiedConfig, UnifiedRule, UnifiedIPRule } from '../../../types/unified'
 import type { CloudflareRuleset } from '../../../types/cloudflare'
 
+// Mock logger
+jest.mock('../../../logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
+// Mock OperationSafety for syncRules tests
+jest.mock('../../../utils/operationSafety', () => ({
+  OperationSafety: {
+    performDryRunValidation: jest.fn<() => Promise<any>>().mockResolvedValue({
+      valid: true,
+      changes: { rulesToAdd: [], rulesToUpdate: [], rulesToDelete: [], ipsToAdd: [], ipsToUpdate: [], ipsToDelete: [], hasChanges: false },
+      issues: [],
+    }),
+    confirmDestructiveOperation: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  },
+}))
+
 describe('CloudflareFirewallService', () => {
   const API_TOKEN = 'test-token'
   const ZONE_ID = 'test-zone-id'
@@ -264,6 +281,22 @@ describe('CloudflareFirewallService', () => {
       })
       jest.spyOn(mockClient, 'getListItems').mockResolvedValue([])
       const updateRulesetSpy = jest.spyOn(mockClient, 'updateRuleset')
+
+      // Override OperationSafety mock for dry run to return expected changes
+      const { OperationSafety } = require('../../../utils/operationSafety')
+      OperationSafety.performDryRunValidation.mockResolvedValueOnce({
+        valid: true,
+        changes: {
+          rulesToAdd: [mockConfig.rules[0]],
+          rulesToUpdate: [],
+          rulesToDelete: [],
+          ipsToAdd: [],
+          ipsToUpdate: [],
+          ipsToDelete: [],
+          hasChanges: true,
+        },
+        issues: [],
+      })
 
       const result = await service.syncRules(mockConfig, { dryRun: true })
 
@@ -739,7 +772,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_RULE_LIMIT_EXCEEDED')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6001')).toBe(true)
     })
 
     it('should detect missing conditions', () => {
@@ -761,7 +794,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_RULE_NO_CONDITIONS')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6007')).toBe(true)
     })
 
     it('should validate rate limiting configuration', () => {
@@ -789,7 +822,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_RATE_LIMIT')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6008')).toBe(true)
     })
 
     it('should validate rate limit window format', () => {
@@ -817,7 +850,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_WINDOW_FORMAT')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6009')).toBe(true)
     })
 
     it('should warn about short mitigation timeout', () => {
@@ -846,7 +879,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(true)
-      expect(result.warnings.some((w) => w.code === 'CLOUDFLARE_SHORT_MITIGATION_TIMEOUT')).toBe(true)
+      expect(result.warnings.some((w) => w.code === 'CF_6010')).toBe(true)
     })
 
     it('should validate redirect configuration', () => {
@@ -874,7 +907,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_REDIRECT_NO_LOCATION')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6011')).toBe(true)
     })
 
     it('should validate IP address format', () => {
@@ -894,7 +927,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_IP')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6013')).toBe(true)
     })
 
     it('should warn about large IP lists without account ID', () => {
@@ -916,7 +949,7 @@ describe('CloudflareFirewallService', () => {
       const result = serviceWithoutAccount.validateConfig(config)
 
       expect(result.valid).toBe(true)
-      expect(result.warnings.some((w) => w.code === 'CLOUDFLARE_LARGE_IP_LIST')).toBe(true)
+      expect(result.warnings.some((w) => w.code === 'CF_6014')).toBe(true)
     })
   })
 
@@ -1433,7 +1466,7 @@ describe('CloudflareFirewallService', () => {
 
       const result = service.validateConfig(config)
 
-      expect(result.warnings.some((w) => w.code === 'CLOUDFLARE_EMPTY_CHARACTERISTICS')).toBe(true)
+      expect(result.warnings.some((w) => w.code === 'CF_6015')).toBe(true)
     })
 
     it('should validate CIDR notation in IP rules', () => {
@@ -1463,7 +1496,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_IP')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6013')).toBe(true)
     })
 
     it('should validate redirect URL formats', () => {
@@ -1504,7 +1537,7 @@ describe('CloudflareFirewallService', () => {
       const result = service.validateConfig(config)
 
       expect(result.valid).toBe(false)
-      expect(result.errors.some((e) => e.code === 'CLOUDFLARE_INVALID_REDIRECT_URL')).toBe(true)
+      expect(result.errors.some((e) => e.code === 'CF_6012')).toBe(true)
     })
   })
 })
