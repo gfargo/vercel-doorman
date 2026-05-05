@@ -143,7 +143,7 @@ export const handler = async (argv: Arguments<DownloadOptions>) => {
         teamId,
         version: remoteConfig.version,
         updatedAt: remoteConfig.updatedAt,
-        rules: configRules,
+        rules: configRules.map(({ valid, validationErrors, ...rule }: any) => rule),
         ips: ipBlockingRules,
       }
 
