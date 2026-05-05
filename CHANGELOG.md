@@ -1,3 +1,25 @@
+# [2.0.0-beta.1](https://github.com/gfargo/vercel-doorman/compare/v1.6.0-beta.1...v2.0.0-beta.1) (2026-05-05)
+
+
+* feat!: pre-2.0 cleanup — tests, dead code removal, .doorman.json config rename ([3d2bd96](https://github.com/gfargo/vercel-doorman/commit/3d2bd96fb6e5ecd7b66c1f870a7174ff9deb3a51))
+
+
+### Bug Fixes
+
+* enable all 12 skipped Cloudflare test suites (286 new passing tests) ([0ff56f3](https://github.com/gfargo/vercel-doorman/commit/0ff56f3d81f2591e0f1af42212d4eba78b29503c))
+* exclude .www from jest module paths ([4a5beae](https://github.com/gfargo/vercel-doorman/commit/4a5beae3fa3312ac55f138f12f090acf5daea7eb))
+* remove dead code in schemaVersion/gracefulShutdown/networkResilience, add remaining tests ([b6f410a](https://github.com/gfargo/vercel-doorman/commit/b6f410a245d7142bfcad2d776d7e809af11e6975))
+
+
+### Features
+
+* use .doorman.json as default config filename ([d608307](https://github.com/gfargo/vercel-doorman/commit/d608307d98515c97dbbc417de673a0e2e77b2f7f))
+
+
+### BREAKING CHANGES
+
+* Default config filename changed from vercel-firewall.config.json to .doorman.json. Existing configs are still auto-detected and work without changes.
+
 # [1.6.0-beta.1](https://github.com/gfargo/vercel-doorman/compare/v1.5.10...v1.6.0-beta.1) (2026-05-04)
 
 
