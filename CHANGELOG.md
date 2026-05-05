@@ -1,3 +1,10 @@
+# [2.0.0-beta.4](https://github.com/gfargo/vercel-doorman/compare/v2.0.0-beta.3...v2.0.0-beta.4) (2026-05-05)
+
+
+### Features
+
+* add agents.skills entry to package.json for skill discovery ([90753e2](https://github.com/gfargo/vercel-doorman/commit/90753e289c4f6f94a3194ecb48710851056ff929))
+
 # [2.0.0-beta.3](https://github.com/gfargo/vercel-doorman/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-05-05)
 
 
