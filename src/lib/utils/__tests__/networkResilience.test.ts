@@ -1,8 +1,4 @@
-import {
-    DEFAULT_RETRY_OPTIONS,
-    NetworkResilienceManager,
-    getNetworkResilienceManager,
-} from '../networkResilience'
+import { DEFAULT_RETRY_OPTIONS, NetworkResilienceManager, getNetworkResilienceManager } from '../networkResilience'
 import { DoormanError } from '../../errors/DoormanError'
 
 // Mock the logger
@@ -96,10 +92,7 @@ describe('networkResilience', () => {
     })
 
     it('should retry on retryable errors', async () => {
-      const operation = jest
-        .fn()
-        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
-        .mockResolvedValue('success')
+      const operation = jest.fn().mockRejectedValueOnce(new Error('ECONNREFUSED')).mockResolvedValue('success')
 
       const result = await manager.executeWithRetry(operation, defaultContext)
 
@@ -110,9 +103,7 @@ describe('networkResilience', () => {
     it('should throw DoormanError after exhausting retries', async () => {
       const operation = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'))
 
-      await expect(
-        manager.executeWithRetry(operation, defaultContext, { maxRetries: 2 }),
-      ).rejects.toThrow(DoormanError)
+      await expect(manager.executeWithRetry(operation, defaultContext, { maxRetries: 2 })).rejects.toThrow(DoormanError)
 
       // 1 initial + 2 retries = 3 total
       expect(operation).toHaveBeenCalledTimes(3)
@@ -121,9 +112,7 @@ describe('networkResilience', () => {
     it('should not retry non-retryable errors', async () => {
       const operation = jest.fn().mockRejectedValue(new Error('Invalid configuration'))
 
-      await expect(
-        manager.executeWithRetry(operation, defaultContext),
-      ).rejects.toThrow('Invalid configuration')
+      await expect(manager.executeWithRetry(operation, defaultContext)).rejects.toThrow('Invalid configuration')
 
       expect(operation).toHaveBeenCalledTimes(1)
     })

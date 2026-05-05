@@ -171,9 +171,7 @@ describe('FieldMapper', () => {
     })
 
     it('throws for unsupported Cloudflare field', () => {
-      expect(() => FieldMapper.toVercel('cf.bot_management.score')).toThrow(
-        /Unsupported Cloudflare field for Vercel/,
-      )
+      expect(() => FieldMapper.toVercel('cf.bot_management.score')).toThrow(/Unsupported Cloudflare field for Vercel/)
     })
   })
 

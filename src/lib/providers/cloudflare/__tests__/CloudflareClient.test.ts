@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 import { CloudflareClient } from '../CloudflareClient'
 import type {
-    CloudflareRuleset,
-    CloudflareAPIResponse,
-    CloudflareList,
-    CloudflareListItem,
-    CloudflareRule,
+  CloudflareRuleset,
+  CloudflareAPIResponse,
+  CloudflareList,
+  CloudflareListItem,
+  CloudflareRule,
 } from '../../../types/cloudflare'
 
 // Mock logger

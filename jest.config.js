@@ -3,9 +3,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   modulePathIgnorePatterns: ['<rootDir>/dist/', '<rootDir>/.www/'],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/'],
   moduleNameMapper: {
     '^chalk$': '<rootDir>/src/tests/__mocks__/chalk.ts',
   },

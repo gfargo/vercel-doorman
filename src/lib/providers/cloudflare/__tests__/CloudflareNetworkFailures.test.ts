@@ -16,7 +16,15 @@ jest.mock('../../../utils/operationSafety', () => ({
   OperationSafety: {
     performDryRunValidation: jest.fn<() => Promise<any>>().mockResolvedValue({
       valid: true,
-      changes: { rulesToAdd: [], rulesToUpdate: [], rulesToDelete: [], ipsToAdd: [], ipsToUpdate: [], ipsToDelete: [], hasChanges: false },
+      changes: {
+        rulesToAdd: [],
+        rulesToUpdate: [],
+        rulesToDelete: [],
+        ipsToAdd: [],
+        ipsToUpdate: [],
+        ipsToDelete: [],
+        hasChanges: false,
+      },
       issues: [],
     }),
     confirmDestructiveOperation: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),

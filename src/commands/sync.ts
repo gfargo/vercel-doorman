@@ -91,7 +91,6 @@ export const handler = async (argv: Arguments<SyncOptions>) => {
         logger.log(chalk.bold('\nProposed Custom Rule Changes:\n'))
         displayRulesTable(
           [
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ...toAdd.map((rule: any) => ({ ...rule, changeStatus: RULE_STATUS_MAP.new, id: rule.id as string })),
             ...toUpdate.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.modified, id: rule.id as string })),
             ...toDelete.map((rule) => ({ ...rule, changeStatus: RULE_STATUS_MAP.deleted, id: rule.id as string })),

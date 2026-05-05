@@ -1,17 +1,28 @@
 import {
-    cloudflareActionSchema,
-    cloudflareExpressionSchema,
-    cloudflareRuleSchema,
-    cloudflareRulesetSchema,
-    cloudflareZoneConfigSchema, cloudflareRateLimitSchema,
-    cloudflareRulesetKindSchema,
-    cloudflareRulesetPhaseSchema
+  cloudflareActionSchema,
+  cloudflareExpressionSchema,
+  cloudflareRuleSchema,
+  cloudflareRulesetSchema,
+  cloudflareZoneConfigSchema,
+  cloudflareRateLimitSchema,
+  cloudflareRulesetKindSchema,
+  cloudflareRulesetPhaseSchema,
 } from '../cloudflareSchemas'
 
 describe('cloudflareSchemas', () => {
   describe('cloudflareActionSchema', () => {
     it('accepts all valid actions', () => {
-      const validActions = ['block', 'challenge', 'managed_challenge', 'js_challenge', 'log', 'skip', 'allow', 'rewrite', 'redirect']
+      const validActions = [
+        'block',
+        'challenge',
+        'managed_challenge',
+        'js_challenge',
+        'log',
+        'skip',
+        'allow',
+        'rewrite',
+        'redirect',
+      ]
       for (const action of validActions) {
         expect(cloudflareActionSchema.safeParse(action).success).toBe(true)
       }

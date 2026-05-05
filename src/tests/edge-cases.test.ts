@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, test, beforeEach, jest } from '@jest/globals'
 import { FirewallService } from '../lib/services/FirewallService'
 import { VercelClient } from '../lib/services/VercelClient'

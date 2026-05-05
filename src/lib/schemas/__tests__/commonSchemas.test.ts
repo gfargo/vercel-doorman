@@ -1,15 +1,15 @@
 import {
-    idSchema,
-    ipAddressSchema,
-    actionTypeSchema,
-    operatorSchema,
-    fieldTypeSchema,
-    durationSchema,
-    rateLimitSchema,
-    redirectSchema,
-    providerTypeSchema,
-    providersConfigSchema,
-    baseConfigSchema,
+  idSchema,
+  ipAddressSchema,
+  actionTypeSchema,
+  operatorSchema,
+  fieldTypeSchema,
+  durationSchema,
+  rateLimitSchema,
+  redirectSchema,
+  providerTypeSchema,
+  providersConfigSchema,
+  baseConfigSchema,
 } from '../commonSchemas'
 
 // NOTE: schemaVersion.ts has pre-existing TS errors in dead code paths
@@ -64,8 +64,21 @@ describe('commonSchemas', () => {
   describe('operatorSchema', () => {
     it('accepts all valid operators', () => {
       const ops = [
-        'eq', 'ne', 'contains', 'not_contains', 'starts_with', 'ends_with',
-        'matches', 'in', 'not_in', 'gt', 'ge', 'lt', 'le', 'exists', 'not_exists',
+        'eq',
+        'ne',
+        'contains',
+        'not_contains',
+        'starts_with',
+        'ends_with',
+        'matches',
+        'in',
+        'not_in',
+        'gt',
+        'ge',
+        'lt',
+        'le',
+        'exists',
+        'not_exists',
       ]
       for (const op of ops) {
         expect(operatorSchema.safeParse(op).success).toBe(true)
@@ -80,8 +93,21 @@ describe('commonSchemas', () => {
   describe('fieldTypeSchema', () => {
     it('accepts all valid field types', () => {
       const fields = [
-        'ip', 'country', 'region', 'city', 'asn', 'path', 'host',
-        'method', 'header', 'query', 'cookie', 'user_agent', 'referer', 'scheme', 'port',
+        'ip',
+        'country',
+        'region',
+        'city',
+        'asn',
+        'path',
+        'host',
+        'method',
+        'header',
+        'query',
+        'cookie',
+        'user_agent',
+        'referer',
+        'scheme',
+        'port',
       ]
       for (const field of fields) {
         expect(fieldTypeSchema.safeParse(field).success).toBe(true)

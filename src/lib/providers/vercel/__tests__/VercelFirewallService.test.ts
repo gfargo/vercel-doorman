@@ -34,9 +34,7 @@ describe('VercelFirewallService', () => {
         active: true,
         conditionGroup: [
           {
-            conditions: [
-              { type: 'user_agent' as const, op: 'sub' as const, value: 'BadBot' },
-            ],
+            conditions: [{ type: 'user_agent' as const, op: 'sub' as const, value: 'BadBot' }],
           },
         ],
         action: {
@@ -133,15 +131,11 @@ describe('VercelFirewallService', () => {
           name: 'Block bots',
           description: 'Block bad bots',
           enabled: true,
-          conditions: [
-            { field: 'user_agent', operator: 'contains', value: 'BadBot' },
-          ],
+          conditions: [{ field: 'user_agent', operator: 'contains', value: 'BadBot' }],
           action: { type: 'deny' },
         },
       ],
-      ips: [
-        { id: 'ip_1', ip: '1.2.3.4', hostname: 'example.com', action: 'deny', notes: 'Blocked' },
-      ],
+      ips: [{ id: 'ip_1', ip: '1.2.3.4', hostname: 'example.com', action: 'deny', notes: 'Blocked' }],
     }
 
     it('should return dry run result without making changes', async () => {
@@ -203,17 +197,13 @@ describe('VercelFirewallService', () => {
           name: 'Block bots',
           description: 'Block bad bots',
           enabled: true,
-          conditions: [
-            { field: 'user_agent', operator: 'contains', value: 'BadBot' },
-          ],
+          conditions: [{ field: 'user_agent', operator: 'contains', value: 'BadBot' }],
           action: { type: 'deny' },
         },
         {
           name: 'New rule',
           enabled: true,
-          conditions: [
-            { field: 'path', operator: 'eq', value: '/admin' },
-          ],
+          conditions: [{ field: 'path', operator: 'eq', value: '/admin' }],
           action: { type: 'deny' },
         },
       ],
@@ -280,9 +270,7 @@ describe('VercelFirewallService', () => {
     it('should throw on error', async () => {
       jest.spyOn(client, 'fetchFirewallConfig').mockRejectedValue(new Error('API error'))
 
-      await expect(service.getChanges(unifiedConfig)).rejects.toThrow(
-        'Failed to fetch existing firewall configuration',
-      )
+      await expect(service.getChanges(unifiedConfig)).rejects.toThrow('Failed to fetch existing firewall configuration')
     })
   })
 

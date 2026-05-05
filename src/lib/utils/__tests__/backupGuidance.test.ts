@@ -120,11 +120,13 @@ describe('BackupGuidance', () => {
 
       // Mock readdirSync via require since listBackups uses require('fs').readdirSync
       const fs = require('fs')
-      fs.readdirSync = jest.fn().mockReturnValue([
-        'config-backup-2023-01-01T00-00-00-000Z.json.meta.json',
-        'config-backup-2023-01-02T00-00-00-000Z.json.meta.json',
-        'other-file.txt',
-      ])
+      fs.readdirSync = jest
+        .fn()
+        .mockReturnValue([
+          'config-backup-2023-01-01T00-00-00-000Z.json.meta.json',
+          'config-backup-2023-01-02T00-00-00-000Z.json.meta.json',
+          'other-file.txt',
+        ])
 
       mockReadFileSync.mockImplementation((path) => {
         if (typeof path === 'string' && path.includes('meta.json')) {

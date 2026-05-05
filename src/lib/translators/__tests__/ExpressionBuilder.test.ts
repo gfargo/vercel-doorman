@@ -48,9 +48,7 @@ describe('ExpressionBuilder', () => {
           ],
         },
         {
-          conditions: [
-            { type: 'path', op: 'eq', value: '/admin' },
-          ],
+          conditions: [{ type: 'path', op: 'eq', value: '/admin' }],
         },
       ]
       const result = ExpressionBuilder.fromVercelConditionGroups(groups)
@@ -113,7 +111,12 @@ describe('ExpressionBuilder', () => {
     })
 
     it('handles header with key', () => {
-      const condition: VercelRuleCondition = { type: 'header', op: 'eq', value: 'application/json', key: 'Content-Type' }
+      const condition: VercelRuleCondition = {
+        type: 'header',
+        op: 'eq',
+        value: 'application/json',
+        key: 'Content-Type',
+      }
       expect(ExpressionBuilder.fromVercelCondition(condition)).toBe(
         'http.request.headers["content-type"] eq "application/json"',
       )
@@ -156,35 +159,35 @@ describe('ExpressionBuilder', () => {
 
   describe('fromUnifiedCondition', () => {
     it('maps unified field types to Cloudflare fields', () => {
-      expect(
-        ExpressionBuilder.fromUnifiedCondition({ field: 'ip', operator: 'eq', value: '1.2.3.4' }),
-      ).toBe('ip.src eq "1.2.3.4"')
+      expect(ExpressionBuilder.fromUnifiedCondition({ field: 'ip', operator: 'eq', value: '1.2.3.4' })).toBe(
+        'ip.src eq "1.2.3.4"',
+      )
 
-      expect(
-        ExpressionBuilder.fromUnifiedCondition({ field: 'country', operator: 'eq', value: 'US' }),
-      ).toBe('ip.geoip.country eq "US"')
+      expect(ExpressionBuilder.fromUnifiedCondition({ field: 'country', operator: 'eq', value: 'US' })).toBe(
+        'ip.geoip.country eq "US"',
+      )
 
-      expect(
-        ExpressionBuilder.fromUnifiedCondition({ field: 'host', operator: 'eq', value: 'example.com' }),
-      ).toBe('http.host eq "example.com"')
+      expect(ExpressionBuilder.fromUnifiedCondition({ field: 'host', operator: 'eq', value: 'example.com' })).toBe(
+        'http.host eq "example.com"',
+      )
     })
 
     it('maps unified operators to Cloudflare operators', () => {
-      expect(
-        ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'contains', value: 'api' }),
-      ).toBe('http.request.uri.path contains "api"')
+      expect(ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'contains', value: 'api' })).toBe(
+        'http.request.uri.path contains "api"',
+      )
 
-      expect(
-        ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'starts_with', value: '/api' }),
-      ).toBe('http.request.uri.path starts_with "/api"')
+      expect(ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'starts_with', value: '/api' })).toBe(
+        'http.request.uri.path starts_with "/api"',
+      )
 
-      expect(
-        ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'ends_with', value: '.php' }),
-      ).toBe('http.request.uri.path ends_with ".php"')
+      expect(ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'ends_with', value: '.php' })).toBe(
+        'http.request.uri.path ends_with ".php"',
+      )
 
-      expect(
-        ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'matches', value: '^/api' }),
-      ).toBe('http.request.uri.path matches "^/api"')
+      expect(ExpressionBuilder.fromUnifiedCondition({ field: 'path', operator: 'matches', value: '^/api' })).toBe(
+        'http.request.uri.path matches "^/api"',
+      )
     })
 
     it('handles in operator with array values', () => {
@@ -245,10 +248,7 @@ describe('ExpressionBuilder', () => {
     })
 
     it('combines multiple expressions with AND', () => {
-      const result = ExpressionBuilder.combineWithAnd([
-        'ip.src eq "1.2.3.4"',
-        'http.host eq "example.com"',
-      ])
+      const result = ExpressionBuilder.combineWithAnd(['ip.src eq "1.2.3.4"', 'http.host eq "example.com"'])
       expect(result).toBe('(ip.src eq "1.2.3.4" and http.host eq "example.com")')
     })
 
@@ -263,10 +263,7 @@ describe('ExpressionBuilder', () => {
     })
 
     it('combines multiple expressions with OR', () => {
-      const result = ExpressionBuilder.combineWithOr([
-        'ip.src eq "1.2.3.4"',
-        'ip.src eq "5.6.7.8"',
-      ])
+      const result = ExpressionBuilder.combineWithOr(['ip.src eq "1.2.3.4"', 'ip.src eq "5.6.7.8"'])
       expect(result).toBe('(ip.src eq "1.2.3.4" or ip.src eq "5.6.7.8")')
     })
 

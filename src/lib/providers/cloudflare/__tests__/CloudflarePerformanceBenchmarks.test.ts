@@ -15,7 +15,15 @@ jest.mock('../../../utils/operationSafety', () => ({
   OperationSafety: {
     performDryRunValidation: jest.fn<() => Promise<any>>().mockResolvedValue({
       valid: true,
-      changes: { rulesToAdd: [], rulesToUpdate: [], rulesToDelete: [], ipsToAdd: [], ipsToUpdate: [], ipsToDelete: [], hasChanges: false },
+      changes: {
+        rulesToAdd: [],
+        rulesToUpdate: [],
+        rulesToDelete: [],
+        ipsToAdd: [],
+        ipsToUpdate: [],
+        ipsToDelete: [],
+        hasChanges: false,
+      },
       issues: [],
     }),
     confirmDestructiveOperation: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
@@ -526,20 +534,19 @@ describe('Cloudflare Performance Benchmarks', () => {
       // Mock a slow API response that resolves quickly for testing
       fetchMock.mockImplementationOnce(
         () =>
-          new Promise(
-            (resolve) =>
-              setTimeout(
-                () =>
-                  resolve(
-                    new Response(
-                      JSON.stringify({
-                        success: true,
-                        result: [],
-                      }),
-                    ),
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve(
+                  new Response(
+                    JSON.stringify({
+                      success: true,
+                      result: [],
+                    }),
                   ),
-                100, // Short delay for testing
-              ),
+                ),
+              100, // Short delay for testing
+            ),
           ),
       )
 

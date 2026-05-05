@@ -1,6 +1,6 @@
 ---
 name: vercel-doorman
-description: "Use when managing Vercel or Cloudflare WAF rules as code, configuring firewall rules, IP blocking, rate limiting, bot protection, or automating multi-provider security configuration deployment with Doorman CLI."
+description: 'Use when managing Vercel or Cloudflare WAF rules as code, configuring firewall rules, IP blocking, rate limiting, bot protection, or automating multi-provider security configuration deployment with Doorman CLI.'
 ---
 
 # Vercel Doorman
@@ -181,52 +181,52 @@ All commands support `--provider vercel|cloudflare` to target a specific provide
 
 ### Setup & Init
 
-| Command | Description |
-| ------- | ----------- |
-| `vercel-doorman setup` | Show setup guide with links |
-| `vercel-doorman init --interactive` | Create config with interactive prompts |
-| `vercel-doorman init --provider cloudflare --interactive` | Init for Cloudflare |
-| `vercel-doorman init security-focused` | Start with security templates |
+| Command                                                   | Description                            |
+| --------------------------------------------------------- | -------------------------------------- |
+| `vercel-doorman setup`                                    | Show setup guide with links            |
+| `vercel-doorman init --interactive`                       | Create config with interactive prompts |
+| `vercel-doorman init --provider cloudflare --interactive` | Init for Cloudflare                    |
+| `vercel-doorman init security-focused`                    | Start with security templates          |
 
 ### Status & Info
 
-| Command | Description |
-| ------- | ----------- |
-| `vercel-doorman status` | Sync status + configuration health score |
-| `vercel-doorman status --provider cloudflare` | Cloudflare-specific status |
-| `vercel-doorman list` | Display current deployed rules |
-| `vercel-doorman list 1` | List rules from specific version |
-| `vercel-doorman diff` | Color-coded diff between local and remote |
-| `vercel-doorman diff --format json` | JSON diff for CI/CD |
+| Command                                       | Description                               |
+| --------------------------------------------- | ----------------------------------------- |
+| `vercel-doorman status`                       | Sync status + configuration health score  |
+| `vercel-doorman status --provider cloudflare` | Cloudflare-specific status                |
+| `vercel-doorman list`                         | Display current deployed rules            |
+| `vercel-doorman list 1`                       | List rules from specific version          |
+| `vercel-doorman diff`                         | Color-coded diff between local and remote |
+| `vercel-doorman diff --format json`           | JSON diff for CI/CD                       |
 
 ### Configuration Management
 
-| Command | Description |
-| ------- | ----------- |
-| `vercel-doorman sync` | Apply local changes to provider (local → remote) |
-| `vercel-doorman sync --provider cloudflare` | Sync to Cloudflare specifically |
-| `vercel-doorman download` | Import remote rules to local config (remote → local) |
-| `vercel-doorman download --dry-run` | Preview changes without modifying config |
-| `vercel-doorman validate` | Check syntax and health |
-| `vercel-doorman validate --verbose` | Detailed validation results |
+| Command                                     | Description                                          |
+| ------------------------------------------- | ---------------------------------------------------- |
+| `vercel-doorman sync`                       | Apply local changes to provider (local → remote)     |
+| `vercel-doorman sync --provider cloudflare` | Sync to Cloudflare specifically                      |
+| `vercel-doorman download`                   | Import remote rules to local config (remote → local) |
+| `vercel-doorman download --dry-run`         | Preview changes without modifying config             |
+| `vercel-doorman validate`                   | Check syntax and health                              |
+| `vercel-doorman validate --verbose`         | Detailed validation results                          |
 
 ### Advanced
 
-| Command | Description |
-| ------- | ----------- |
-| `vercel-doorman watch` | Auto-sync on file changes (dev workflow) |
-| `vercel-doorman backup` | Create configuration backup |
-| `vercel-doorman backup --list` | List backups |
-| `vercel-doorman backup --restore backup.json` | Restore from backup |
-| `vercel-doorman export --format markdown` | Export as Markdown docs |
-| `vercel-doorman export --format json` | Export as JSON |
-| `vercel-doorman export --format yaml` | Export as YAML |
-| `vercel-doorman export --format terraform` | Export as Terraform |
-| `vercel-doorman template` | Browse available templates |
-| `vercel-doorman template ai-bots` | Add AI bot protection template |
-| `vercel-doorman template wordpress` | Add WordPress protection |
-| `vercel-doorman template bad-bots` | Block malicious bots |
-| `vercel-doorman template block-ofac-sanctioned-countries` | OFAC compliance |
+| Command                                                   | Description                              |
+| --------------------------------------------------------- | ---------------------------------------- |
+| `vercel-doorman watch`                                    | Auto-sync on file changes (dev workflow) |
+| `vercel-doorman backup`                                   | Create configuration backup              |
+| `vercel-doorman backup --list`                            | List backups                             |
+| `vercel-doorman backup --restore backup.json`             | Restore from backup                      |
+| `vercel-doorman export --format markdown`                 | Export as Markdown docs                  |
+| `vercel-doorman export --format json`                     | Export as JSON                           |
+| `vercel-doorman export --format yaml`                     | Export as YAML                           |
+| `vercel-doorman export --format terraform`                | Export as Terraform                      |
+| `vercel-doorman template`                                 | Browse available templates               |
+| `vercel-doorman template ai-bots`                         | Add AI bot protection template           |
+| `vercel-doorman template wordpress`                       | Add WordPress protection                 |
+| `vercel-doorman template bad-bots`                        | Block malicious bots                     |
+| `vercel-doorman template block-ofac-sanctioned-countries` | OFAC compliance                          |
 
 ## Workflows
 
@@ -283,6 +283,7 @@ Doorman 2.0 supports both Vercel Firewall and Cloudflare WAF through a unified i
 ### Provider Detection
 
 Provider is auto-detected in this priority order:
+
 1. `--provider` CLI flag
 2. `provider` field in config
 3. `providers.cloudflare.zoneId` in config → Cloudflare
@@ -301,17 +302,17 @@ Provider is auto-detected in this priority order:
 
 ### Feature Compatibility
 
-| Feature | Vercel | Cloudflare |
-| ------- | ------ | ---------- |
-| Custom rules | ✅ | ✅ |
-| IP blocking | ✅ | ✅ (Lists API) |
-| Rate limiting | ✅ | ✅ |
-| Geo-blocking | ✅ | ✅ |
-| Challenge | ✅ | ✅ (managed) |
-| Redirect | ✅ | ✅ |
-| Regex matching | ✅ | ⚠️ Enterprise |
-| Environment conditions | ✅ | ❌ |
-| JA3/JA4 fingerprints | ✅ | ❌ |
+| Feature                | Vercel | Cloudflare     |
+| ---------------------- | ------ | -------------- |
+| Custom rules           | ✅     | ✅             |
+| IP blocking            | ✅     | ✅ (Lists API) |
+| Rate limiting          | ✅     | ✅             |
+| Geo-blocking           | ✅     | ✅             |
+| Challenge              | ✅     | ✅ (managed)   |
+| Redirect               | ✅     | ✅             |
+| Regex matching         | ✅     | ⚠️ Enterprise  |
+| Environment conditions | ✅     | ❌             |
+| JA3/JA4 fingerprints   | ✅     | ❌             |
 
 ## Configuration Health
 
@@ -373,9 +374,7 @@ Factors: rule naming, security best practices, performance impact (regex usage),
 
 ```json
 {
-  "ips": [
-    { "ip": "192.168.1.100/32", "hostname": "suspicious", "action": "deny", "notes": "Blocked for abuse" }
-  ]
+  "ips": [{ "ip": "192.168.1.100/32", "hostname": "suspicious", "action": "deny", "notes": "Blocked for abuse" }]
 }
 ```
 

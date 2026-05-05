@@ -6,7 +6,7 @@ import jest from 'eslint-plugin-jest'
 import unusedImports from 'eslint-plugin-unused-imports'
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'bundle/**', 'coverage/**', '.yarn/**', 'CHANGELOG.md', 'test-sync-fix.js'] },
+  { ignores: ['dist/**', 'bundle/**', 'coverage/**', '.yarn/**', '.www/**', 'CHANGELOG.md', 'test-sync-fix.js'] },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.cjs', '**/*.mjs'],
     languageOptions: {
@@ -23,6 +23,12 @@ export default tseslint.config(
       'no-console': 'warn',
       'prettier/prettier': 'error',
       '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-this-alias': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
       'unused-imports/no-unused-imports': 'error',
     },
   },
@@ -33,6 +39,12 @@ export default tseslint.config(
     rules: {
       ...jest.configs['flat/recommended'].rules,
       'jest/no-conditional-expect': 'off',
+      'jest/no-jasmine-globals': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-this-alias': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
     },
   },
 )

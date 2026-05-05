@@ -51,9 +51,7 @@ describe('VercelClient', () => {
           active: true,
           conditionGroup: [
             {
-              conditions: [
-                { type: 'user_agent', op: 'sub', value: 'BadBot' },
-              ],
+              conditions: [{ type: 'user_agent', op: 'sub', value: 'BadBot' }],
             },
           ],
           action: {
@@ -61,9 +59,7 @@ describe('VercelClient', () => {
           },
         },
       ],
-      ips: [
-        { id: 'ip_1', ip: '1.2.3.4', hostname: 'example.com', action: 'deny', notes: 'test' },
-      ],
+      ips: [{ id: 'ip_1', ip: '1.2.3.4', hostname: 'example.com', action: 'deny', notes: 'test' }],
       projectKey: 'pk_123',
       ownerId: 'owner_1',
       updatedAt: '2024-01-01T00:00:00Z',
@@ -132,9 +128,7 @@ describe('VercelClient', () => {
     })
 
     it('should handle API errors', async () => {
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ error: 'Unauthorized' }, 401, 'Unauthorized'),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ error: 'Unauthorized' }, 401, 'Unauthorized'))
 
       await expect(client.fetchFirewallConfig()).rejects.toThrow()
     })
@@ -181,9 +175,7 @@ describe('VercelClient', () => {
     })
 
     it('should handle errors', async () => {
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ error: 'Bad Request' }, 400, 'Bad Request'),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ error: 'Bad Request' }, 400, 'Bad Request'))
 
       await expect(client.updateFirewallRule(rule)).rejects.toThrow()
     })
@@ -195,17 +187,13 @@ describe('VercelClient', () => {
         name: 'New Rule',
         description: 'A new rule',
         active: true,
-        conditionGroup: [
-          { conditions: [{ type: 'path' as const, op: 'eq' as const, value: '/test' }] },
-        ],
+        conditionGroup: [{ conditions: [{ type: 'path' as const, op: 'eq' as const, value: '/test' }] }],
         action: {
           mitigate: { action: 'deny' as const, rateLimit: null, redirect: null, actionDuration: null },
         },
       }
 
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ ...ruleWithoutId, id: 'created_rule_1' }),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ ...ruleWithoutId, id: 'created_rule_1' }))
 
       await client.createFirewallRule(ruleWithoutId)
 
@@ -277,9 +265,7 @@ describe('VercelClient', () => {
         notes: 'New block',
       }
 
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ ...ruleWithoutId, id: 'created_ip_1' }),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ ...ruleWithoutId, id: 'created_ip_1' }))
 
       await client.createIPBlockingRule(ruleWithoutId)
 
@@ -321,9 +307,7 @@ describe('VercelClient', () => {
     })
 
     it('should return false when fetch fails', async () => {
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ error: 'Unauthorized' }, 401, 'Unauthorized'),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ error: 'Unauthorized' }, 401, 'Unauthorized'))
 
       const result = await client.verifyCredentials()
 
@@ -333,38 +317,26 @@ describe('VercelClient', () => {
 
   describe('error handling for HTTP status codes', () => {
     it('should handle 403 Forbidden', async () => {
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ error: 'Forbidden' }, 403, 'Forbidden'),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ error: 'Forbidden' }, 403, 'Forbidden'))
 
       await expect(client.fetchFirewallConfig()).rejects.toThrow()
     })
 
     it('should handle 404 Not Found', async () => {
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ error: 'Not Found' }, 404, 'Not Found'),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ error: 'Not Found' }, 404, 'Not Found'))
 
       await expect(client.fetchFirewallConfig()).rejects.toThrow()
     })
 
     it('should handle 500 Internal Server Error', async () => {
-      fetchSpy.mockResolvedValue(
-        createMockResponse({ error: 'Internal Server Error' }, 500, 'Internal Server Error'),
-      )
+      fetchSpy.mockResolvedValue(createMockResponse({ error: 'Internal Server Error' }, 500, 'Internal Server Error'))
 
       await expect(client.fetchFirewallConfig()).rejects.toThrow()
     })
 
     it('should handle 429 Rate Limit with retry', async () => {
-      const rateLimitResponse = createMockResponse(
-        { error: 'Rate Limited' },
-        429,
-        'Too Many Requests',
-      )
-      fetchSpy
-        .mockResolvedValueOnce(rateLimitResponse)
-        .mockResolvedValue(createMockResponse(mockVercelConfig))
+      const rateLimitResponse = createMockResponse({ error: 'Rate Limited' }, 429, 'Too Many Requests')
+      fetchSpy.mockResolvedValueOnce(rateLimitResponse).mockResolvedValue(createMockResponse(mockVercelConfig))
 
       const result = await client.fetchFirewallConfig()
 

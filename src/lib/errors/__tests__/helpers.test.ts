@@ -4,22 +4,22 @@ jest.mock('../../logger', () => ({
 
 import { DoormanError } from '../DoormanError'
 import {
-    configErrors,
-    providerErrors,
-    cloudflareErrors,
-    syncErrors,
-    validationErrors,
-    translationErrors,
-    networkErrors,
+  configErrors,
+  providerErrors,
+  cloudflareErrors,
+  syncErrors,
+  validationErrors,
+  translationErrors,
+  networkErrors,
 } from '../helpers'
 import {
-    ConfigErrorCode,
-    ProviderErrorCode,
-    CloudflareErrorCode,
-    SyncErrorCode,
-    ValidationErrorCode,
-    TranslationErrorCode,
-    NetworkErrorCode,
+  ConfigErrorCode,
+  ProviderErrorCode,
+  CloudflareErrorCode,
+  SyncErrorCode,
+  ValidationErrorCode,
+  TranslationErrorCode,
+  NetworkErrorCode,
 } from '../ErrorCodes'
 
 describe('error helpers', () => {

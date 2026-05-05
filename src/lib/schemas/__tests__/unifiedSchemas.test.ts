@@ -1,10 +1,10 @@
 import {
-    unifiedConditionSchema,
-    unifiedActionSchema,
-    unifiedRuleSchema,
-    unifiedIPRuleSchema,
-    unifiedConfigSchema,
-    validateUnifiedConfig,
+  unifiedConditionSchema,
+  unifiedActionSchema,
+  unifiedRuleSchema,
+  unifiedIPRuleSchema,
+  unifiedConfigSchema,
+  validateUnifiedConfig,
 } from '../unifiedSchemas'
 
 describe('unifiedSchemas', () => {

@@ -1,11 +1,11 @@
 import {
-    detectSchemaVersion,
-    needsMigration,
-    migrateV1ToV2,
-    autoMigrate,
-    isCompatibleVersion,
-    CURRENT_SCHEMA_VERSION,
-    LEGACY_SCHEMA_VERSION,
+  detectSchemaVersion,
+  needsMigration,
+  migrateV1ToV2,
+  autoMigrate,
+  isCompatibleVersion,
+  CURRENT_SCHEMA_VERSION,
+  LEGACY_SCHEMA_VERSION,
 } from '../schemaVersion'
 import type { FirewallConfig } from '../../types/vercel'
 import type { UnifiedConfig } from '../../types/unified'

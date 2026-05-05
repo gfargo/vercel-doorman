@@ -1,8 +1,8 @@
 import {
-    setupGracefulShutdown,
-    handleOperationInterruption,
-    createProgressCheckpoint,
-    withGracefulInterruption,
+  setupGracefulShutdown,
+  handleOperationInterruption,
+  createProgressCheckpoint,
+  withGracefulInterruption,
 } from '../gracefulShutdown'
 import { logger } from '../../logger'
 
@@ -33,9 +33,7 @@ describe('gracefulShutdown', () => {
     it('should log debug message when called', () => {
       setupGracefulShutdown('test-command')
 
-      expect(logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Graceful shutdown enabled for test-command'),
-      )
+      expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('Graceful shutdown enabled for test-command'))
     })
 
     it('should register cleanup handler when cleanupFn is provided', () => {
@@ -76,17 +74,13 @@ describe('gracefulShutdown', () => {
       handleOperationInterruption('sync', partialResults)
 
       expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Partial results saved'))
-      expect(logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining(JSON.stringify(partialResults, null, 2)),
-      )
+      expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify(partialResults, null, 2)))
     })
 
     it('should not log partial results when not provided', () => {
       handleOperationInterruption('sync')
 
-      expect(logger.info).not.toHaveBeenCalledWith(
-        expect.stringContaining('Partial results saved'),
-      )
+      expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('Partial results saved'))
     })
 
     it('should log resume message', () => {
@@ -106,9 +100,7 @@ describe('gracefulShutdown', () => {
 
       createProgressCheckpoint('sync', progress)
 
-      expect(logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Progress checkpoint'),
-      )
+      expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('Progress checkpoint'))
     })
 
     it('should include operation name in checkpoint', () => {
@@ -188,16 +180,17 @@ describe('gracefulShutdown', () => {
       // Create a long-running operation that we can interrupt
       let resolveOp: (value: string) => void
       const operation = jest.fn().mockImplementation(
-        () => new Promise<string>((resolve) => { resolveOp = resolve }),
+        () =>
+          new Promise<string>((resolve) => {
+            resolveOp = resolve
+          }),
       )
 
       // Start the operation but don't await yet
       const promise = withGracefulInterruption(operation, 'test-op', onInterrupt)
 
       // Get the SIGINT handler and call it
-      const sigintCall = processOnceSpy.mock.calls.find(
-        (call: unknown[]) => call[0] === 'SIGINT',
-      )
+      const sigintCall = processOnceSpy.mock.calls.find((call: unknown[]) => call[0] === 'SIGINT')
       expect(sigintCall).toBeDefined()
       const sigintHandler = sigintCall![1] as () => void
       sigintHandler()

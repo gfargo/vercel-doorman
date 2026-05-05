@@ -138,15 +138,15 @@ describe('providerHelper', () => {
     })
 
     it('throws for Vercel when credentials missing and non-interactive', async () => {
-      await expect(
-        getProviderInstance({ provider: 'vercel', interactive: false }),
-      ).rejects.toThrow(/credentials missing/)
+      await expect(getProviderInstance({ provider: 'vercel', interactive: false })).rejects.toThrow(
+        /credentials missing/,
+      )
     })
 
     it('throws for Cloudflare when credentials missing and non-interactive', async () => {
-      await expect(
-        getProviderInstance({ provider: 'cloudflare', interactive: false }),
-      ).rejects.toThrow(/credentials missing/)
+      await expect(getProviderInstance({ provider: 'cloudflare', interactive: false })).rejects.toThrow(
+        /credentials missing/,
+      )
     })
   })
 

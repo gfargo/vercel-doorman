@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, test, beforeEach, afterEach, jest } from '@jest/globals'
 import { promises as fs } from 'fs'
 import { join } from 'path'
