@@ -1,3 +1,4 @@
+import * as add from './add'
 import * as backup from './backup'
 import * as diff from './diff'
 import * as download from './download'
@@ -11,4 +12,18 @@ import * as template from './template'
 import * as validate from './validate'
 import * as watch from './watch'
 
-export const commands = [setup, init, list, status, diff, sync, validate, download, template, backup, exportCmd, watch]
+export const commands = [
+  setup,
+  init,
+  add,
+  list,
+  status,
+  diff,
+  sync,
+  validate,
+  download,
+  template,
+  backup,
+  exportCmd,
+  watch,
+]
