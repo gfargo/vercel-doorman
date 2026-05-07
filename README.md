@@ -111,20 +111,27 @@ Doorman uses a simple JSON configuration file with full TypeScript support and J
 
 ### 🎨 Getting Started with Rules
 
-**Option 1: Use Templates** (Recommended)
+**Option 1: Use the `add` Command** (Recommended)
+
+```bash
+vercel-doorman add --interactive          # Guided prompts
+vercel-doorman add --name "Block Admin" --field path --op pre --value "/admin" --action deny
+```
+
+**Option 2: Use Templates**
 
 ```bash
 vercel-doorman template          # Browse available templates
 vercel-doorman template ai-bots  # Add AI bot protection
 ```
 
-**Option 2: Interactive Setup**
+**Option 3: Interactive Setup**
 
 ```bash
 vercel-doorman init security-focused  # Start with security templates
 ```
 
-**Option 3: Import Existing**
+**Option 4: Import Existing**
 
 ```bash
 vercel-doorman download  # Import your current Vercel rules
@@ -144,6 +151,13 @@ vercel-doorman download  # Import your current Vercel rules
 | ------- | ------------------------------------------------- | ----------------------------------- |
 | `setup` | Show comprehensive setup guide with links         | `vercel-doorman setup`              |
 | `init`  | Create new configuration with interactive prompts | `vercel-doorman init --interactive` |
+
+### Rule Creation
+
+| Command    | Description                                          | Example                                                                  |
+| ---------- | ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| `add`      | Add a new rule from the CLI (interactive or inline)  | `vercel-doorman add --name "Block" --field path --op pre --value "/admin" --action deny` |
+| `template` | Add predefined rule templates                        | `vercel-doorman template ai-bots`                                        |
 
 ### Status & Information
 
@@ -168,7 +182,6 @@ vercel-doorman download  # Import your current Vercel rules
 | `watch`    | Auto-sync on file changes                                    | Development workflow |
 | `backup`   | Create/restore configuration backups                         | Safety & rollback    |
 | `export`   | Export in multiple formats (JSON, YAML, Markdown, Terraform) | Documentation & IaC  |
-| `template` | Add predefined rule templates                                | Quick rule setup     |
 
 ## 🔄 Workflows
 
