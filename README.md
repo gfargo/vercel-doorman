@@ -158,6 +158,12 @@ vercel-doorman download  # Import your current Vercel rules
 | ---------- | ---------------------------------------------------- | ------------------------------------------------------------------------ |
 | `add`      | Add a new rule from the CLI (interactive or inline)  | `vercel-doorman add --name "Block" --field path --op pre --value "/admin" --action deny` |
 | `template` | Add predefined rule templates                        | `vercel-doorman template ai-bots`                                        |
+### Rule Management
+
+| Command    | Description                                          | Example                                                |
+| ---------- | ---------------------------------------------------- | ------------------------------------------------------ |
+| `remove`   | Remove rules by name, ID, or interactive selection   | `vercel-doorman remove --name "Old Rule"`              |
+| `template` | Add predefined rule templates                        | `vercel-doorman template ai-bots`                      |
 
 ### Status & Information
 

@@ -5,6 +5,7 @@ import * as download from './download'
 import * as exportCmd from './export'
 import * as init from './init'
 import * as list from './list'
+import * as remove from './remove'
 import * as setup from './setup'
 import * as status from './status'
 import * as sync from './sync'
@@ -23,6 +24,7 @@ export const commands = [
   validate,
   download,
   template,
+  remove,
   backup,
   exportCmd,
   watch,
