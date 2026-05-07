@@ -183,13 +183,16 @@ const VALID_ACTIONS: ActionType[] = ['log', 'deny', 'challenge', 'bypass', 'rate
  * "Block Admin Access" → "rule_block_admin_access"
  */
 export function generateRuleId(name: string): string {
-  return (
-    'rule_' +
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_|_$/g, '')
-  )
+  const suffix = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+
+  if (!suffix) {
+    throw new Error('Cannot generate rule ID: name must contain at least one alphanumeric character')
+  }
+
+  return 'rule_' + suffix
 }
 
 /**
@@ -582,7 +585,7 @@ export const handler = async (argv: Arguments<AddOptions>) => {
         ips: [...(config.ips || []), ipRule],
       }
 
-      await saveConfig(updatedConfig, argv.config, { validate: false })
+      await saveConfig(updatedConfig, argv.config)
       logger.success(chalk.green(`✔ IP rule "${ipRule.ip}" added to configuration`))
       displayIPRuleSummary(ipRule)
     } else {
@@ -594,7 +597,7 @@ export const handler = async (argv: Arguments<AddOptions>) => {
       if (!validationResult.success) {
         logger.error(chalk.red('Rule validation failed:'))
         validationResult.error.errors.forEach((err) => {
-          const path = err.path.join('.')
+          const path = err.path.join('.') || 'rule'
           logger.error(chalk.red(`  - ${path}: ${err.message}`))
         })
         process.exit(1)
@@ -611,9 +614,10 @@ export const handler = async (argv: Arguments<AddOptions>) => {
       // Load config
       logger.start('Loading configuration...')
       const config = await getConfig(argv.config, 'raw')
+      const rules = config.rules || []
 
       // Check for duplicates
-      const duplicateWarning = checkDuplicates(config, rule)
+      const duplicateWarning = checkDuplicates({ ...config, rules }, rule)
       if (duplicateWarning) {
         logger.warn(chalk.yellow(`⚠️  ${duplicateWarning}`))
         const proceed = (await prompt('Proceed anyway?', {
@@ -629,10 +633,10 @@ export const handler = async (argv: Arguments<AddOptions>) => {
       // Append rule
       const updatedConfig: FirewallConfig = {
         ...config,
-        rules: [...config.rules, rule],
+        rules: [...rules, rule],
       }
 
-      await saveConfig(updatedConfig, argv.config, { validate: false })
+      await saveConfig(updatedConfig, argv.config)
       logger.success(chalk.green(`✔ Rule "${rule.name}" added to configuration`))
       displayRuleSummary(rule)
     }

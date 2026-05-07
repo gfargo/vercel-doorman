@@ -33,5 +33,10 @@ describe('add command', () => {
     it('handles hyphens and dots', () => {
       expect(generateRuleId('block-admin.access')).toBe('rule_block_admin_access')
     })
+
+    it('throws for names with no alphanumeric characters', () => {
+      expect(() => generateRuleId('---')).toThrow('Cannot generate rule ID')
+      expect(() => generateRuleId('!@#$%')).toThrow('Cannot generate rule ID')
+    })
   })
 })
