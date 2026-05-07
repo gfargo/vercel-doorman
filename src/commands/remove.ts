@@ -140,7 +140,7 @@ export function findFuzzyMatches(query: string, rules: CustomRule[], maxResults 
     }))
     .sort((a, b) => a.distance - b.distance)
 
-  // Only return matches that are reasonably close (distance < half the query length)
+  // Only return matches that are reasonably close (distance <= 60% of query length)
   const threshold = Math.max(query.length * 0.6, 3)
   return scored
     .filter((s) => s.distance <= threshold)
@@ -173,18 +173,18 @@ function displayIPRemovalSummary(ips: IPBlockingRule[]): void {
 /**
  * Confirm removal with the user unless --force is set.
  */
-async function confirmRemoval(count: number, force: boolean, isAll: boolean): Promise<boolean> {
+async function confirmRemoval(count: number, force: boolean, isAll: boolean, itemType: 'rule' | 'IP rule' = 'rule'): Promise<boolean> {
   if (force) return true
 
   if (isAll) {
     const confirmation = (await prompt(
-      chalk.red(`⚠️  Are you sure you want to remove ALL rules? Type "YES" to confirm:`),
+      chalk.red(`⚠️  Are you sure you want to remove ALL ${itemType}s? Type "YES" to confirm:`),
       { type: 'text' },
     )) as string
     return confirmation === 'YES'
   }
 
-  const message = count === 1 ? 'Confirm removal of 1 rule?' : `Confirm removal of ${count} rules?`
+  const message = count === 1 ? `Confirm removal of 1 ${itemType}?` : `Confirm removal of ${count} ${itemType}s?`
   return (await prompt(message, { type: 'confirm', initial: false })) as boolean
 }
 
@@ -200,7 +200,7 @@ export const handler = async (argv: Arguments<RemoveOptions>) => {
 
     // Load config
     logger.start('Loading configuration...')
-    const config = await getConfig(argv.config, 'raw')
+    const config = await getConfig(argv.config)
 
     if (ruleType === 'ip') {
       // --- IP Rule Removal ---
@@ -260,7 +260,7 @@ export const handler = async (argv: Arguments<RemoveOptions>) => {
       }
 
       // Confirm
-      if (!(await confirmRemoval(toRemove.length, argv.force || false, argv.all || false))) {
+      if (!(await confirmRemoval(toRemove.length, argv.force || false, argv.all || false, 'IP rule'))) {
         logger.info('Cancelled.')
         return
       }
@@ -272,7 +272,7 @@ export const handler = async (argv: Arguments<RemoveOptions>) => {
         ips: currentIPs.filter((ip) => !removeIPs.has(ip.ip)),
       }
 
-      await saveConfig(updatedConfig, argv.config, { validate: false })
+      await saveConfig(updatedConfig, argv.config)
       logger.success(chalk.green(`✔ Removed ${toRemove.length} IP rule(s) from configuration`))
     } else {
       // --- Custom Rule Removal ---
@@ -286,11 +286,11 @@ export const handler = async (argv: Arguments<RemoveOptions>) => {
       let toRemove: CustomRule[] = []
 
       if (argv.interactive) {
-        const options = currentRules.map((rule) => {
+        const options = currentRules.map((rule, idx) => {
           const id = rule.id ? ` (${rule.id})` : ''
           const status = rule.active ? '' : ' [disabled]'
           const action = rule.action.mitigate.action
-          return `${rule.name}${id} — ${action}${status}`
+          return `[${idx}] ${rule.name}${id} — ${action}${status}`
         })
 
         const selected = (await prompt('Select rules to remove:', {
@@ -298,16 +298,18 @@ export const handler = async (argv: Arguments<RemoveOptions>) => {
           options,
         })) as string[]
 
-        toRemove = currentRules.filter((rule) => {
-          const id = rule.id ? ` (${rule.id})` : ''
-          const status = rule.active ? '' : ' [disabled]'
-          const action = rule.action.mitigate.action
-          const label = `${rule.name}${id} — ${action}${status}`
-          return selected.includes(label)
+        toRemove = currentRules.filter((_rule, idx) => {
+          return selected.some((s) => s.startsWith(`[${idx}]`))
         })
       } else if (argv.name) {
         // Exact name match
         toRemove = currentRules.filter((r) => r.name === argv.name)
+
+        // Warn if multiple rules share the same name
+        if (toRemove.length > 1) {
+          logger.warn(chalk.yellow(`\n⚠️  Found ${toRemove.length} rules named "${argv.name}". All will be removed.`))
+          displayRemovalSummary(toRemove)
+        }
 
         if (toRemove.length === 0) {
           logger.error(chalk.red(`No rule found with exact name "${argv.name}"`))
@@ -391,7 +393,7 @@ export const handler = async (argv: Arguments<RemoveOptions>) => {
         logger.warn(chalk.yellow('⚠️  Configuration will have no rules after removal.'))
       }
 
-      await saveConfig(updatedConfig, argv.config, { validate: false })
+      await saveConfig(updatedConfig, argv.config)
       logger.success(chalk.green(`✔ Removed ${toRemove.length} rule(s) from configuration`))
       displayRemovalSummary(toRemove)
     }
