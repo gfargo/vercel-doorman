@@ -29,10 +29,10 @@ jobs:
           node-version: 'lts/*'
 
       - name: Install pnpm
-        run: npm i pnpm -g
+        run: npm i pnpm@10 -g
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: pnpm audit --audit-level=moderate
