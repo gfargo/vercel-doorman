@@ -173,7 +173,12 @@ function displayIPRemovalSummary(ips: IPBlockingRule[]): void {
 /**
  * Confirm removal with the user unless --force is set.
  */
-async function confirmRemoval(count: number, force: boolean, isAll: boolean, itemType: 'rule' | 'IP rule' = 'rule'): Promise<boolean> {
+async function confirmRemoval(
+  count: number,
+  force: boolean,
+  isAll: boolean,
+  itemType: 'rule' | 'IP rule' = 'rule',
+): Promise<boolean> {
   if (force) return true
 
   if (isAll) {
@@ -361,9 +366,7 @@ export const handler = async (argv: Arguments<RemoveOptions>) => {
 
       // Suggest backup for bulk operations
       if (toRemove.length >= 5 && !argv.dryRun && !argv.force) {
-        logger.log(
-          chalk.yellow(`\n💡 Tip: Run ${chalk.cyan('vercel-doorman backup')} before bulk removal operations.`),
-        )
+        logger.log(chalk.yellow(`\n💡 Tip: Run ${chalk.cyan('vercel-doorman backup')} before bulk removal operations.`))
       }
 
       // Show what will be removed

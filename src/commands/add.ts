@@ -4,14 +4,14 @@ import { Arguments } from 'yargs'
 import { logger } from '../lib/logger'
 import { firewallRuleSchema, ipBlockingRuleSchema } from '../lib/schemas/firewallSchemas'
 import {
-    ActionType,
-    ConditionGroup,
-    CustomRule,
-    FirewallConfig,
-    IPBlockingRule,
-    RuleCondition,
-    RuleOperator,
-    RuleType,
+  ActionType,
+  ConditionGroup,
+  CustomRule,
+  FirewallConfig,
+  IPBlockingRule,
+  RuleCondition,
+  RuleOperator,
+  RuleType,
 } from '../lib/types'
 import { prompt } from '../lib/ui/prompt'
 import { getConfig, saveConfig } from '../lib/utils/config'
@@ -285,10 +285,7 @@ async function buildRuleInteractive(): Promise<CustomRule> {
 
   let rateLimit: { requests: number; window: string } | undefined
   if (action === 'rate_limit') {
-    const requests = parseInt(
-      (await prompt('Max requests:', { type: 'text', initial: '100' })) as string,
-      10,
-    )
+    const requests = parseInt((await prompt('Max requests:', { type: 'text', initial: '100' })) as string, 10)
     const window = (await prompt('Time window (e.g., "60s", "1m", "1h"):', {
       type: 'text',
       initial: '60s',
